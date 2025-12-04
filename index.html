@@ -2,177 +2,493 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Karaoke - Fast Mode</title>
-    
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Splash 3D - Multi-Device Game</title>
     <style>
-        :root { --primary: #00f2ff; --secondary: #ff0055; --bg: #0f0c29; --text: #fff; }
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); padding: 20px; text-align: center; }
-        .card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); margin: 10px auto; max-width: 400px; }
-        .btn { background: linear-gradient(90deg, var(--secondary), #ff4b1f); color: white; border: none; padding: 15px; width: 100%; border-radius: 50px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .hidden { display: none; }
-        .switch-box { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin-bottom: 10px; }
-        input[type=checkbox] { transform: scale(1.5); }
-        .warning { font-size: 0.8rem; color: #ffcc00; margin-bottom: 15px; border: 1px solid #ffcc00; padding: 10px; border-radius: 8px; }
+        /* Styling Umum & Font */
+        body { margin: 0; background: #1a1a2e; color: white; font-family: 'Arial', sans-serif; overflow: hidden; }
+        #app { position: relative; width: 100vw; height: 100vh; }
+        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); text-align: center; }
+        
+        /* Layar Utama */
+        #selection-screen button { padding: 15px 30px; font-size: 24px; margin: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 8px; }
+        
+        /* Host UI */
+        #host-ui { display: none; }
+        #qrcode-container { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        #host-status { font-size: 28px; font-weight: bold; }
+        .score-box { font-size: 24px; font-weight: bold; margin: 10px; }
+        #timer { font-size: 40px; color: #ffcc00; }
+        
+        /* Controller UI */
+        #controller-ui { display: none; }
+        #zone_joystick { position: absolute; bottom: 50px; left: 50px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        #btn-skill { 
+            position: absolute; bottom: 60px; right: 50px; 
+            width: 100px; height: 100px; 
+            background: #ff416c; border-radius: 50%; 
+            border: 4px solid white; font-weight: bold; font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #btn-skill:active { background: #c73253; transform: scale(0.95); }
     </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-
-    <h2>⚡ NEON FAST LINK</h2>
-
-    <div id="menu-screen" class="card">
-        <div class="warning">
-            <i class="fas fa-exclamation-triangle"></i> <b>Trik Kurangi Delay:</b><br>
-            1. Di Remote TV, cari "Sound Mode", pilih <b>"Game"</b> atau <b>"Sport"</b> (Matikan Dolby/Surround).<br>
-            2. Matikan Bluetooth di HP (Bikin lemot WiFi).
+    <div id="app">
         </div>
-        <button onclick="startTVMode()" class="btn"><i class="fas fa-tv"></i> MODE TV (SPEAKER)</button>
-        <button onclick="startMicMode()" class="btn" style="background:#333"><i class="fas fa-microphone"></i> MODE HP (MIC)</button>
-    </div>
-
-    <div id="tv-screen" class="card hidden">
-        <h3>Scan di HP:</h3>
-        <div id="qr-container" style="background: white; padding: 10px; display:inline-block; border-radius:10px;"></div>
-        <p id="tv-status">Menunggu Koneksi...</p>
-        <audio id="remote-audio" autoplay></audio>
-    </div>
-
-    <div id="mic-screen" class="card hidden">
-        <div id="scanner-area">
-            <div id="reader" style="width:100%"></div>
+    
+    <div id="ui-overlay">
+        
+        <div id="selection-screen">
+            <h1>Pilih Peran</h1>
+            <button onclick="setMode('host')">📺 Host Game (TV)</button>
+            <button onclick="setMode('controller')">📱 Gabung Game (HP)</button>
         </div>
 
-        <div id="mic-controls" class="hidden">
-            <h3 style="color: #00ff88">MIC ON 當</h3>
-            
-            <div class="switch-box">
-                <span><b>Mode Ultra Cepat</b><br><small>Matikan Echo (Suara Kering)</small></span>
-                <input type="checkbox" id="fast-mode" checked onchange="toggleMode()">
+        <div id="host-ui">
+            <div id="host-status">Membuat Ruangan...</div>
+            <div id="qrcode-container"></div>
+            <p>Arahkan HP ke situs ini. <span id="player-count">(0/2)</span></p>
+            <div id="game-info" style="margin-top: 20px; display: none;">
+                <div id="timer">60</div>
+                <div>
+                    <span id="p1-score" class="score-box">P1: 0%</span>
+                    <span id="p2-score" class="score-box">P2: 0%</span>
+                </div>
             </div>
+            <button id="start-btn" onclick="startGame()" style="display:none; padding: 10px 20px; font-size: 20px; background: #28a745; border: none; color: white;">Mulai Game</button>
+        </div>
 
-            <div class="switch-box" id="echo-box" style="opacity: 0.5; pointer-events: none;">
-                <span>Volume Echo</span>
-                <input type="range" id="echo-amt" min="0" max="0.8" step="0.1" value="0.3">
-            </div>
-
-            <button onclick="location.reload()" class="btn" style="background: #444">Putus Koneksi</button>
+        <div id="controller-ui">
+            <h1 id="controller-status">Memindai QR Code...</h1>
+            <div id="qr-scanner" style="width: 300px; height: 300px; background: #fff; margin: 20px auto;"></div>
+            <p id="p-role" style="font-size: 20px;">Menunggu Host...</p>
         </div>
     </div>
-
+    
     <script>
-        const peerConfig = { debug: 0 }; 
-        let peer, conn, localStream, audioContext;
-        let gainNode, delayNode;
+        // =================================================================
+        // 1. FIREBASE CONFIGURATIONS (WAJIB DIISI)
+        // =================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBj1CveNm4qChW211Ryo7qP9zJQ", // <--- GANTI INI
+            authDomain: "slime-f9601.firebaseapp.com", // <--- GANTI INI
+            databaseURL: "https://slime-f9601-default-rtdb.firebaseio.com", // <--- GANTI INI
+            projectId: "slime-f9601", // <--- GANTI INI
+            storageBucket: "slime-f9601.appspot.com",
+            messagingSenderId: "1055339228552",
+            appId: "1:1055339228552:web:7646a4da7f954bc3f35e3d"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        let gameId = '';
+        let myPlayerIndex = 0; // 1 atau 2
+        let currentRole = ''; // 'painter' atau 'cleaner'
 
-        // --- TV MODE ---
-        function startTVMode() {
-            document.getElementById('menu-screen').classList.add('hidden');
-            document.getElementById('tv-screen').classList.remove('hidden');
+        // =================================================================
+        // 2. LOGIC ROLE SELECTION & UI MANAGEMENT
+        // =================================================================
+        
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        gameId = params.get('gameId');
+
+        function setMode(newMode) {
+            // Redirect dengan mode yang dipilih
+            const newUrl = window.location.origin + window.location.pathname + `?mode=${newMode}`;
+            window.location.href = newUrl;
+        }
+
+        if (mode === 'host') {
+            document.getElementById('selection-screen').style.display = 'none';
+            document.getElementById('host-ui').style.display = 'flex';
+            startHostMode();
+        } else if (mode === 'controller') {
+            document.getElementById('selection-screen').style.display = 'none';
+            document.getElementById('controller-ui').style.display = 'flex';
             
-            peer = new Peer("tv-" + Math.floor(Math.random()*9999), peerConfig);
+            if (gameId) {
+                document.getElementById('controller-status').innerText = 'Menghubungkan ke Game...';
+                startControllerMode(gameId);
+            } else {
+                // Di sini biasanya logic QR Scanner, tapi karena user akan buka link yang sama
+                // kita bisa minta mereka klik "Gabung Game" (asumsi sudah scan QR dengan ID).
+                // Karena kita belum pakai QR Scanner library di sini, kita minta ID.
+                // UNTUK KEMUDAHAN GITHUB, KITA HANYA MINTA USER MENGGUNAKAN LINK DARI QR CODE.
+                document.getElementById('controller-status').innerText = 'Mode Controller, Harap gunakan QR Code dari TV.';
+            }
+        }
+        
+        // =================================================================
+        // 3. HOST LOGIC (THREE.JS & GAME STATE)
+        // =================================================================
+
+        let isGameRunning = false;
+        let round = 1;
+        let connectedPlayers = 0;
+        const playerInput = { 1: { x: 0, y: 0, skill: false }, 2: { x: 0, y: 0, skill: false } };
+        
+        // Three.js Variables (Dinyatakan di luar agar bisa diakses)
+        let scene, camera, renderer, player1, player2, floorTiles;
+        const gridSize = 20;
+        const tileSize = 1;
+        const COLOR_NEUTRAL = 0x444444; 
+        const COLOR_PAINT = 0xff0000;   
+        const COLOR_CLEAN = 0xffffff;   
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 0); 
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('app').appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.DirectionalLight(0xffffff, 1));
+            scene.add(new THREE.AmbientLight(0x404040));
             
-            peer.on('open', id => {
-                new QRCode(document.getElementById("qr-container"), { text: id, width: 150, height: 150 });
+            // Floor Grid (Sama seperti kode sebelumnya)
+            floorTiles = [];
+            for(let x = 0; x < gridSize; x++) {
+                for(let z = 0; z < gridSize; z++) {
+                    const geo = new THREE.BoxGeometry(tileSize * 0.95, 0.2, tileSize * 0.95);
+                    const mat = new THREE.MeshLambertMaterial({ color: COLOR_NEUTRAL });
+                    const tile = new THREE.Mesh(geo, mat);
+                    tile.position.set((x - gridSize/2) * tileSize, -0.5, (z - gridSize/2) * tileSize);
+                    tile.userData = { state: 'neutral', x: x, z: z };
+                    floorTiles.push(tile);
+                    scene.add(tile);
+                }
+            }
+
+            // Player Objects (Slimes)
+            player1 = createSlime(0xff0000);
+            player2 = createSlime(0xffffff); 
+            scene.add(player1);
+            scene.add(player2);
+            resetPositions();
+
+            // Mulai loop rendering
+            animate();
+        }
+
+        function createSlime(color) {
+            const geo = new THREE.SphereGeometry(0.5, 32, 32);
+            const mat = new THREE.MeshPhongMaterial({ color: color });
+            const slime = new THREE.Mesh(geo, mat);
+            slime.scale.set(1, 0.7, 1); 
+            return slime;
+        }
+
+        function resetPositions() {
+            player1.position.set(-5, 0, 0);
+            player2.position.set(5, 0, 0);
+        }
+
+        async function startHostMode() {
+            initThreeJS();
+            
+            // 1. Generate Game ID unik
+            gameId = `game-${Math.random().toString(36).substring(2, 9)}`;
+            document.getElementById('host-status').innerText = 'Ruangan Dibuat. Siap Menerima Player.';
+            
+            // 2. Hapus data game lama di Firebase
+            await db.ref(`games/${gameId}`).remove();
+            
+            // 3. Generate QR Code
+            const currentUrl = window.location.href.split('?')[0]; // Ambil URL dasar
+            const joinLink = `${currentUrl}?mode=controller&gameId=${gameId}`;
+            new QRCode(document.getElementById('qrcode-container'), { text: joinLink, width: 200, height: 200 });
+
+            // 4. Firebase Listener untuk Player Connection
+            db.ref(`games/${gameId}/players`).on('value', (snapshot) => {
+                const playersData = snapshot.val();
+                connectedPlayers = playersData ? Object.keys(playersData).length : 0;
+                document.getElementById('player-count').innerText = `(${connectedPlayers}/2)`;
+                
+                if (connectedPlayers === 2) {
+                    document.getElementById('host-status').innerText = '2 Pemain Terhubung!';
+                    document.getElementById('start-btn').style.display = 'block';
+                } else {
+                    document.getElementById('host-status').innerText = 'Menunggu Pemain Kedua...';
+                    document.getElementById('start-btn').style.display = 'none';
+                }
             });
 
-            peer.on('call', call => {
-                call.answer();
-                document.getElementById('tv-status').innerText = "TERHUBUNG! 當";
-                // Trik TV: Paksa play instant
-                call.on('stream', stream => {
-                    const audio = document.getElementById('remote-audio');
-                    audio.srcObject = stream;
-                    audio.play();
+            // 5. Firebase Listener untuk Player Input
+            db.ref(`games/${gameId}/input`).on('value', (snapshot) => {
+                const input = snapshot.val();
+                if (input) {
+                    if (input[1]) playerInput[1] = input[1];
+                    if (input[2]) playerInput[2] = input[2];
+                }
+            });
+        }
+        
+        // --- GAME FLOW ---
+        let timerInterval;
+
+        async function startGame() {
+            if (connectedPlayers < 2) return;
+            
+            // Reset Game State di Firebase
+            await db.ref(`games/${gameId}`).update({ state: 'playing', round: round, time: 60 });
+            
+            // Randomisasi Role (Setiap round)
+            const roles = round % 2 !== 0 
+                ? { p1: 'painter', p2: 'cleaner' } 
+                : { p1: 'cleaner', p2: 'painter' };
+
+            await db.ref(`games/${gameId}/roles`).set(roles);
+            
+            player1.material.color.setHex(roles.p1 === 'painter' ? COLOR_PAINT : COLOR_CLEAN);
+            player2.material.color.setHex(roles.p2 === 'painter' ? COLOR_PAINT : COLOR_CLEAN);
+
+            floorTiles.forEach(tile => {
+                tile.material.color.setHex(COLOR_NEUTRAL);
+                tile.userData.state = 'neutral';
+            });
+            resetPositions();
+
+            isGameRunning = true;
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('game-info').style.display = 'block';
+            document.getElementById('ui-overlay').style.background = 'transparent';
+
+            let timeLeft = 60;
+            document.getElementById('timer').innerText = timeLeft;
+
+            timerInterval = setInterval(() => {
+                if (!isGameRunning) return;
+                timeLeft--;
+                db.ref(`games/${gameId}/time`).set(timeLeft);
+                document.getElementById('timer').innerText = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            isGameRunning = false;
+            
+            let paintedCount = 0;
+            floorTiles.forEach(t => {
+                if (t.userData.state === 'painted') paintedCount++;
+            });
+            
+            const totalTiles = floorTiles.length;
+            const paintPercent = Math.round((paintedCount / totalTiles) * 100);
+            
+            db.ref(`games/${gameId}/state`).set('gameover');
+            db.ref(`games/${gameId}/score`).set({ paint: paintPercent });
+
+            document.getElementById('ui-overlay').style.background = 'rgba(0, 0, 0, 0.7)';
+            document.getElementById('host-status').innerText = `GAME OVER! Paint Dominance: ${paintPercent}%`;
+
+            // Display Winner
+            const roles = db.ref(`games/${gameId}/roles`).once('value').then(snap => snap.val());
+            const winnerText = (paintPercent >= 50) 
+                ? `${roles.p1 === 'painter' ? 'P1' : 'P2'} (PAINTER) WINS!` 
+                : `${roles.p1 === 'cleaner' ? 'P1' : 'P2'} (CLEANER) WINS!`;
+            
+            document.getElementById('host-status').innerText = `GAME OVER! ${winnerText}`;
+
+            setTimeout(() => {
+                round++;
+                document.getElementById('host-status').innerText = `Round ${round} - Tukar Peran!`;
+                document.getElementById('start-btn').style.display = 'block';
+            }, 5000);
+        }
+
+        // --- ANIMATION LOOP & PHYSICS ---
+        const speed = 0.1;
+        const fastSpeed = 0.2;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isGameRunning) {
+                // Get roles dari Firebase
+                const currentRoles = db.ref(`games/${gameId}/roles`).once('value').then(snap => snap.val());
+
+                // Update Posisi Player 1
+                const s1 = player1.userData.speedBoost ? fastSpeed : speed;
+                player1.position.x += playerInput[1].x * s1;
+                player1.position.z += playerInput[1].y * s1;
+                if (playerInput[1].skill) activateSkill(1);
+
+                // Update Posisi Player 2
+                const s2 = player2.userData.speedBoost ? fastSpeed : speed;
+                player2.position.x += playerInput[2].x * s2;
+                player2.position.z += playerInput[2].y * s2;
+                if (playerInput[2].skill) activateSkill(2);
+                
+                // Clamp position (batasi arena)
+                const limit = (gridSize * tileSize) / 2 - 0.5;
+                player1.position.x = Math.max(-limit, Math.min(limit, player1.position.x));
+                player1.position.z = Math.max(-limit, Math.min(limit, player1.position.z));
+                player2.position.x = Math.max(-limit, Math.min(limit, player2.position.x));
+                player2.position.z = Math.max(-limit, Math.min(limit, player2.position.z));
+
+                checkFloorCollision(player1, 1);
+                checkFloorCollision(player2, 2);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function checkFloorCollision(playerMesh, pIndex) {
+            // Dapatkan peran saat ini dari database
+            const rolesRef = db.ref(`games/${gameId}/roles`);
+            rolesRef.once('value').then(snapshot => {
+                const currentRoles = snapshot.val();
+                const pRole = pIndex === 1 ? currentRoles.p1 : currentRoles.p2;
+
+                let paintedCount = 0;
+
+                floorTiles.forEach(tile => {
+                    const dx = playerMesh.position.x - tile.position.x;
+                    const dz = playerMesh.position.z - tile.position.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+
+                    if (dist < 0.8) { 
+                        if (pRole === 'painter') {
+                            tile.material.color.setHex(COLOR_PAINT);
+                            tile.userData.state = 'painted';
+                        } else {
+                            // Cleaner: Mengubah ke netral/putih
+                            tile.material.color.setHex(COLOR_CLEAN); 
+                            tile.userData.state = 'neutral';
+                        }
+                    }
+                    if (tile.userData.state === 'painted') paintedCount++;
                 });
+
+                // Update Score Display
+                const paintPercent = Math.round((paintedCount / floorTiles.length) * 100);
+                document.getElementById('p1-score').innerText = `Painter: ${paintPercent}%`;
+                document.getElementById('p2-score').innerText = `Cleaner: ${100 - paintPercent}%`;
             });
         }
 
-        // --- MIC MODE ---
-        function startMicMode() {
-            document.getElementById('menu-screen').classList.add('hidden');
-            document.getElementById('mic-screen').classList.remove('hidden');
+        function activateSkill(pIndex) {
+             // Pastikan skill tidak aktif secara terus-menerus
+             if (playerInput[pIndex].skill === true) {
+                 const pObj = pIndex === 1 ? player1 : player2;
+                 pObj.userData.speedBoost = true;
+                 pObj.scale.set(1.5, 1, 1.5);
+                 
+                 // Matikan skill flag di Firebase setelah diaktivasi
+                 db.ref(`games/${gameId}/input/${pIndex}/skill`).set(false);
+                 
+                 setTimeout(() => {
+                     pObj.userData.speedBoost = false;
+                     pObj.scale.set(1, 0.7, 1);
+                 }, 2000);
+             }
+         }
+
+        // =================================================================
+        // 4. CONTROLLER LOGIC (JOYSTICK & FIREBASE)
+        // =================================================================
+
+        function startControllerMode(id) {
+            gameId = id;
+            document.getElementById('qr-scanner').style.display = 'none';
+            document.getElementById('controller-status').innerText = 'Menunggu Pemain Kedua...';
             
-            const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10 }, (id) => {
-                html5QrCode.stop();
-                document.getElementById('scanner-area').classList.add('hidden');
-                connectMic(id);
+            // 1. Cek apakah sudah 2 player dan tentukan index
+            db.ref(`games/${gameId}/players`).transaction((currentData) => {
+                if (currentData && Object.keys(currentData).length >= 2) {
+                    return; // Room Full, jangan join
+                }
+                const newIndex = currentData ? (Object.keys(currentData).length === 1 ? 2 : 1) : 1;
+                myPlayerIndex = newIndex;
+                if (!currentData) currentData = {};
+                currentData[myPlayerIndex] = true;
+                return currentData;
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error("Transaction failed:", error);
+                } else if (!committed) {
+                    document.getElementById('controller-status').innerText = 'Ruangan Penuh atau Gagal Join.';
+                } else {
+                    document.getElementById('controller-status').innerText = `Anda Player ${myPlayerIndex}. Menunggu Game Dimulai.`;
+                    setupControllerUI();
+                }
+            });
+
+            // 2. Listener untuk Role dan Game State
+            db.ref(`games/${gameId}/roles`).on('value', (snapshot) => {
+                const roles = snapshot.val();
+                if (roles) {
+                    currentRole = myPlayerIndex === 1 ? roles.p1 : roles.p2;
+                    document.getElementById('p-role').innerText = `Peran: ${currentRole.toUpperCase()}`;
+                }
             });
         }
 
-        function toggleMode() {
-            // Refresh stream logic based on checkbox
-            alert("Ubah mode perlu reconnect. Tekan OK.");
-            location.reload();
-        }
-
-        async function connectMic(tvId) {
-            document.getElementById('mic-controls').classList.remove('hidden');
-            peer = new Peer(peerConfig);
+        function setupControllerUI() {
+            document.getElementById('controller-status').style.display = 'none';
+            document.getElementById('controller-ui').style.justifyContent = 'space-between';
+            document.getElementById('zone_joystick').style.display = 'block';
+            document.getElementById('btn-skill').style.display = 'flex';
             
-            const isFastMode = document.getElementById('fast-mode').checked;
-
-            peer.on('open', async () => {
-                // SETTINGAN AGRESIF UNTUK SPEED
-                const constraints = {
-                    audio: {
-                        echoCancellation: false, // MATIKAN PROSESING HP
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        latency: 0,
-                        channelCount: 1, // MONO LEBIH RINGAN
-                        sampleRate: 44100
-                    }
-                };
-
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    
-                    if (isFastMode) {
-                        // JALUR TOL: Kirim Stream Mentah (Paling Cepat)
-                        peer.call(tvId, stream);
-                    } else {
-                        // JALUR ECHO: Lewat AudioContext (Ada sedikit delay)
-                        const processedStream = addEcho(stream);
-                        peer.call(tvId, processedStream);
-                    }
-
-                } catch(e) { alert("Mic Error: " + e); }
+            // NippleJS setup
+            const joystickManager = nipplejs.create({
+                zone: document.getElementById('zone_joystick'),
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: 'white'
             });
-        }
 
-        function addEcho(rawStream) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            // latencyHint 0 memaksa browser memprioritaskan speed daripada kualitas
-            audioContext = new AudioCtx({ latencyHint: 0 }); 
-            
-            const source = audioContext.createMediaStreamSource(rawStream);
-            const dest = audioContext.createMediaStreamDestination();
-            
-            const delay = audioContext.createDelay();
-            delay.delayTime.value = 0.2;
-            
-            const feedback = audioContext.createGain();
-            feedback.gain.value = 0.3;
-            
-            const masterVol = audioContext.createGain();
+            let moveData = { x: 0, y: 0, skill: false };
 
-            // Wiring Audio:
-            source.connect(masterVol);     // Suara asli
-            source.connect(delay);         // Masuk delay
-            delay.connect(feedback);       // Feedback loop
-            feedback.connect(delay);       
-            delay.connect(masterVol);      // Output delay
-            
-            masterVol.connect(dest);
+            const inputRef = db.ref(`games/${gameId}/input/${myPlayerIndex}`);
 
-            return dest.stream;
+            joystickManager.on('move', (evt, data) => {
+                if (data.vector) {
+                    moveData.x = data.vector.x; 
+                    moveData.y = -data.vector.y; 
+                    sendInput();
+                }
+            });
+
+            joystickManager.on('end', () => {
+                moveData.x = 0;
+                moveData.y = 0;
+                sendInput();
+            });
+
+            document.getElementById('btn-skill').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                moveData.skill = true;
+                sendInput();
+                // Reset skill flag setelah 100ms agar tidak terlalu cepat mengirim false/true
+                setTimeout(() => {
+                    moveData.skill = false;
+                    sendInput(); 
+                }, 100);
+            });
+
+            function sendInput() {
+                inputRef.set(moveData);
+            }
         }
     </script>
 </body>
