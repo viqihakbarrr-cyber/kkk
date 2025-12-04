@@ -3,489 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Karaoke - USB Link</title>
+    <title>Neon Karaoke - Fast Mode</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #00f2ff;     /* Neon Cyan */
-            --secondary: #ff0055;   /* Neon Pink */
-            --bg-dark: #0f0c29;
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --text: #ffffff;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
-        }
-
-        /* --- UI Components --- */
-        .app-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 10px;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
-        }
-
-        .card {
-            background: var(--glass);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 30px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: transform 0.3s ease;
-        }
-
-        .btn {
-            background: linear-gradient(90deg, var(--secondary), #ff4b1f);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            cursor: pointer;
-            width: 100%;
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4);
-        }
-
-        .btn:active { transform: scale(0.96); }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: none;
-            border: 1px solid var(--glass-border);
-        }
-        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-
-        .hidden { display: none !important; }
-
-        /* --- USB Guide Box --- */
-        .usb-badge {
-            background: rgba(255, 200, 0, 0.15);
-            border: 1px solid #ffcc00;
-            color: #ffcc00;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            text-align: left;
-            margin-bottom: 25px;
-        }
-        .usb-badge strong { display: block; margin-bottom: 5px; font-size: 1rem; }
-        .usb-badge ul { padding-left: 20px; margin: 0; }
-        .usb-badge li { margin-bottom: 4px; }
-
-        /* --- TV Mode --- */
-        #qr-container {
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            margin: 20px auto;
-            width: fit-content;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
-        }
-
-        /* --- Mic Controls --- */
-        .control-group { margin-bottom: 25px; text-align: left; }
-        .control-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #ccc;
-        }
-        
-        /* Custom Range Slider */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 24px;
-            width: 24px;
-            border-radius: 50%;
-            background: var(--primary);
-            box-shadow: 0 0 10px var(--primary);
-            cursor: pointer;
-            margin-top: -10px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-        }
-
-        /* --- Visualizer --- */
-        #visualizer {
-            width: 100%;
-            height: 80px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 12px;
-            margin: 20px 0;
-            border: 1px solid var(--glass-border);
-        }
-
-        /* --- Status Indicators --- */
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            background: rgba(0, 255, 136, 0.2);
-            color: #00ff88;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            border: 1px solid #00ff88;
-        }
-        .status-badge.waiting {
-            background: rgba(255, 200, 0, 0.2);
-            color: #ffcc00;
-            border-color: #ffcc00;
-        }
-
-        /* --- QR Scanner --- */
-        #reader {
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid var(--primary);
-        }
+        :root { --primary: #00f2ff; --secondary: #ff0055; --bg: #0f0c29; --text: #fff; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); padding: 20px; text-align: center; }
+        .card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); margin: 10px auto; max-width: 400px; }
+        .btn { background: linear-gradient(90deg, var(--secondary), #ff4b1f); color: white; border: none; padding: 15px; width: 100%; border-radius: 50px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .hidden { display: none; }
+        .switch-box { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+        input[type=checkbox] { transform: scale(1.5); }
+        .warning { font-size: 0.8rem; color: #ffcc00; margin-bottom: 15px; border: 1px solid #ffcc00; padding: 10px; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-    <div style="text-align: center;">
-        <i class="fas fa-microphone-alt fa-3x" style="color:var(--secondary); margin-bottom:10px;"></i>
-        <div class="app-title">NEON KARAOKE</div>
-        <div style="font-size: 0.9rem; color: #aaa; margin-bottom: 30px;">Low Latency USB & WiFi System</div>
-    </div>
+    <h2>⚡ NEON FAST LINK</h2>
 
     <div id="menu-screen" class="card">
-        <div class="usb-badge">
-            <i class="fas fa-bolt"></i> <strong>Tips Anti Delay (Wajib Baca):</strong>
-            <ul>
-                <li>Jika suara telat, gunakan <b>Kabel USB</b>.</li>
-                <li>Colok HP ke TV → Aktifkan <b>USB Tethering</b> di HP.</li>
-                <li>Pastikan TV terhubung ke jaringan kabel (bukan WiFi).</li>
-            </ul>
+        <div class="warning">
+            <i class="fas fa-exclamation-triangle"></i> <b>Trik Kurangi Delay:</b><br>
+            1. Di Remote TV, cari "Sound Mode", pilih <b>"Game"</b> atau <b>"Sport"</b> (Matikan Dolby/Surround).<br>
+            2. Matikan Bluetooth di HP (Bikin lemot WiFi).
         </div>
-
-        <p>Pilih peran perangkat ini:</p>
-        
-        <button onclick="startTVMode()" class="btn">
-            <i class="fas fa-tv"></i> SAYA SEBAGAI SPEAKER (TV)
-        </button>
-        
-        <button onclick="startMicMode()" class="btn btn-secondary">
-            <i class="fas fa-mobile-alt"></i> SAYA SEBAGAI MIC (HP)
-        </button>
+        <button onclick="startTVMode()" class="btn"><i class="fas fa-tv"></i> MODE TV (SPEAKER)</button>
+        <button onclick="startMicMode()" class="btn" style="background:#333"><i class="fas fa-microphone"></i> MODE HP (MIC)</button>
     </div>
 
     <div id="tv-screen" class="card hidden">
-        <div class="status-badge waiting" id="tv-status-badge">MENUNGGU KONEKSI...</div>
-        <h3>Scan untuk Terhubung</h3>
-        
-        <div id="qr-container"></div>
-        
-        <p style="font-size: 0.8rem; opacity: 0.7; margin-top:20px;">
-            Pastikan HP Android terhubung ke jaringan yang sama dengan perangkat ini.
-        </p>
-
+        <h3>Scan di HP:</h3>
+        <div id="qr-container" style="background: white; padding: 10px; display:inline-block; border-radius:10px;"></div>
+        <p id="tv-status">Menunggu Koneksi...</p>
         <audio id="remote-audio" autoplay></audio>
-        
-        <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:20px;">
-            <i class="fas fa-arrow-left"></i> Kembali
-        </button>
     </div>
 
     <div id="mic-screen" class="card hidden">
-        
-        <div id="scan-area">
-            <h3>Scan QR di TV</h3>
-            <div id="reader"></div>
-            <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:15px;">
-                Batal
-            </button>
+        <div id="scanner-area">
+            <div id="reader" style="width:100%"></div>
         </div>
 
         <div id="mic-controls" class="hidden">
-            <div class="status-badge" id="mic-status">TERHUBUNG LIVE 當</div>
+            <h3 style="color: #00ff88">MIC ON 當</h3>
             
-            <canvas id="visualizer"></canvas>
-
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-volume-up"></i> Volume</span>
-                    <span id="vol-val">100%</span>
-                </div>
-                <input type="range" id="vol-control" min="0" max="2" step="0.1" value="1">
+            <div class="switch-box">
+                <span><b>Mode Ultra Cepat</b><br><small>Matikan Echo (Suara Kering)</small></span>
+                <input type="checkbox" id="fast-mode" checked onchange="toggleMode()">
             </div>
 
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-wave-square"></i> Echo Delay</span>
-                    <span id="echo-val">200ms</span>
-                </div>
-                <input type="range" id="echo-delay" min="0" max="0.8" step="0.05" value="0.2">
+            <div class="switch-box" id="echo-box" style="opacity: 0.5; pointer-events: none;">
+                <span>Volume Echo</span>
+                <input type="range" id="echo-amt" min="0" max="0.8" step="0.1" value="0.3">
             </div>
 
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-bullhorn"></i> Panjang Gema</span>
-                    <span id="feed-val">40%</span>
-                </div>
-                <input type="range" id="echo-feedback" min="0" max="0.8" step="0.05" value="0.4">
-            </div>
-
-            <button onclick="location.reload()" class="btn" style="background: #333; margin-top:20px;">
-                <i class="fas fa-power-off"></i> Putus Koneksi
-            </button>
+            <button onclick="location.reload()" class="btn" style="background: #444">Putus Koneksi</button>
         </div>
     </div>
 
     <script>
-        // --- Konfigurasi PeerJS ---
-        const peerConfig = {
-            debug: 1,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
-            }
-        };
+        const peerConfig = { debug: 0 }; 
+        let peer, conn, localStream, audioContext;
+        let gainNode, delayNode;
 
-        let peer = null;
-        let audioContext = null;
-
-        // --- Helper UI ---
-        function showScreen(id) {
-            document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function updateLabel(id, value, type) {
-            const el = document.getElementById(id);
-            if(type === 'percent') el.innerText = Math.round(value * 100) + '%';
-            if(type === 'ms') el.innerText = Math.round(value * 1000) + 'ms';
-            if(type === 'raw') el.innerText = Math.round(value * 100) + '%';
-        }
-
-        // ==========================================
-        // LOGIKA TV
-        // ==========================================
+        // --- TV MODE ---
         function startTVMode() {
-            showScreen('tv-screen');
-            const peerId = "karaoke-tv-" + Math.floor(Math.random() * 10000);
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('tv-screen').classList.remove('hidden');
             
-            peer = new Peer(peerId, peerConfig);
-
-            peer.on('open', (id) => {
-                document.getElementById("qr-container").innerHTML = "";
-                new QRCode(document.getElementById("qr-container"), {
-                    text: id,
-                    width: 180,
-                    height: 180,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
+            peer = new Peer("tv-" + Math.floor(Math.random()*9999), peerConfig);
+            
+            peer.on('open', id => {
+                new QRCode(document.getElementById("qr-container"), { text: id, width: 150, height: 150 });
             });
 
-            peer.on('call', (call) => {
-                const badge = document.getElementById('tv-status-badge');
-                badge.innerText = "CONNECTED 當";
-                badge.classList.remove('waiting');
-                badge.style.background = "rgba(0, 255, 136, 0.2)";
-                badge.style.borderColor = "#00ff88";
-                badge.style.color = "#00ff88";
-
-                call.answer(); 
-                call.on('stream', (remoteStream) => {
-                    const audioElem = document.getElementById('remote-audio');
-                    audioElem.srcObject = remoteStream;
-                    audioElem.play().catch(console.error);
+            peer.on('call', call => {
+                call.answer();
+                document.getElementById('tv-status').innerText = "TERHUBUNG! 當";
+                // Trik TV: Paksa play instant
+                call.on('stream', stream => {
+                    const audio = document.getElementById('remote-audio');
+                    audio.srcObject = stream;
+                    audio.play();
                 });
             });
         }
 
-        // ==========================================
-        // LOGIKA MIC
-        // ==========================================
+        // --- MIC MODE ---
         function startMicMode() {
-            showScreen('mic-screen');
-            startQRScanner();
-        }
-
-        function startQRScanner() {
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('mic-screen').classList.remove('hidden');
+            
             const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    html5QrCode.stop();
-                    connectToTV(decodedText);
-                },
-                () => {}
-            ).catch(err => alert("Gagal akses kamera: " + err));
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10 }, (id) => {
+                html5QrCode.stop();
+                document.getElementById('scanner-area').classList.add('hidden');
+                connectMic(id);
+            });
         }
 
-        async function connectToTV(tvPeerId) {
-            document.getElementById('scan-area').classList.add('hidden');
+        function toggleMode() {
+            // Refresh stream logic based on checkbox
+            alert("Ubah mode perlu reconnect. Tekan OK.");
+            location.reload();
+        }
+
+        async function connectMic(tvId) {
             document.getElementById('mic-controls').classList.remove('hidden');
-            
             peer = new Peer(peerConfig);
+            
+            const isFastMode = document.getElementById('fast-mode').checked;
 
-            peer.on('open', async (id) => {
+            peer.on('open', async () => {
+                // SETTINGAN AGRESIF UNTUK SPEED
+                const constraints = {
+                    audio: {
+                        echoCancellation: false, // MATIKAN PROSESING HP
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        latency: 0,
+                        channelCount: 1, // MONO LEBIH RINGAN
+                        sampleRate: 44100
+                    }
+                };
+
                 try {
-                    // KONFIGURASI LOW LATENCY
-                    const constraints = {
-                        audio: {
-                            echoCancellation: false, 
-                            noiseSuppression: false,
-                            autoGainControl: false,
-                            latency: 0
-                        },
-                        video: false
-                    };
-
                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    const processedStream = setupAudioEffects(stream);
                     
-                    const call = peer.call(tvPeerId, processedStream);
-                    
-                    // Visualisasi Audio
-                    visualizeAudio(processedStream);
+                    if (isFastMode) {
+                        // JALUR TOL: Kirim Stream Mentah (Paling Cepat)
+                        peer.call(tvId, stream);
+                    } else {
+                        // JALUR ECHO: Lewat AudioContext (Ada sedikit delay)
+                        const processedStream = addEcho(stream);
+                        peer.call(tvId, processedStream);
+                    }
 
-                } catch (err) {
-                    alert("Error Mic: " + err);
-                    location.reload();
-                }
+                } catch(e) { alert("Mic Error: " + e); }
             });
         }
 
-        // ==========================================
-        // AUDIO PROCESSING & VISUALIZER
-        // ==========================================
-        function setupAudioEffects(rawStream) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioContext = new AudioContext({ 
-                latencyHint: 'interactive',
-                sampleRate: 48000 
-            });
-
+        function addEcho(rawStream) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            // latencyHint 0 memaksa browser memprioritaskan speed daripada kualitas
+            audioContext = new AudioCtx({ latencyHint: 0 }); 
+            
             const source = audioContext.createMediaStreamSource(rawStream);
-            const destination = audioContext.createMediaStreamDestination();
-
-            const inputGain = audioContext.createGain(); 
-            const delayNode = audioContext.createDelay(); 
-            const feedbackGain = audioContext.createGain(); 
-            const wetGain = audioContext.createGain(); 
-
-            // Default Values
-            inputGain.gain.value = 1;
-            delayNode.delayTime.value = 0.2; 
-            feedbackGain.gain.value = 0.4;
+            const dest = audioContext.createMediaStreamDestination();
             
-            // Wiring
-            source.connect(inputGain);
-            inputGain.connect(destination); // Dry
-            inputGain.connect(delayNode);
-            delayNode.connect(wetGain);
-            wetGain.connect(destination); // Wet
-            delayNode.connect(feedbackGain);
-            feedbackGain.connect(delayNode); // Loop
-
-            // Event Listeners dengan Update Label UI
-            document.getElementById('vol-control').addEventListener('input', (e) => {
-                inputGain.gain.value = parseFloat(e.target.value);
-                updateLabel('vol-val', inputGain.gain.value, 'percent');
-            });
-            document.getElementById('echo-delay').addEventListener('input', (e) => {
-                delayNode.delayTime.value = parseFloat(e.target.value);
-                updateLabel('echo-val', delayNode.delayTime.value, 'ms');
-            });
-            document.getElementById('echo-feedback').addEventListener('input', (e) => {
-                const val = Math.min(parseFloat(e.target.value), 0.9);
-                feedbackGain.gain.value = val;
-                updateLabel('feed-val', val, 'raw');
-            });
-
-            return destination.stream;
-        }
-
-        function visualizeAudio(stream) {
-            if(!audioContext) return;
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 64;
+            const delay = audioContext.createDelay();
+            delay.delayTime.value = 0.2;
             
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            const canvas = document.getElementById('visualizer');
-            const canvasCtx = canvas.getContext('2d');
+            const feedback = audioContext.createGain();
+            feedback.gain.value = 0.3;
+            
+            const masterVol = audioContext.createGain();
 
-            function draw() {
-                requestAnimationFrame(draw);
-                analyser.getByteFrequencyData(dataArray);
-                
-                // Clear canvas (Transparent)
-                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            // Wiring Audio:
+            source.connect(masterVol);     // Suara asli
+            source.connect(delay);         // Masuk delay
+            delay.connect(feedback);       // Feedback loop
+            feedback.connect(delay);       
+            delay.connect(masterVol);      // Output delay
+            
+            masterVol.connect(dest);
 
-                const barWidth = (canvas.width / bufferLength) * 2;
-                let x = 0;
-
-                for(let i = 0; i < bufferLength; i++) {
-                    let barHeight = (dataArray[i] / 255) * canvas.height;
-                    
-                    // Gradient Color Neon
-                    let gradient = canvasCtx.createLinearGradient(0, canvas.height, 0, 0);
-                    gradient.addColorStop(0, "#ff0055");
-                    gradient.addColorStop(1, "#00f2ff");
-
-                    canvasCtx.fillStyle = gradient;
-                    
-                    // Round bar top
-                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
-                    
-                    x += barWidth;
-                }
-            }
-            draw();
+            return dest.stream;
         }
     </script>
 </body>
