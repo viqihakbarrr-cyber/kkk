@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Karaoke - USB Link</title>
+    <title>Neon Karaoke - Realtime Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -12,301 +12,152 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #00f2ff;     /* Neon Cyan */
-            --secondary: #ff0055;   /* Neon Pink */
-            --bg-dark: #0f0c29;
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --text: #ffffff;
-        }
-
-        * { box-sizing: border-box; }
-
+        :root { --primary: #00f2ff; --secondary: #ff0055; --bg-dark: #0f0c29; --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; }
+        * { box-sizing: border-box; touch-action: manipulation; }
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
+            color: var(--text); margin: 0; padding: 20px;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-
-        /* --- UI Components --- */
         .app-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 10px;
+            font-size: 2rem; font-weight: 800; margin-bottom: 5px;
             background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-
         .card {
-            background: var(--glass);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 30px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: transform 0.3s ease;
+            background: var(--glass); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 20px;
+            padding: 25px; width: 100%; max-width: 480px; margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
-
         .btn {
             background: linear-gradient(90deg, var(--secondary), #ff4b1f);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            cursor: pointer;
-            width: 100%;
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4);
+            color: white; border: none; padding: 15px; font-size: 1rem; font-weight: 600;
+            border-radius: 50px; cursor: pointer; width: 100%; margin: 8px 0;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
-
-        .btn:active { transform: scale(0.96); }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: none;
-            border: 1px solid var(--glass-border);
+        .btn-warning {
+            background: #ffcc00; color: #000; animation: bounce 2s infinite;
         }
-        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-
         .hidden { display: none !important; }
-
-        /* --- USB Guide Box --- */
-        .usb-badge {
-            background: rgba(255, 200, 0, 0.15);
-            border: 1px solid #ffcc00;
-            color: #ffcc00;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            text-align: left;
-            margin-bottom: 25px;
-        }
-        .usb-badge strong { display: block; margin-bottom: 5px; font-size: 1rem; }
-        .usb-badge ul { padding-left: 20px; margin: 0; }
-        .usb-badge li { margin-bottom: 4px; }
-
-        /* --- TV Mode --- */
-        #qr-container {
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            margin: 20px auto;
-            width: fit-content;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
-        }
-
-        /* --- Mic Controls --- */
-        .control-group { margin-bottom: 25px; text-align: left; }
-        .control-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #ccc;
+        
+        /* Debug Console di UI */
+        #debug-log {
+            font-family: monospace; font-size: 0.7rem; color: #00ff88;
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
+            margin-top: 10px; height: 60px; overflow-y: scroll; text-align: left;
         }
         
-        /* Custom Range Slider */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 24px;
-            width: 24px;
-            border-radius: 50%;
-            background: var(--primary);
-            box-shadow: 0 0 10px var(--primary);
-            cursor: pointer;
-            margin-top: -10px;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-        }
-
-        /* --- Visualizer --- */
-        #visualizer {
-            width: 100%;
-            height: 80px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 12px;
-            margin: 20px 0;
-            border: 1px solid var(--glass-border);
-        }
-
-        /* --- Status Indicators --- */
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            background: rgba(0, 255, 136, 0.2);
-            color: #00ff88;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            border: 1px solid #00ff88;
-        }
-        .status-badge.waiting {
-            background: rgba(255, 200, 0, 0.2);
-            color: #ffcc00;
-            border-color: #ffcc00;
-        }
-
-        /* --- QR Scanner --- */
-        #reader {
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid var(--primary);
-        }
+        /* Visualizer */
+        #visualizer { width: 100%; height: 80px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 10px 0; }
+        
+        input[type=range] { width: 100%; margin: 10px 0; }
+        
+        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     </style>
 </head>
 <body>
 
     <div style="text-align: center;">
-        <i class="fas fa-microphone-alt fa-3x" style="color:var(--secondary); margin-bottom:10px;"></i>
-        <div class="app-title">NEON KARAOKE</div>
-        <div style="font-size: 0.9rem; color: #aaa; margin-bottom: 30px;">Low Latency USB & WiFi System</div>
+        <div class="app-title">NEON REALTIME v2</div>
+        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 20px;">Low Latency + Audio Force</div>
     </div>
 
     <div id="menu-screen" class="card">
-        <div class="usb-badge">
-            <i class="fas fa-bolt"></i> <strong>Tips Anti Delay (Wajib Baca):</strong>
-            <ul>
-                <li>Jika suara telat, gunakan <b>Kabel USB</b>.</li>
-                <li>Colok HP ke TV → Aktifkan <b>USB Tethering</b> di HP.</li>
-                <li>Pastikan TV terhubung ke jaringan kabel (bukan WiFi).</li>
-            </ul>
+        <div style="background: rgba(255,0,0,0.2); padding: 10px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; border: 1px solid red;">
+            <strong>PENTING:</strong> Wajib gunakan <strong>HTTPS</strong> atau <strong>localhost</strong>. Mic tidak akan jalan di HTTP biasa (IP Address lokal tanpa SSL).
         </div>
-
-        <p>Pilih peran perangkat ini:</p>
-        
-        <button onclick="startTVMode()" class="btn">
-            <i class="fas fa-tv"></i> SAYA SEBAGAI SPEAKER (TV)
-        </button>
-        
-        <button onclick="startMicMode()" class="btn btn-secondary">
-            <i class="fas fa-mobile-alt"></i> SAYA SEBAGAI MIC (HP)
-        </button>
+        <button onclick="startTVMode()" class="btn"><i class="fas fa-tv"></i> MODE SPEAKER (TV)</button>
+        <button onclick="startMicMode()" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid white;"><i class="fas fa-microphone"></i> MODE MIC (HP)</button>
     </div>
 
     <div id="tv-screen" class="card hidden">
-        <div class="status-badge waiting" id="tv-status-badge">MENUNGGU KONEKSI...</div>
-        <h3>Scan untuk Terhubung</h3>
+        <h3 style="text-align:center; margin:0;">Scan QR</h3>
+        <div id="qr-container" style="background:white; padding:10px; border-radius:10px; margin:10px auto; width:fit-content;"></div>
         
-        <div id="qr-container"></div>
-        
-        <p style="font-size: 0.8rem; opacity: 0.7; margin-top:20px;">
-            Pastikan HP Android terhubung ke jaringan yang sama dengan perangkat ini.
-        </p>
-
-        <audio id="remote-audio" autoplay></audio>
-        
-        <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:20px;">
-            <i class="fas fa-arrow-left"></i> Kembali
+        <button id="force-audio-btn" class="btn btn-warning hidden" onclick="resumeAudioContext()">
+            <i class="fas fa-volume-up"></i> KLIK JIKA TIDAK ADA SUARA
         </button>
+
+        <canvas id="visualizer"></canvas>
+        <div id="debug-log">Menunggu koneksi...</div>
+
+        <div style="margin-top:15px;">
+            <label>Volume: <span id="vol-disp">100%</span></label>
+            <input type="range" id="tv-vol" min="0" max="3" step="0.1" value="1">
+            
+            <label>Echo: <span id="echo-disp">100ms</span></label>
+            <input type="range" id="tv-echo" min="0" max="0.5" step="0.01" value="0.1">
+        </div>
+        
+        <button onclick="location.reload()" class="btn" style="background:#333; margin-top:20px;">Reset</button>
     </div>
 
     <div id="mic-screen" class="card hidden">
-        
         <div id="scan-area">
-            <h3>Scan QR di TV</h3>
-            <div id="reader"></div>
-            <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:15px;">
-                Batal
-            </button>
+            <h3 style="text-align:center;">Scan TV</h3>
+            <div id="reader" style="width:100%; border-radius:10px; overflow:hidden;"></div>
         </div>
-
-        <div id="mic-controls" class="hidden">
-            <div class="status-badge" id="mic-status">TERHUBUNG LIVE 當</div>
-            
-            <canvas id="visualizer"></canvas>
-
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-volume-up"></i> Volume</span>
-                    <span id="vol-val">100%</span>
-                </div>
-                <input type="range" id="vol-control" min="0" max="2" step="0.1" value="1">
-            </div>
-
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-wave-square"></i> Echo Delay</span>
-                    <span id="echo-val">200ms</span>
-                </div>
-                <input type="range" id="echo-delay" min="0" max="0.8" step="0.05" value="0.2">
-            </div>
-
-            <div class="control-group">
-                <div class="control-header">
-                    <span><i class="fas fa-bullhorn"></i> Panjang Gema</span>
-                    <span id="feed-val">40%</span>
-                </div>
-                <input type="range" id="echo-feedback" min="0" max="0.8" step="0.05" value="0.4">
-            </div>
-
-            <button onclick="location.reload()" class="btn" style="background: #333; margin-top:20px;">
-                <i class="fas fa-power-off"></i> Putus Koneksi
-            </button>
+        <div id="mic-active" class="hidden" style="text-align:center; padding: 20px;">
+            <i class="fas fa-microphone fa-3x" style="color:#00ff88; animation:bounce 1s infinite;"></i>
+            <h3>MIC ON AIR</h3>
+            <p>Dekatkan HP ke mulut.</p>
+            <button onclick="location.reload()" class="btn" style="background:#333;">Matikan</button>
         </div>
     </div>
 
     <script>
-        // --- Konfigurasi PeerJS ---
-        const peerConfig = {
-            debug: 1,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
+        // --- LOGGING HELPER ---
+        function log(msg) {
+            const d = document.getElementById('debug-log');
+            if(d) {
+                d.innerHTML = `> ${msg}<br>` + d.innerHTML;
             }
-        };
+            console.log(msg);
+        }
 
-        let peer = null;
-        let audioContext = null;
+        const peerConfig = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } };
+        let peer, audioCtx, analyser;
+        let gainNode, delayNode;
 
-        // --- Helper UI ---
-        function showScreen(id) {
-            document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
+        function show(id) {
+            document.querySelectorAll('.card').forEach(e => e.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
 
-        function updateLabel(id, value, type) {
-            const el = document.getElementById(id);
-            if(type === 'percent') el.innerText = Math.round(value * 100) + '%';
-            if(type === 'ms') el.innerText = Math.round(value * 1000) + 'ms';
-            if(type === 'raw') el.innerText = Math.round(value * 100) + '%';
+        // =========================
+        // TV LOGIC
+        // =========================
+        function startTVMode() {
+            show('tv-screen');
+            // Init Context Awal
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
+            
+            log("Audio Context dibuat. State: " + audioCtx.state);
+            
+            const peerId = "karaoke-" + Math.floor(Math.random() * 9999);
+            peer = new Peer(peerId, peerConfig);
+
+            peer.on('open', (id) => {
+                new QRCode(document.getElementById("qr-container"), { text: id, width: 150, height: 150 });
+                log("Siap. ID: " + id);
+            });
+
+            peer.on('call', (call) => {
+                log("Menerima panggilan...");
+                document.getElementById('qr-container').style.display = 'none';
+                
+                call.answer(); // Terima call
+                
+                call.on('stream', (remoteStream) => {
+                    log("Stream data masuk!");
+                    handleAudioStream(remoteStream);
+                });
+            });
         }
 
-        // ==========================================
-        // LOGIKA TV
-        // ==========================================
                 function handleAudioStream(stream) {
             // Kita tidak perlu lagi mengecek audioCtx.state === 'suspended'
             // karena kita akan memaksa resume pada interaksi.
@@ -376,150 +227,95 @@
         }
 
 
-        // ==========================================
-        // LOGIKA MIC
-        // ==========================================
+        // Control Binding
+        document.getElementById('tv-vol').addEventListener('input', e => {
+            if(gainNode) gainNode.gain.value = e.target.value;
+            document.getElementById('vol-disp').innerText = Math.round(e.target.value*100)+'%';
+        });
+        document.getElementById('tv-echo').addEventListener('input', e => {
+            if(delayNode) delayNode.delayTime.value = e.target.value;
+            document.getElementById('echo-disp').innerText = Math.round(e.target.value*1000)+'ms';
+        });
+
+        // =========================
+        // MIC LOGIC
+        // =========================
         function startMicMode() {
-            showScreen('mic-screen');
-            startQRScanner();
-        }
-
-        function startQRScanner() {
-            const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 },
+            show('mic-screen');
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
                 (decodedText) => {
-                    html5QrCode.stop();
+                    scanner.stop();
                     connectToTV(decodedText);
-                },
-                () => {}
-            ).catch(err => alert("Gagal akses kamera: " + err));
-        }
-
-        async function connectToTV(tvPeerId) {
-            document.getElementById('scan-area').classList.add('hidden');
-            document.getElementById('mic-controls').classList.remove('hidden');
-            
-            peer = new Peer(peerConfig);
-
-            peer.on('open', async (id) => {
-                try {
-                    // KONFIGURASI LOW LATENCY
-                    const constraints = {
-                        audio: {
-                            echoCancellation: false, 
-                            noiseSuppression: false,
-                            autoGainControl: false,
-                            latency: 0
-                        },
-                        video: false
-                    };
-
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    const processedStream = setupAudioEffects(stream);
-                    
-                    const call = peer.call(tvPeerId, processedStream);
-                    
-                    // Visualisasi Audio
-                    visualizeAudio(processedStream);
-
-                } catch (err) {
-                    alert("Error Mic: " + err);
-                    location.reload();
                 }
-            });
+            );
         }
 
-        // ==========================================
-        // AUDIO PROCESSING & VISUALIZER
-        // ==========================================
-        function setupAudioEffects(rawStream) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioContext = new AudioContext({ 
-                latencyHint: 'interactive',
-                sampleRate: 48000 
-            });
-
-            const source = audioContext.createMediaStreamSource(rawStream);
-            const destination = audioContext.createMediaStreamDestination();
-
-            const inputGain = audioContext.createGain(); 
-            const delayNode = audioContext.createDelay(); 
-            const feedbackGain = audioContext.createGain(); 
-            const wetGain = audioContext.createGain(); 
-
-            // Default Values
-            inputGain.gain.value = 1;
-            delayNode.delayTime.value = 0.2; 
-            feedbackGain.gain.value = 0.4;
+        async function connectToTV(id) {
+            document.getElementById('scan-area').classList.add('hidden');
+            document.getElementById('mic-active').classList.remove('hidden');
             
-            // Wiring
-            source.connect(inputGain);
-            inputGain.connect(destination); // Dry
-            inputGain.connect(delayNode);
-            delayNode.connect(wetGain);
-            wetGain.connect(destination); // Wet
-            delayNode.connect(feedbackGain);
-            feedbackGain.connect(delayNode); // Loop
+            try {
+                // Constraints Mic Paling Penting
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        latency: 0,
+                        channelCount: 1 // Mono
+                    },
+                    video: false
+                });
 
-            // Event Listeners dengan Update Label UI
-            document.getElementById('vol-control').addEventListener('input', (e) => {
-                inputGain.gain.value = parseFloat(e.target.value);
-                updateLabel('vol-val', inputGain.gain.value, 'percent');
-            });
-            document.getElementById('echo-delay').addEventListener('input', (e) => {
-                delayNode.delayTime.value = parseFloat(e.target.value);
-                updateLabel('echo-val', delayNode.delayTime.value, 'ms');
-            });
-            document.getElementById('echo-feedback').addEventListener('input', (e) => {
-                const val = Math.min(parseFloat(e.target.value), 0.9);
-                feedbackGain.gain.value = val;
-                updateLabel('feed-val', val, 'raw');
-            });
+                peer = new Peer(peerConfig);
+                peer.on('open', () => {
+                    const call = peer.call(id, stream);
+                    // Dummy audio play di HP agar background process jalan
+                    const a = new Audio();
+                    a.srcObject = stream;
+                    a.muted = true;
+                    a.play();
+                });
 
-            return destination.stream;
+            } catch (err) {
+                alert("Gagal Mic: " + err + ". Pastikan HTTPS!");
+                location.reload();
+            }
         }
 
-        function visualizeAudio(stream) {
-            if(!audioContext) return;
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 64;
-            
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+        // =========================
+        // VISUALIZER
+        // =========================
+        function drawVisualizer() {
             const canvas = document.getElementById('visualizer');
-            const canvasCtx = canvas.getContext('2d');
-
-            function draw() {
-                requestAnimationFrame(draw);
-                analyser.getByteFrequencyData(dataArray);
+            const ctx = canvas.getContext('2d');
+            
+            function render() {
+                requestAnimationFrame(render);
+                if(!analyser) return;
                 
-                // Clear canvas (Transparent)
-                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Jika data array semuanya 0, berarti tidak ada suara masuk
+                let sum = 0;
+                for(let i=0; i<array.length; i++) sum += array[i];
+                if(sum > 0 && document.getElementById('debug-log').innerText.includes("Menunggu")) {
+                    log("Suara terdeteksi masuk!");
+                }
 
-                const barWidth = (canvas.width / bufferLength) * 2;
                 let x = 0;
-
-                for(let i = 0; i < bufferLength; i++) {
-                    let barHeight = (dataArray[i] / 255) * canvas.height;
-                    
-                    // Gradient Color Neon
-                    let gradient = canvasCtx.createLinearGradient(0, canvas.height, 0, 0);
-                    gradient.addColorStop(0, "#ff0055");
-                    gradient.addColorStop(1, "#00f2ff");
-
-                    canvasCtx.fillStyle = gradient;
-                    
-                    // Round bar top
-                    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
-                    
-                    x += barWidth;
+                const w = (canvas.width / array.length) * 2.5;
+                for(let i=0; i<array.length; i++) {
+                    const h = (array[i]/255) * canvas.height;
+                    ctx.fillStyle = `hsl(${i * 2}, 100%, 50%)`;
+                    ctx.fillRect(x, canvas.height - h, w, h);
+                    x += w + 1;
                 }
             }
-            draw();
+            render();
         }
     </script>
 </body>
