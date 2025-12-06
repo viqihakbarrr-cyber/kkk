@@ -2,494 +2,346 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Splash 3D - Multi-Device Game</title>
-    <style>
-        /* Styling Umum & Font */
-        body { margin: 0; background: #1a1a2e; color: white; font-family: 'Arial', sans-serif; overflow: hidden; }
-        #app { position: relative; width: 100vw; height: 100vh; }
-        #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); text-align: center; }
-        
-        /* Layar Utama */
-        #selection-screen button { padding: 15px 30px; font-size: 24px; margin: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 8px; }
-        
-        /* Host UI */
-        #host-ui { display: none; }
-        #qrcode-container { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        #host-status { font-size: 28px; font-weight: bold; }
-        .score-box { font-size: 24px; font-weight: bold; margin: 10px; }
-        #timer { font-size: 40px; color: #ffcc00; }
-        
-        /* Controller UI */
-        #controller-ui { display: none; }
-        #zone_joystick { position: absolute; bottom: 50px; left: 50px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; }
-        #btn-skill { 
-            position: absolute; bottom: 60px; right: 50px; 
-            width: 100px; height: 100px; 
-            background: #ff416c; border-radius: 50%; 
-            border: 4px solid white; font-weight: bold; font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-        }
-        #btn-skill:active { background: #c73253; transform: scale(0.95); }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Low Latency Karaoke</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.0/nipplejs.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        :root {
+            --primary: #ff0055;
+            --dark: #121212;
+            --surface: #1e1e1e;
+            --text: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            overflow-x: hidden;
+        }
+        h1 { margin-bottom: 5px; color: var(--primary); }
+        p { color: #aaa; margin-bottom: 20px; }
+        
+        /* Container Setup */
+        .screen { display: none; width: 100%; max-width: 600px; padding: 20px; box-sizing: border-box; }
+        .active { display: flex; flex-direction: column; align-items: center; }
+
+        /* Buttons */
+        .btn-big {
+            width: 100%;
+            padding: 20px;
+            margin: 10px 0;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        .btn-tv { background: #2196F3; color: white; }
+        .btn-mic { background: #4CAF50; color: white; }
+        .btn-big:active { transform: scale(0.98); }
+
+        /* Controls */
+        .control-group {
+            width: 100%;
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type=range] { width: 100%; accent-color: var(--primary); }
+
+        /* QR & Video */
+        #qrcode { background: white; padding: 10px; border-radius: 8px; margin: 20px 0; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
+        
+        /* Visualizer */
+        canvas { width: 100%; height: 100px; background: #000; border-radius: 8px; margin-top: 10px; }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            background: #333;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .status.connected { background: #1b5e20; color: #fff; }
+    </style>
 </head>
 <body>
-    <div id="app">
-        </div>
-    
-    <div id="ui-overlay">
+
+    <div id="home-screen" class="screen active">
+        <h1>🎤 Web Karaoke P2P</h1>
+        <p>Pilih peran perangkat ini</p>
+        <button class="btn-big btn-tv" onclick="initTV()">📺 Mode TV (Layar & Speaker)</button>
+        <button class="btn-big btn-mic" onclick="initMic()">📱 Mode Mic (Android)</button>
+        <p style="font-size: 0.8rem; color: #666; margin-top: 20px;">Wajib menggunakan HTTPS agar Mic berfungsi.</p>
+    </div>
+
+    <div id="tv-screen" class="screen">
+        <h1>📺 TV Mode</h1>
+        <div id="tv-status" class="status">Menyiapkan koneksi...</div>
         
-        <div id="selection-screen">
-            <h1>Pilih Peran</h1>
-            <button onclick="setMode('host')">📺 Host Game (TV)</button>
-            <button onclick="setMode('controller')">📱 Gabung Game (HP)</button>
+        <div id="qrcode"></div>
+        <p id="tv-instruction">Scan QR ini dengan HP Android</p>
+
+        <div class="control-group">
+            <label>Master Volume: <span id="vol-val">100%</span></label>
+            <input type="range" id="volume" min="0" max="2" step="0.1" value="1" oninput="updateAudio()">
+        </div>
+        
+        <div class="control-group">
+            <label>Echo (Reverb): <span id="echo-val">30%</span></label>
+            <input type="range" id="echo" min="0" max="1" step="0.1" value="0.3" oninput="updateAudio()">
         </div>
 
-        <div id="host-ui">
-            <div id="host-status">Membuat Ruangan...</div>
-            <div id="qrcode-container"></div>
-            <p>Arahkan HP ke situs ini. <span id="player-count">(0/2)</span></p>
-            <div id="game-info" style="margin-top: 20px; display: none;">
-                <div id="timer">60</div>
-                <div>
-                    <span id="p1-score" class="score-box">P1: 0%</span>
-                    <span id="p2-score" class="score-box">P2: 0%</span>
-                </div>
+        <canvas id="visualizer"></canvas>
+    </div>
+
+    <div id="mic-screen" class="screen">
+        <h1>📱 Mic Mode</h1>
+        <div id="mic-status" class="status">Siapkan kamera...</div>
+        
+        <div id="reader"></div>
+
+        <div id="mic-controls" style="display:none; width: 100%;">
+            <div class="control-group" style="text-align: center;">
+                <h2>🎤 Connected!</h2>
+                <p>Bernyanyilah ke HP Anda.</p>
+                <button class="btn-big" style="background: #d32f2f; color: white;" onclick="location.reload()">Putus / Keluar</button>
             </div>
-            <button id="start-btn" onclick="startGame()" style="display:none; padding: 10px 20px; font-size: 20px; background: #28a745; border: none; color: white;">Mulai Game</button>
-        </div>
-
-        <div id="controller-ui">
-            <h1 id="controller-status">Memindai QR Code...</h1>
-            <div id="qr-scanner" style="width: 300px; height: 300px; background: #fff; margin: 20px auto;"></div>
-            <p id="p-role" style="font-size: 20px;">Menunggu Host...</p>
         </div>
     </div>
+
+<script>
+    // --- VARIABEL GLOBAL ---
+    let peer;
+    let conn;
+    let audioContext;
+    let sourceNode, gainNode, convolverNode, wetGainNode, dryGainNode;
+    let analyser;
     
-    <script>
-        // =================================================================
-        // 1. FIREBASE CONFIGURATIONS (WAJIB DIISI)
-        // =================================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyBj1CveNm4qChW211Ryo7qP9zJQ", // <--- GANTI INI
-            authDomain: "slime-f9601.firebaseapp.com", // <--- GANTI INI
-            databaseURL: "https://slime-f9601-default-rtdb.firebaseio.com", // <--- GANTI INI
-            projectId: "slime-f9601", // <--- GANTI INI
-            storageBucket: "slime-f9601.appspot.com",
-            messagingSenderId: "1055339228552",
-            appId: "1:1055339228552:web:7646a4da7f954bc3f35e3d"
-        };
+    // Konfigurasi Delay Minim
+    // Kita mematikan semua processing di HP agar sinyal dikirim mentah & cepat
+    const audioConstraints = {
+        audio: {
+            echoCancellation: false, 
+            autoGainControl: false,
+            noiseSuppression: false,
+            latency: 0
+        },
+        video: false
+    };
+
+    // --- NAVIGASI UI ---
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // --- LOGIKA TV ---
+    function initTV() {
+        showScreen('tv-screen');
         
-        // Inisialisasi Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        // Inisialisasi Audio Context (Browser butuh interaksi user dulu, tombol klik tadi sudah cukup)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext({ latencyHint: 'interactive' }); // KUNCI: latencyHint interactive
+
+        // Buat ID Peer Random
+        peer = new Peer(null, { debug: 2 });
+
+        peer.on('open', (id) => {
+            console.log('My peer ID is: ' + id);
+            document.getElementById('tv-status').innerText = "Menunggu scan dari HP...";
+            
+            // Generate QR Code
+            new QRCode(document.getElementById("qrcode"), {
+                text: id,
+                width: 200,
+                height: 200
+            });
+        });
+
+        // Saat menerima panggilan (Stream Suara)
+        peer.on('call', (call) => {
+            console.log("Menerima panggilan...");
+            document.getElementById('tv-status').className = "status connected";
+            document.getElementById('tv-status').innerText = "Terhubung dengan Mic!";
+            document.getElementById('qrcode').style.display = 'none';
+            document.getElementById('tv-instruction').style.display = 'none';
+
+            call.answer(); // Jawab tanpa stream balik (one-way)
+            
+            call.on('stream', (remoteStream) => {
+                setupTvAudio(remoteStream);
+            });
+        });
+    }
+
+    // --- LOGIKA MIC (ANDROID) ---
+    function initMic() {
+        showScreen('mic-screen');
         
-        let gameId = '';
-        let myPlayerIndex = 0; // 1 atau 2
-        let currentRole = ''; // 'painter' atau 'cleaner'
-
-        // =================================================================
-        // 2. LOGIC ROLE SELECTION & UI MANAGEMENT
-        // =================================================================
+        // Setup Scanner
+        const html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
         
-        const params = new URLSearchParams(window.location.search);
-        const mode = params.get('mode');
-        gameId = params.get('gameId');
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            // Sukses Scan
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+            connectToTV(decodedText);
+        }, (errorMessage) => {
+            // Scanning...
+        }).catch(err => {
+            document.getElementById('mic-status').innerText = "Gagal akses kamera: " + err;
+        });
+    }
 
-        function setMode(newMode) {
-            // Redirect dengan mode yang dipilih
-            const newUrl = window.location.origin + window.location.pathname + `?mode=${newMode}`;
-            window.location.href = newUrl;
-        }
-
-        if (mode === 'host') {
-            document.getElementById('selection-screen').style.display = 'none';
-            document.getElementById('host-ui').style.display = 'flex';
-            startHostMode();
-        } else if (mode === 'controller') {
-            document.getElementById('selection-screen').style.display = 'none';
-            document.getElementById('controller-ui').style.display = 'flex';
-            
-            if (gameId) {
-                document.getElementById('controller-status').innerText = 'Menghubungkan ke Game...';
-                startControllerMode(gameId);
-            } else {
-                // Di sini biasanya logic QR Scanner, tapi karena user akan buka link yang sama
-                // kita bisa minta mereka klik "Gabung Game" (asumsi sudah scan QR dengan ID).
-                // Karena kita belum pakai QR Scanner library di sini, kita minta ID.
-                // UNTUK KEMUDAHAN GITHUB, KITA HANYA MINTA USER MENGGUNAKAN LINK DARI QR CODE.
-                document.getElementById('controller-status').innerText = 'Mode Controller, Harap gunakan QR Code dari TV.';
-            }
-        }
+    function connectToTV(tvId) {
+        document.getElementById('mic-status').innerText = "Menghubungkan ke TV...";
         
-        // =================================================================
-        // 3. HOST LOGIC (THREE.JS & GAME STATE)
-        // =================================================================
+        peer = new Peer(null, { debug: 2 });
 
-        let isGameRunning = false;
-        let round = 1;
-        let connectedPlayers = 0;
-        const playerInput = { 1: { x: 0, y: 0, skill: false }, 2: { x: 0, y: 0, skill: false } };
-        
-        // Three.js Variables (Dinyatakan di luar agar bisa diakses)
-        let scene, camera, renderer, player1, player2, floorTiles;
-        const gridSize = 20;
-        const tileSize = 1;
-        const COLOR_NEUTRAL = 0x444444; 
-        const COLOR_PAINT = 0xff0000;   
-        const COLOR_CLEAN = 0xffffff;   
-
-        function initThreeJS() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 15, 0); 
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('app').appendChild(renderer.domElement);
-
-            // Lighting
-            scene.add(new THREE.DirectionalLight(0xffffff, 1));
-            scene.add(new THREE.AmbientLight(0x404040));
-            
-            // Floor Grid (Sama seperti kode sebelumnya)
-            floorTiles = [];
-            for(let x = 0; x < gridSize; x++) {
-                for(let z = 0; z < gridSize; z++) {
-                    const geo = new THREE.BoxGeometry(tileSize * 0.95, 0.2, tileSize * 0.95);
-                    const mat = new THREE.MeshLambertMaterial({ color: COLOR_NEUTRAL });
-                    const tile = new THREE.Mesh(geo, mat);
-                    tile.position.set((x - gridSize/2) * tileSize, -0.5, (z - gridSize/2) * tileSize);
-                    tile.userData = { state: 'neutral', x: x, z: z };
-                    floorTiles.push(tile);
-                    scene.add(tile);
-                }
-            }
-
-            // Player Objects (Slimes)
-            player1 = createSlime(0xff0000);
-            player2 = createSlime(0xffffff); 
-            scene.add(player1);
-            scene.add(player2);
-            resetPositions();
-
-            // Mulai loop rendering
-            animate();
-        }
-
-        function createSlime(color) {
-            const geo = new THREE.SphereGeometry(0.5, 32, 32);
-            const mat = new THREE.MeshPhongMaterial({ color: color });
-            const slime = new THREE.Mesh(geo, mat);
-            slime.scale.set(1, 0.7, 1); 
-            return slime;
-        }
-
-        function resetPositions() {
-            player1.position.set(-5, 0, 0);
-            player2.position.set(5, 0, 0);
-        }
-
-        async function startHostMode() {
-            initThreeJS();
-            
-            // 1. Generate Game ID unik
-            gameId = `game-${Math.random().toString(36).substring(2, 9)}`;
-            document.getElementById('host-status').innerText = 'Ruangan Dibuat. Siap Menerima Player.';
-            
-            // 2. Hapus data game lama di Firebase
-            await db.ref(`games/${gameId}`).remove();
-            
-            // 3. Generate QR Code
-            const currentUrl = window.location.href.split('?')[0]; // Ambil URL dasar
-            const joinLink = `${currentUrl}?mode=controller&gameId=${gameId}`;
-            new QRCode(document.getElementById('qrcode-container'), { text: joinLink, width: 200, height: 200 });
-
-            // 4. Firebase Listener untuk Player Connection
-            db.ref(`games/${gameId}/players`).on('value', (snapshot) => {
-                const playersData = snapshot.val();
-                connectedPlayers = playersData ? Object.keys(playersData).length : 0;
-                document.getElementById('player-count').innerText = `(${connectedPlayers}/2)`;
+        peer.on('open', async (id) => {
+            try {
+                // Ambil Mic Stream
+                const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
                 
-                if (connectedPlayers === 2) {
-                    document.getElementById('host-status').innerText = '2 Pemain Terhubung!';
-                    document.getElementById('start-btn').style.display = 'block';
-                } else {
-                    document.getElementById('host-status').innerText = 'Menunggu Pemain Kedua...';
-                    document.getElementById('start-btn').style.display = 'none';
-                }
-            });
-
-            // 5. Firebase Listener untuk Player Input
-            db.ref(`games/${gameId}/input`).on('value', (snapshot) => {
-                const input = snapshot.val();
-                if (input) {
-                    if (input[1]) playerInput[1] = input[1];
-                    if (input[2]) playerInput[2] = input[2];
-                }
-            });
-        }
-        
-        // --- GAME FLOW ---
-        let timerInterval;
-
-        async function startGame() {
-            if (connectedPlayers < 2) return;
-            
-            // Reset Game State di Firebase
-            await db.ref(`games/${gameId}`).update({ state: 'playing', round: round, time: 60 });
-            
-            // Randomisasi Role (Setiap round)
-            const roles = round % 2 !== 0 
-                ? { p1: 'painter', p2: 'cleaner' } 
-                : { p1: 'cleaner', p2: 'painter' };
-
-            await db.ref(`games/${gameId}/roles`).set(roles);
-            
-            player1.material.color.setHex(roles.p1 === 'painter' ? COLOR_PAINT : COLOR_CLEAN);
-            player2.material.color.setHex(roles.p2 === 'painter' ? COLOR_PAINT : COLOR_CLEAN);
-
-            floorTiles.forEach(tile => {
-                tile.material.color.setHex(COLOR_NEUTRAL);
-                tile.userData.state = 'neutral';
-            });
-            resetPositions();
-
-            isGameRunning = true;
-            document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('game-info').style.display = 'block';
-            document.getElementById('ui-overlay').style.background = 'transparent';
-
-            let timeLeft = 60;
-            document.getElementById('timer').innerText = timeLeft;
-
-            timerInterval = setInterval(() => {
-                if (!isGameRunning) return;
-                timeLeft--;
-                db.ref(`games/${gameId}/time`).set(timeLeft);
-                document.getElementById('timer').innerText = timeLeft;
+                // Panggil TV
+                const call = peer.call(tvId, stream);
                 
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            isGameRunning = false;
-            
-            let paintedCount = 0;
-            floorTiles.forEach(t => {
-                if (t.userData.state === 'painted') paintedCount++;
-            });
-            
-            const totalTiles = floorTiles.length;
-            const paintPercent = Math.round((paintedCount / totalTiles) * 100);
-            
-            db.ref(`games/${gameId}/state`).set('gameover');
-            db.ref(`games/${gameId}/score`).set({ paint: paintPercent });
-
-            document.getElementById('ui-overlay').style.background = 'rgba(0, 0, 0, 0.7)';
-            document.getElementById('host-status').innerText = `GAME OVER! Paint Dominance: ${paintPercent}%`;
-
-            // Display Winner
-            const roles = db.ref(`games/${gameId}/roles`).once('value').then(snap => snap.val());
-            const winnerText = (paintPercent >= 50) 
-                ? `${roles.p1 === 'painter' ? 'P1' : 'P2'} (PAINTER) WINS!` 
-                : `${roles.p1 === 'cleaner' ? 'P1' : 'P2'} (CLEANER) WINS!`;
-            
-            document.getElementById('host-status').innerText = `GAME OVER! ${winnerText}`;
-
-            setTimeout(() => {
-                round++;
-                document.getElementById('host-status').innerText = `Round ${round} - Tukar Peran!`;
-                document.getElementById('start-btn').style.display = 'block';
-            }, 5000);
-        }
-
-        // --- ANIMATION LOOP & PHYSICS ---
-        const speed = 0.1;
-        const fastSpeed = 0.2;
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (isGameRunning) {
-                // Get roles dari Firebase
-                const currentRoles = db.ref(`games/${gameId}/roles`).once('value').then(snap => snap.val());
-
-                // Update Posisi Player 1
-                const s1 = player1.userData.speedBoost ? fastSpeed : speed;
-                player1.position.x += playerInput[1].x * s1;
-                player1.position.z += playerInput[1].y * s1;
-                if (playerInput[1].skill) activateSkill(1);
-
-                // Update Posisi Player 2
-                const s2 = player2.userData.speedBoost ? fastSpeed : speed;
-                player2.position.x += playerInput[2].x * s2;
-                player2.position.z += playerInput[2].y * s2;
-                if (playerInput[2].skill) activateSkill(2);
-                
-                // Clamp position (batasi arena)
-                const limit = (gridSize * tileSize) / 2 - 0.5;
-                player1.position.x = Math.max(-limit, Math.min(limit, player1.position.x));
-                player1.position.z = Math.max(-limit, Math.min(limit, player1.position.z));
-                player2.position.x = Math.max(-limit, Math.min(limit, player2.position.x));
-                player2.position.z = Math.max(-limit, Math.min(limit, player2.position.z));
-
-                checkFloorCollision(player1, 1);
-                checkFloorCollision(player2, 2);
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        function checkFloorCollision(playerMesh, pIndex) {
-            // Dapatkan peran saat ini dari database
-            const rolesRef = db.ref(`games/${gameId}/roles`);
-            rolesRef.once('value').then(snapshot => {
-                const currentRoles = snapshot.val();
-                const pRole = pIndex === 1 ? currentRoles.p1 : currentRoles.p2;
-
-                let paintedCount = 0;
-
-                floorTiles.forEach(tile => {
-                    const dx = playerMesh.position.x - tile.position.x;
-                    const dz = playerMesh.position.z - tile.position.z;
-                    const dist = Math.sqrt(dx*dx + dz*dz);
-
-                    if (dist < 0.8) { 
-                        if (pRole === 'painter') {
-                            tile.material.color.setHex(COLOR_PAINT);
-                            tile.userData.state = 'painted';
-                        } else {
-                            // Cleaner: Mengubah ke netral/putih
-                            tile.material.color.setHex(COLOR_CLEAN); 
-                            tile.userData.state = 'neutral';
-                        }
-                    }
-                    if (tile.userData.state === 'painted') paintedCount++;
+                call.on('close', () => {
+                    alert("Koneksi terputus");
+                    location.reload();
                 });
 
-                // Update Score Display
-                const paintPercent = Math.round((paintedCount / floorTiles.length) * 100);
-                document.getElementById('p1-score').innerText = `Painter: ${paintPercent}%`;
-                document.getElementById('p2-score').innerText = `Cleaner: ${100 - paintPercent}%`;
-            });
-        }
+                document.getElementById('mic-status').className = "status connected";
+                document.getElementById('mic-status').innerText = "Terhubung! Mulai bernyanyi.";
+                document.getElementById('mic-controls').style.display = 'block';
 
-        function activateSkill(pIndex) {
-             // Pastikan skill tidak aktif secara terus-menerus
-             if (playerInput[pIndex].skill === true) {
-                 const pObj = pIndex === 1 ? player1 : player2;
-                 pObj.userData.speedBoost = true;
-                 pObj.scale.set(1.5, 1, 1.5);
-                 
-                 // Matikan skill flag di Firebase setelah diaktivasi
-                 db.ref(`games/${gameId}/input/${pIndex}/skill`).set(false);
-                 
-                 setTimeout(() => {
-                     pObj.userData.speedBoost = false;
-                     pObj.scale.set(1, 0.7, 1);
-                 }, 2000);
-             }
-         }
-
-        // =================================================================
-        // 4. CONTROLLER LOGIC (JOYSTICK & FIREBASE)
-        // =================================================================
-
-        function startControllerMode(id) {
-            gameId = id;
-            document.getElementById('qr-scanner').style.display = 'none';
-            document.getElementById('controller-status').innerText = 'Menunggu Pemain Kedua...';
-            
-            // 1. Cek apakah sudah 2 player dan tentukan index
-            db.ref(`games/${gameId}/players`).transaction((currentData) => {
-                if (currentData && Object.keys(currentData).length >= 2) {
-                    return; // Room Full, jangan join
-                }
-                const newIndex = currentData ? (Object.keys(currentData).length === 1 ? 2 : 1) : 1;
-                myPlayerIndex = newIndex;
-                if (!currentData) currentData = {};
-                currentData[myPlayerIndex] = true;
-                return currentData;
-            }, (error, committed, snapshot) => {
-                if (error) {
-                    console.error("Transaction failed:", error);
-                } else if (!committed) {
-                    document.getElementById('controller-status').innerText = 'Ruangan Penuh atau Gagal Join.';
-                } else {
-                    document.getElementById('controller-status').innerText = `Anda Player ${myPlayerIndex}. Menunggu Game Dimulai.`;
-                    setupControllerUI();
-                }
-            });
-
-            // 2. Listener untuk Role dan Game State
-            db.ref(`games/${gameId}/roles`).on('value', (snapshot) => {
-                const roles = snapshot.val();
-                if (roles) {
-                    currentRole = myPlayerIndex === 1 ? roles.p1 : roles.p2;
-                    document.getElementById('p-role').innerText = `Peran: ${currentRole.toUpperCase()}`;
-                }
-            });
-        }
-
-        function setupControllerUI() {
-            document.getElementById('controller-status').style.display = 'none';
-            document.getElementById('controller-ui').style.justifyContent = 'space-between';
-            document.getElementById('zone_joystick').style.display = 'block';
-            document.getElementById('btn-skill').style.display = 'flex';
-            
-            // NippleJS setup
-            const joystickManager = nipplejs.create({
-                zone: document.getElementById('zone_joystick'),
-                mode: 'static',
-                position: { left: '50%', top: '50%' },
-                color: 'white'
-            });
-
-            let moveData = { x: 0, y: 0, skill: false };
-
-            const inputRef = db.ref(`games/${gameId}/input/${myPlayerIndex}`);
-
-            joystickManager.on('move', (evt, data) => {
-                if (data.vector) {
-                    moveData.x = data.vector.x; 
-                    moveData.y = -data.vector.y; 
-                    sendInput();
-                }
-            });
-
-            joystickManager.on('end', () => {
-                moveData.x = 0;
-                moveData.y = 0;
-                sendInput();
-            });
-
-            document.getElementById('btn-skill').addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                moveData.skill = true;
-                sendInput();
-                // Reset skill flag setelah 100ms agar tidak terlalu cepat mengirim false/true
-                setTimeout(() => {
-                    moveData.skill = false;
-                    sendInput(); 
-                }, 100);
-            });
-
-            function sendInput() {
-                inputRef.set(moveData);
+            } catch (err) {
+                alert("Gagal akses Mic: " + err.message + "\nPastikan menggunakan HTTPS!");
             }
+        });
+
+        peer.on('error', (err) => {
+            alert("Error Koneksi: " + err.type);
+        });
+    }
+
+    // --- AUDIO PROCESSING & VISUALIZER (TV SIDE) ---
+    function setupTvAudio(stream) {
+        // Setup Nodes
+        sourceNode = audioContext.createMediaStreamSource(stream);
+        
+        // 1. Gain Node (Volume Master)
+        gainNode = audioContext.createGain();
+        
+        // 2. Convolver (Untuk Echo/Reverb)
+        convolverNode = audioContext.createConvolver();
+        setReverbImpulse(convolverNode); // Buat efek gema sintetis
+        
+        // Routing untuk Efek
+        dryGainNode = audioContext.createGain(); // Suara asli
+        wetGainNode = audioContext.createGain(); // Suara gema
+        
+        // Source -> Dry -> Master -> Out
+        sourceNode.connect(dryGainNode);
+        dryGainNode.connect(gainNode);
+        
+        // Source -> Convolver -> Wet -> Master -> Out
+        sourceNode.connect(convolverNode);
+        convolverNode.connect(wetGainNode);
+        wetGainNode.connect(gainNode);
+        
+        // Master -> Destination (Speaker)
+        gainNode.connect(audioContext.destination);
+
+        // Visualizer Setup
+        analyser = audioContext.createAnalyser();
+        gainNode.connect(analyser);
+        analyser.fftSize = 256;
+        drawVisualizer();
+
+        // Apply setting awal
+        updateAudio();
+    }
+
+    // Fungsi membuat Impulse Response (Gema Buatan)
+    function setReverbImpulse(node) {
+        const duration = 2.0;
+        const decay = 2.0;
+        const rate = audioContext.sampleRate;
+        const length = rate * duration;
+        const impulse = audioContext.createBuffer(2, length, rate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
+
+        for (let i = 0; i < length; i++) {
+            const n = length - i; // reverse index
+            // Simple exponential decay noise
+            left[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+            right[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
         }
-    </script>
+        node.buffer = impulse;
+    }
+
+    function updateAudio() {
+        if (!gainNode) return;
+        
+        const vol = parseFloat(document.getElementById('volume').value);
+        const echo = parseFloat(document.getElementById('echo').value);
+
+        // Volume Master
+        gainNode.gain.setTargetAtTime(vol, audioContext.currentTime, 0.1);
+        document.getElementById('vol-val').innerText = Math.round(vol * 100) + "%";
+
+        // Echo Mixing (Dry/Wet)
+        // Jika echo 0, Dry = 1, Wet = 0. Jika echo 1, Dry = 0.5, Wet = 1
+        dryGainNode.gain.setTargetAtTime(1 - (echo * 0.4), audioContext.currentTime, 0.1); 
+        wetGainNode.gain.setTargetAtTime(echo * 1.5, audioContext.currentTime, 0.1);
+        
+        document.getElementById('echo-val').innerText = Math.round(echo * 100) + "%";
+    }
+
+    function drawVisualizer() {
+        requestAnimationFrame(drawVisualizer);
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let barHeight;
+        let x = 0;
+
+        for(let i = 0; i < bufferLength; i++) {
+            barHeight = dataArray[i] / 2;
+            ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+        }
+    }
+</script>
+
 </body>
 </html>
