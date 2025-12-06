@@ -151,12 +151,21 @@
                 
                 call.answer(); // Terima call
                 
-                call.on('stream', (remoteStream) => {
-                    log("Stream data masuk!");
-                    handleAudioStream(remoteStream);
-                });
-            });
-        }
+                // HANYA COBA INI JIKA PERBAIKAN DI ATAS GAGAL TOTAL
+call.on('stream', (remoteStream) => {
+    const audioElem = document.getElementById('remote-audio'); // Tag <audio> harus ada di HTML
+    audioElem.srcObject = remoteStream;
+    audioElem.autoplay = true; // Sudah di HTML
+    
+    // Perbaikan Autoplay/Resume untuk <audio>
+    audioElem.play().then(() => {
+        log("Fallback Audio Play Berhasil.");
+    }).catch(err => {
+        log("Fallback Play Gagal. Silakan Klik di Layar TV.");
+        // Anda mungkin perlu menambahkan tombol "Play" sederhana di sini.
+    });
+});
+
 
                 function handleAudioStream(stream) {
             // Kita tidak perlu lagi mengecek audioCtx.state === 'suspended'
