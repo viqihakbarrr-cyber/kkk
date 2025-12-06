@@ -2,346 +2,295 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Low Latency Karaoke</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚡ EXTREME REALTIME KARAOKE</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        :root {
-            --primary: #ff0055;
-            --dark: #121212;
-            --surface: #1e1e1e;
-            --text: #ffffff;
-        }
+        :root { --primary: #ff0040; --bg: #000000; --panel: #1a1a1a; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--dark);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            text-align: center;
-            overflow-x: hidden;
+            font-family: 'Courier New', monospace; /* Kesan teknikal */
+            background-color: var(--bg);
+            color: #fff;
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; overflow-x: hidden;
         }
-        h1 { margin-bottom: 5px; color: var(--primary); }
-        p { color: #aaa; margin-bottom: 20px; }
+        h1 { color: var(--primary); text-transform: uppercase; letter-spacing: 2px; font-size: 1.5rem; margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .box {
+            background: var(--panel); border: 1px solid #333;
+            padding: 20px; border-radius: 8px; width: 100%; max-width: 450px;
+            box-sizing: border-box; margin-bottom: 15px;
+        }
+        .btn {
+            background: var(--primary); color: #fff; border: none;
+            padding: 15px; width: 100%; font-weight: bold; font-size: 16px;
+            cursor: pointer; border-radius: 4px; text-transform: uppercase;
+            margin-top: 10px;
+        }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        .hidden { display: none !important; }
+        .status { font-size: 0.9rem; color: #0f0; margin: 10px 0; font-weight: bold; }
+        input[type=range] { width: 100%; margin: 10px 0; accent-color: var(--primary); }
+        label { display: flex; justify-content: space-between; font-size: 0.8rem; color: #aaa; }
         
-        /* Container Setup */
-        .screen { display: none; width: 100%; max-width: 600px; padding: 20px; box-sizing: border-box; }
-        .active { display: flex; flex-direction: column; align-items: center; }
-
-        /* Buttons */
-        .btn-big {
-            width: 100%;
-            padding: 20px;
-            margin: 10px 0;
-            font-size: 1.2rem;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: transform 0.1s;
-        }
-        .btn-tv { background: #2196F3; color: white; }
-        .btn-mic { background: #4CAF50; color: white; }
-        .btn-big:active { transform: scale(0.98); }
-
-        /* Controls */
-        .control-group {
-            width: 100%;
-            background: var(--surface);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            text-align: left;
-        }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type=range] { width: 100%; accent-color: var(--primary); }
-
-        /* QR & Video */
-        #qrcode { background: white; padding: 10px; border-radius: 8px; margin: 20px 0; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
+        /* Visualizer yang efisien */
+        #vis-canvas { width: 100%; height: 80px; background: #000; border: 1px solid #333; }
         
-        /* Visualizer */
-        canvas { width: 100%; height: 100px; background: #000; border-radius: 8px; margin-top: 10px; }
-
-        .status {
-            padding: 10px;
-            border-radius: 5px;
-            background: #333;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-        }
-        .status.connected { background: #1b5e20; color: #fff; }
+        /* QR Area */
+        #qr-code { background: #fff; padding: 10px; display: inline-block; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="home-screen" class="screen active">
-        <h1>🎤 Web Karaoke P2P</h1>
-        <p>Pilih peran perangkat ini</p>
-        <button class="btn-big btn-tv" onclick="initTV()">📺 Mode TV (Layar & Speaker)</button>
-        <button class="btn-big btn-mic" onclick="initMic()">📱 Mode Mic (Android)</button>
-        <p style="font-size: 0.8rem; color: #666; margin-top: 20px;">Wajib menggunakan HTTPS agar Mic berfungsi.</p>
+    <h1>⚡ Ultra-Low Latency</h1>
+
+    <div id="menu" class="box">
+        <button class="btn" onclick="initTV()">📺 MODE TV (Speaker)</button>
+        <button class="btn" onclick="initMic()" style="background:#222; border:1px solid #444;">🎤 MODE MIC (HP)</button>
+        <p style="font-size:0.7rem; color:#666; margin-top:10px;">*Wajib gunakan Wi-Fi 5GHz untuk hasil terbaik.</p>
     </div>
 
-    <div id="tv-screen" class="screen">
-        <h1>📺 TV Mode</h1>
-        <div id="tv-status" class="status">Menyiapkan koneksi...</div>
-        
-        <div id="qrcode"></div>
-        <p id="tv-instruction">Scan QR ini dengan HP Android</p>
-
-        <div class="control-group">
-            <label>Master Volume: <span id="vol-val">100%</span></label>
-            <input type="range" id="volume" min="0" max="2" step="0.1" value="1" oninput="updateAudio()">
+    <div id="tv-ui" class="box hidden">
+        <h2 style="margin:0 0 10px 0;">RECEIVER MODE</h2>
+        <div style="text-align:center;">
+            <div id="qr-code"></div>
         </div>
-        
-        <div class="control-group">
-            <label>Echo (Reverb): <span id="echo-val">30%</span></label>
-            <input type="range" id="echo" min="0" max="1" step="0.1" value="0.3" oninput="updateAudio()">
+        <p id="tv-msg" class="status">Menunggu Mic...</p>
+        <div style="font-size:0.7rem; color:#555; text-align:left; border-top:1px solid #333; padding-top:10px;">
+            <p>Tips: Sambungkan Laptop/TV ke Speaker eksternal via kabel (Aux/RCA) jangan Bluetooth untuk menghindari delay tambahan.</p>
         </div>
-
-        <canvas id="visualizer"></canvas>
     </div>
 
-    <div id="mic-screen" class="screen">
-        <h1>📱 Mic Mode</h1>
-        <div id="mic-status" class="status">Siapkan kamera...</div>
-        
-        <div id="reader"></div>
+    <div id="mic-ui" class="box hidden">
+        <div id="scanner-container">
+            <div id="reader" style="width:100%"></div>
+            <p class="status" style="color:#fff">Scan QR di TV</p>
+        </div>
 
-        <div id="mic-controls" style="display:none; width: 100%;">
-            <div class="control-group" style="text-align: center;">
-                <h2>🎤 Connected!</h2>
-                <p>Bernyanyilah ke HP Anda.</p>
-                <button class="btn-big" style="background: #d32f2f; color: white;" onclick="location.reload()">Putus / Keluar</button>
+        <div id="controls" class="hidden">
+            <p id="mic-msg" class="status">CONNECTED</p>
+            <canvas id="vis-canvas"></canvas>
+            
+            <div style="margin-top:20px;">
+                <label>MIC GAIN (Volume) <span id="val-gain">1.0</span></label>
+                <input type="range" min="0" max="3" step="0.1" value="1.0" oninput="setGain(this.value)">
+                
+                <label>ECHO DELAY (Speed) <span id="val-delay">0.15s</span></label>
+                <input type="range" min="0" max="0.5" step="0.01" value="0.15" oninput="setDelay(this.value)">
+                
+                <label>ECHO FEEDBACK (Length) <span id="val-feed">0.3</span></label>
+                <input type="range" min="0" max="0.7" step="0.05" value="0.3" oninput="setFeedback(this.value)">
             </div>
+            
+            <button class="btn" onclick="location.reload()" style="background:#333; margin-top:20px;">DISCONNECT</button>
         </div>
     </div>
 
-<script>
-    // --- VARIABEL GLOBAL ---
-    let peer;
-    let conn;
-    let audioContext;
-    let sourceNode, gainNode, convolverNode, wetGainNode, dryGainNode;
-    let analyser;
-    
-    // Konfigurasi Delay Minim
-    // Kita mematikan semua processing di HP agar sinyal dikirim mentah & cepat
-    const audioConstraints = {
-        audio: {
-            echoCancellation: false, 
-            autoGainControl: false,
-            noiseSuppression: false,
-            latency: 0
-        },
-        video: false
-    };
+    <script>
+        // --- KONFIGURASI ZERO LATENCY ---
+        const PEER_CONFIG = {
+            debug: 1,
+            config: {
+                // Menggunakan Google STUN publik (Cepat & Gratis)
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+                iceCandidatePoolSize: 10, // Pre-fetch kandidat koneksi agar handshake instan
+            }
+        };
 
-    // --- NAVIGASI UI ---
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-    }
-
-    // --- LOGIKA TV ---
-    function initTV() {
-        showScreen('tv-screen');
+        // Audio Context Global
+        let audioCtx;
+        let peer;
         
-        // Inisialisasi Audio Context (Browser butuh interaksi user dulu, tombol klik tadi sudah cukup)
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext({ latencyHint: 'interactive' }); // KUNCI: latencyHint interactive
+        // Node Audio (Untuk Mic)
+        let gainNode, delayNode, feedbackNode, masterGain;
 
-        // Buat ID Peer Random
-        peer = new Peer(null, { debug: 2 });
+        // UI Helpers
+        const show = (id) => document.getElementById(id).classList.remove('hidden');
+        const hide = (id) => document.getElementById(id).classList.add('hidden');
 
-        peer.on('open', (id) => {
-            console.log('My peer ID is: ' + id);
-            document.getElementById('tv-status').innerText = "Menunggu scan dari HP...";
+        // ============================================
+        // 1. LOGIKA TV (RECEIVER) - BYPASS AUDIO TAG
+        // ============================================
+        function initTV() {
+            hide('menu'); show('tv-ui');
             
-            // Generate QR Code
-            new QRCode(document.getElementById("qrcode"), {
-                text: id,
-                width: 200,
-                height: 200
+            // Generate Peer ID Pendek
+            const id = "KARAOKE-" + Math.floor(Math.random() * 9999);
+            peer = new Peer(id, PEER_CONFIG);
+
+            peer.on('open', (peerId) => {
+                new QRCode(document.getElementById("qr-code"), { text: peerId, width: 180, height: 180 });
+                document.getElementById('tv-msg').innerText = "READY: " + peerId;
             });
-        });
 
-        // Saat menerima panggilan (Stream Suara)
-        peer.on('call', (call) => {
-            console.log("Menerima panggilan...");
-            document.getElementById('tv-status').className = "status connected";
-            document.getElementById('tv-status').innerText = "Terhubung dengan Mic!";
-            document.getElementById('qrcode').style.display = 'none';
-            document.getElementById('tv-instruction').style.display = 'none';
+            peer.on('call', (call) => {
+                // Jawab panggilan segera
+                call.answer();
+                document.getElementById('tv-msg').innerText = "⚡ MIC CONNECTED!";
 
-            call.answer(); // Jawab tanpa stream balik (one-way)
+                call.on('stream', (remoteStream) => {
+                    handleRemoteStream(remoteStream);
+                });
+            });
+        }
+
+        // FUNGSI KUNCI: Direct Audio Context Output (Tanpa <audio> tag)
+        function handleRemoteStream(stream) {
+            // "interactive" latencyHint memaksa browser meminimalkan buffer output
+            // Jika browser mendukung angka, kita beri 0
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
             
-            call.on('stream', (remoteStream) => {
-                setupTvAudio(remoteStream);
-            });
-        });
-    }
+            // Membuat Source langsung dari WebRTC Stream
+            const source = ctx.createMediaStreamSource(stream);
+            
+            // Langsung tembak ke Speaker (Destination)
+            // Tanpa buffer, tanpa processing tambahan di TV
+            source.connect(ctx.destination);
 
-    // --- LOGIKA MIC (ANDROID) ---
-    function initMic() {
-        showScreen('mic-screen');
-        
-        // Setup Scanner
-        const html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-            // Sukses Scan
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
-            connectToTV(decodedText);
-        }, (errorMessage) => {
-            // Scanning...
-        }).catch(err => {
-            document.getElementById('mic-status').innerText = "Gagal akses kamera: " + err;
-        });
-    }
+            // Hack untuk memastikan Audio Context berjalan (terkadang suspended oleh browser)
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            
+            // Visual feedback kecil di console
+            console.log("Audio Pipeline: WebRTC -> WebAudio -> Hardware (Bypassed HTML5 Player)");
+        }
 
-    function connectToTV(tvId) {
-        document.getElementById('mic-status').innerText = "Menghubungkan ke TV...";
-        
-        peer = new Peer(null, { debug: 2 });
+        // ============================================
+        // 2. LOGIKA MIC (SENDER) - AGGRESSIVE CONSTRAINTS
+        // ============================================
+        function initMic() {
+            hide('menu'); show('mic-ui');
+            
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, 
+                (decodedText) => {
+                    scanner.stop();
+                    connectToPeer(decodedText);
+                }
+            );
+        }
 
-        peer.on('open', async (id) => {
+        async function connectToPeer(targetId) {
+            hide('scanner-container'); show('controls');
+            document.getElementById('mic-msg').innerText = "CONNECTING...";
+
             try {
-                // Ambil Mic Stream
-                const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-                
-                // Panggil TV
-                const call = peer.call(tvId, stream);
-                
-                call.on('close', () => {
-                    alert("Koneksi terputus");
-                    location.reload();
+                // 1. Inisialisasi Audio Context dengan Latency Rendah
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
+
+                // 2. Minta Izin Mic dengan constraint "BRUTAL"
+                // Mematikan semua fitur pintar untuk mengurangi processing delay
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,     // MATIKAN! (Hemat ~100ms)
+                        noiseSuppression: false,     // MATIKAN! (Hemat ~50ms)
+                        autoGainControl: false,      // MATIKAN!
+                        channelCount: 1,             // Mono (Lebih ringan)
+                        latency: 0,                  // Request 0 latency
+                        sampleRate: 48000            // Native rate
+                    },
+                    video: false
                 });
 
-                document.getElementById('mic-status').className = "status connected";
-                document.getElementById('mic-status').innerText = "Terhubung! Mulai bernyanyi.";
-                document.getElementById('mic-controls').style.display = 'block';
+                // 3. Bangun Pipeline Audio Effect (Echo)
+                // Source -> [Split] -> Dry -> Master
+                //                   -> Delay -> Feedback -> Master
+                const source = audioCtx.createMediaStreamSource(stream);
+                
+                masterGain = audioCtx.createGain(); // Volume Kontrol
+                masterGain.gain.value = 1.0;
+
+                // Efek Echo Manual (Ringan)
+                delayNode = audioCtx.createDelay(1.0);
+                delayNode.delayTime.value = 0.15;
+                
+                feedbackNode = audioCtx.createGain();
+                feedbackNode.gain.value = 0.3;
+
+                // Routing
+                source.connect(masterGain); // Dry signal (Suara asli)
+                
+                // Echo Loop
+                source.connect(delayNode);
+                delayNode.connect(feedbackNode);
+                feedbackNode.connect(delayNode); // Loop balik
+                feedbackNode.connect(masterGain); // Kirim echo ke master
+
+                // Destination
+                const dest = audioCtx.createMediaStreamDestination();
+                masterGain.connect(dest);
+
+                // Visualizer (Optimized)
+                setupVisualizer(masterGain);
+
+                // 4. Kirim Stream Hasil Proses ke TV via PeerJS
+                peer = new Peer(PEER_CONFIG);
+                peer.on('open', () => {
+                    const call = peer.call(targetId, dest.stream);
+                    call.on('open', () => {
+                         document.getElementById('mic-msg').innerText = "⚡ LIVE (ULTRA LOW LATENCY)";
+                         // Mencegah HP tidur saat nyanyi
+                         if (navigator.wakeLock) navigator.wakeLock.request('screen');
+                    });
+                });
 
             } catch (err) {
-                alert("Gagal akses Mic: " + err.message + "\nPastikan menggunakan HTTPS!");
+                alert("Error Mic/Koneksi: " + err);
+                location.reload();
             }
-        });
-
-        peer.on('error', (err) => {
-            alert("Error Koneksi: " + err.type);
-        });
-    }
-
-    // --- AUDIO PROCESSING & VISUALIZER (TV SIDE) ---
-    function setupTvAudio(stream) {
-        // Setup Nodes
-        sourceNode = audioContext.createMediaStreamSource(stream);
-        
-        // 1. Gain Node (Volume Master)
-        gainNode = audioContext.createGain();
-        
-        // 2. Convolver (Untuk Echo/Reverb)
-        convolverNode = audioContext.createConvolver();
-        setReverbImpulse(convolverNode); // Buat efek gema sintetis
-        
-        // Routing untuk Efek
-        dryGainNode = audioContext.createGain(); // Suara asli
-        wetGainNode = audioContext.createGain(); // Suara gema
-        
-        // Source -> Dry -> Master -> Out
-        sourceNode.connect(dryGainNode);
-        dryGainNode.connect(gainNode);
-        
-        // Source -> Convolver -> Wet -> Master -> Out
-        sourceNode.connect(convolverNode);
-        convolverNode.connect(wetGainNode);
-        wetGainNode.connect(gainNode);
-        
-        // Master -> Destination (Speaker)
-        gainNode.connect(audioContext.destination);
-
-        // Visualizer Setup
-        analyser = audioContext.createAnalyser();
-        gainNode.connect(analyser);
-        analyser.fftSize = 256;
-        drawVisualizer();
-
-        // Apply setting awal
-        updateAudio();
-    }
-
-    // Fungsi membuat Impulse Response (Gema Buatan)
-    function setReverbImpulse(node) {
-        const duration = 2.0;
-        const decay = 2.0;
-        const rate = audioContext.sampleRate;
-        const length = rate * duration;
-        const impulse = audioContext.createBuffer(2, length, rate);
-        const left = impulse.getChannelData(0);
-        const right = impulse.getChannelData(1);
-
-        for (let i = 0; i < length; i++) {
-            const n = length - i; // reverse index
-            // Simple exponential decay noise
-            left[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
-            right[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
         }
-        node.buffer = impulse;
-    }
 
-    function updateAudio() {
-        if (!gainNode) return;
-        
-        const vol = parseFloat(document.getElementById('volume').value);
-        const echo = parseFloat(document.getElementById('echo').value);
-
-        // Volume Master
-        gainNode.gain.setTargetAtTime(vol, audioContext.currentTime, 0.1);
-        document.getElementById('vol-val').innerText = Math.round(vol * 100) + "%";
-
-        // Echo Mixing (Dry/Wet)
-        // Jika echo 0, Dry = 1, Wet = 0. Jika echo 1, Dry = 0.5, Wet = 1
-        dryGainNode.gain.setTargetAtTime(1 - (echo * 0.4), audioContext.currentTime, 0.1); 
-        wetGainNode.gain.setTargetAtTime(echo * 1.5, audioContext.currentTime, 0.1);
-        
-        document.getElementById('echo-val').innerText = Math.round(echo * 100) + "%";
-    }
-
-    function drawVisualizer() {
-        requestAnimationFrame(drawVisualizer);
-        const canvas = document.getElementById('visualizer');
-        const ctx = canvas.getContext('2d');
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        analyser.getByteFrequencyData(dataArray);
-
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const barWidth = (canvas.width / bufferLength) * 2.5;
-        let barHeight;
-        let x = 0;
-
-        for(let i = 0; i < bufferLength; i++) {
-            barHeight = dataArray[i] / 2;
-            ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
+        // ============================================
+        // 3. KONTROL AUDIO & VISUALIZER (RINGAN)
+        // ============================================
+        function setGain(v) { 
+            if(masterGain) masterGain.gain.setTargetAtTime(parseFloat(v), audioCtx.currentTime, 0.01); 
+            document.getElementById('val-gain').innerText = v;
         }
-    }
-</script>
+        function setDelay(v) { 
+            if(delayNode) delayNode.delayTime.setTargetAtTime(parseFloat(v), audioCtx.currentTime, 0.01); 
+            document.getElementById('val-delay').innerText = v + 's';
+        }
+        function setFeedback(v) { 
+            if(feedbackNode) feedbackNode.gain.setTargetAtTime(parseFloat(v), audioCtx.currentTime, 0.01); 
+            document.getElementById('val-feed').innerText = v;
+        }
 
+        function setupVisualizer(inputNode) {
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 32; // Sangat kecil agar sangat cepat
+            inputNode.connect(analyser);
+            
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            const canvas = document.getElementById('vis-canvas');
+            const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha channel for speed
+
+            function draw() {
+                if(audioCtx.state === 'closed') return;
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(data);
+                
+                // Bersihkan canvas manual (lebih cepat dari clearRect di beberapa browser)
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const w = canvas.width / data.length;
+                ctx.fillStyle = '#ff0040';
+                
+                for(let i=0; i<data.length; i++) {
+                    const h = (data[i] / 255) * canvas.height;
+                    ctx.fillRect(i * w, canvas.height - h, w - 1, h);
+                }
+            }
+            draw();
+        }
+    </script>
 </body>
 </html>
