@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Karaoke - Realtime Kernel</title>
+    <title>Neon Karaoke - Realtime Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -12,433 +12,300 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #00f2ff;
-            --secondary: #ff0055;
-            --bg-dark: #0f0c29;
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --text: #ffffff;
-        }
-
+        :root { --primary: #00f2ff; --secondary: #ff0055; --bg-dark: #0f0c29; --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; }
         * { box-sizing: border-box; touch-action: manipulation; }
-
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
+            color: var(--text); margin: 0; padding: 20px;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-
         .app-title {
-            font-size: 2.2rem;
-            font-weight: 800;
-            margin-bottom: 5px;
+            font-size: 2rem; font-weight: 800; margin-bottom: 5px;
             background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-
         .card {
-            background: var(--glass);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 25px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            margin-bottom: 20px;
+            background: var(--glass); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 20px;
+            padding: 25px; width: 100%; max-width: 480px; margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
-
         .btn {
             background: linear-gradient(90deg, var(--secondary), #ff4b1f);
-            color: white;
-            border: none;
-            padding: 16px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            cursor: pointer;
-            width: 100%;
-            margin: 8px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4);
+            color: white; border: none; padding: 15px; font-size: 1rem; font-weight: 600;
+            border-radius: 50px; cursor: pointer; width: 100%; margin: 8px 0;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
-        .btn:active { transform: scale(0.96); }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: none;
-            border: 1px solid var(--glass-border);
+        .btn-warning {
+            background: #ffcc00; color: #000; animation: bounce 2s infinite;
         }
-
         .hidden { display: none !important; }
-
-        .info-box {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary);
-        }
-
-        /* Controls */
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-            margin: 10px 0;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: var(--primary);
-            margin-top: -8px;
-            box-shadow: 0 0 10px var(--primary);
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-        }
-
-        #visualizer {
-            width: 100%;
-            height: 60px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        #qr-container {
-            background: white;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px auto;
-            width: fit-content;
+        
+        /* Debug Console di UI */
+        #debug-log {
+            font-family: monospace; font-size: 0.7rem; color: #00ff88;
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
+            margin-top: 10px; height: 60px; overflow-y: scroll; text-align: left;
         }
         
-        #reader {
-            width: 100%;
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid var(--primary);
-        }
-
-        .latency-stat {
-            font-family: monospace;
-            color: #00ff88;
-            font-size: 0.8rem;
-            text-align: center;
-            margin-top: 5px;
-        }
+        /* Visualizer */
+        #visualizer { width: 100%; height: 80px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 10px 0; }
+        
+        input[type=range] { width: 100%; margin: 10px 0; }
+        
+        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     </style>
 </head>
 <body>
 
     <div style="text-align: center;">
-        <i class="fas fa-bolt fa-2x" style="color:var(--primary); margin-bottom:5px;"></i>
-        <div class="app-title">NEON REALTIME</div>
-        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 20px;">Zero-Latency Optimized Architecture</div>
+        <div class="app-title">NEON REALTIME v2</div>
+        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 20px;">Low Latency + Audio Force</div>
     </div>
 
     <div id="menu-screen" class="card">
-        <div class="info-box">
-            <strong>🚀 Mode Turbo Aktif</strong><br>
-            Sistem ini menggunakan bypass buffer audio dan pemrosesan stream raw mono untuk latensi mendekati nol.
+        <div style="background: rgba(255,0,0,0.2); padding: 10px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; border: 1px solid red;">
+            <strong>PENTING:</strong> Wajib gunakan <strong>HTTPS</strong> atau <strong>localhost</strong>. Mic tidak akan jalan di HTTP biasa (IP Address lokal tanpa SSL).
         </div>
-        <button onclick="startTVMode()" class="btn">
-            <i class="fas fa-tv"></i> MODE SPEAKER (TV/PC)
-        </button>
-        <button onclick="startMicMode()" class="btn btn-secondary">
-            <i class="fas fa-microphone"></i> MODE MIC (HP)
-        </button>
+        <button onclick="startTVMode()" class="btn"><i class="fas fa-tv"></i> MODE SPEAKER (TV)</button>
+        <button onclick="startMicMode()" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid white;"><i class="fas fa-microphone"></i> MODE MIC (HP)</button>
     </div>
 
     <div id="tv-screen" class="card hidden">
-        <h3 style="text-align:center; margin-top:0;">Scan untuk Connect</h3>
-        <div id="qr-container"></div>
-        <div class="latency-stat" id="connection-status">Menunggu Mic...</div>
+        <h3 style="text-align:center; margin:0;">Scan QR</h3>
+        <div id="qr-container" style="background:white; padding:10px; border-radius:10px; margin:10px auto; width:fit-content;"></div>
+        
+        <button id="force-audio-btn" class="btn btn-warning hidden" onclick="resumeAudioContext()">
+            <i class="fas fa-volume-up"></i> KLIK JIKA TIDAK ADA SUARA
+        </button>
 
         <canvas id="visualizer"></canvas>
+        <div id="debug-log">Menunggu koneksi...</div>
 
-        <div class="info-box" style="margin-top: 15px;">
-            <i class="fas fa-sliders-h"></i> <strong>Mixer (Kontrol di Sini)</strong>
-            <br><small>Efek diproses di TV untuk meringankan beban HP</small>
+        <div style="margin-top:15px;">
+            <label>Volume: <span id="vol-disp">100%</span></label>
+            <input type="range" id="tv-vol" min="0" max="3" step="0.1" value="1">
+            
+            <label>Echo: <span id="echo-disp">100ms</span></label>
+            <input type="range" id="tv-echo" min="0" max="0.5" step="0.01" value="0.1">
         </div>
-
-        <div class="control-group">
-            <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                <span>Volume Mic</span> <span id="vol-disp">100%</span>
-            </div>
-            <input type="range" id="tv-vol" min="0" max="2" step="0.1" value="1">
-        </div>
-
-        <div class="control-group">
-            <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                <span>Echo Delay</span> <span id="echo-disp">150ms</span>
-            </div>
-            <input type="range" id="tv-echo" min="0" max="0.5" step="0.01" value="0.15">
-        </div>
-
-        <div class="control-group">
-            <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-                <span>Echo Feedback</span> <span id="feed-disp">30%</span>
-            </div>
-            <input type="range" id="tv-feed" min="0" max="0.8" step="0.05" value="0.3">
-        </div>
-
-        <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:20px;">
-            <i class="fas fa-power-off"></i> Reset Sistem
-        </button>
+        
+        <button onclick="location.reload()" class="btn" style="background:#333; margin-top:20px;">Reset</button>
     </div>
 
     <div id="mic-screen" class="card hidden">
         <div id="scan-area">
-            <h3 style="text-align:center;">Scan QR di TV</h3>
-            <div id="reader"></div>
-            <button onclick="location.reload()" class="btn btn-secondary" style="margin-top:15px;">Batal</button>
+            <h3 style="text-align:center;">Scan TV</h3>
+            <div id="reader" style="width:100%; border-radius:10px; overflow:hidden;"></div>
         </div>
-
-        <div id="mic-active" class="hidden" style="text-align: center;">
-            <div style="width: 80px; height: 80px; background: rgba(0,255,0,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; border: 2px solid #00ff88; animation: pulse 2s infinite;">
-                <i class="fas fa-microphone fa-2x" style="color: #00ff88;"></i>
-            </div>
-            <h3>MIC AKTIF</h3>
-            <p style="font-size: 0.9rem; opacity: 0.8;">
-                Audio sedang dikirim ke TV.<br>
-                <small>Jaga layar tetap menyala.</small>
-            </p>
-            <button onclick="location.reload()" class="btn" style="background: #333; margin-top: 30px;">
-                Matikan
-            </button>
+        <div id="mic-active" class="hidden" style="text-align:center; padding: 20px;">
+            <i class="fas fa-microphone fa-3x" style="color:#00ff88; animation:bounce 1s infinite;"></i>
+            <h3>MIC ON AIR</h3>
+            <p>Dekatkan HP ke mulut.</p>
+            <button onclick="location.reload()" class="btn" style="background:#333;">Matikan</button>
         </div>
     </div>
 
     <script>
-        // --- KONFIGURASI ZERO LATENCY ---
-        // Kita menggunakan Google STUN saja untuk kecepatan handshake.
-        const peerConfig = {
-            debug: 0,
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-        };
+        // --- LOGGING HELPER ---
+        function log(msg) {
+            const d = document.getElementById('debug-log');
+            if(d) {
+                d.innerHTML = `> ${msg}<br>` + d.innerHTML;
+            }
+            console.log(msg);
+        }
 
-        // --- GLOBAL VARIABLES ---
-        let peer = null;
-        let audioCtx = null;
-        let analyser = null;
-        
-        // --- HELPER UI ---
-        const show = (id) => {
+        const peerConfig = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } };
+        let peer, audioCtx, analyser;
+        let gainNode, delayNode;
+
+        function show(id) {
             document.querySelectorAll('.card').forEach(e => e.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
-        };
+        }
 
-        // ==========================================
-        // TV LOGIC (PENERIMA & PROCESSOR)
-        // ==========================================
+        // =========================
+        // TV LOGIC
+        // =========================
         function startTVMode() {
             show('tv-screen');
-            // Init Audio Context segera (harus di-trigger user interaction, tombol startTVMode sudah cukup)
-            initAudioContext();
+            // Init Context Awal
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
             
-            const peerId = "neon-" + Math.floor(Math.random() * 9999);
+            log("Audio Context dibuat. State: " + audioCtx.state);
+            
+            const peerId = "karaoke-" + Math.floor(Math.random() * 9999);
             peer = new Peer(peerId, peerConfig);
 
             peer.on('open', (id) => {
-                new QRCode(document.getElementById("qr-container"), {
-                    text: id, width: 160, height: 160
-                });
+                new QRCode(document.getElementById("qr-container"), { text: id, width: 150, height: 150 });
+                log("Siap. ID: " + id);
             });
 
             peer.on('call', (call) => {
-                document.getElementById('connection-status').innerHTML = "CONNECTED <i class='fas fa-check-circle'></i>";
+                log("Menerima panggilan...");
                 document.getElementById('qr-container').style.display = 'none';
                 
-                call.answer(); // Jawab tanpa stream balik (One-way audio)
+                call.answer(); // Terima call
                 
                 call.on('stream', (remoteStream) => {
-                    handleRemoteStream(remoteStream);
+                    log("Stream data masuk!");
+                    handleAudioStream(remoteStream);
                 });
             });
         }
 
-        // Processing Audio di sisi Penerima (TV) untuk mengurangi beban HP
-        function initAudioContext() {
-            // LatencyHint 'interactive' adalah kunci untuk realtime di WebAudio
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext({ 
-                latencyHint: 'interactive', 
-                sampleRate: 48000 
-            });
+        function handleAudioStream(stream) {
+            // Cek apakah Audio Context tertidur
+            if (audioCtx.state === 'suspended') {
+                log("WARNING: Audio Suspended! Munculkan tombol paksa.");
+                document.getElementById('force-audio-btn').classList.remove('hidden');
+            }
+
+            try {
+                const source = audioCtx.createMediaStreamSource(stream);
+                
+                // Nodes
+                gainNode = audioCtx.createGain();
+                delayNode = audioCtx.createDelay(1.0);
+                const feedback = audioCtx.createGain();
+                const compressor = audioCtx.createDynamicsCompressor();
+                analyser = audioCtx.createAnalyser();
+
+                // Settings
+                gainNode.gain.value = 1.0;
+                delayNode.delayTime.value = 0.1;
+                feedback.gain.value = 0.3;
+
+                // Routing: Source -> Gain -> Compressor -> Output
+                source.connect(gainNode);
+                
+                // Echo Branch
+                gainNode.connect(delayNode);
+                delayNode.connect(feedback);
+                feedback.connect(delayNode);
+                delayNode.connect(compressor); // Mix Wet
+
+                // Dry Branch
+                gainNode.connect(compressor); // Mix Dry
+
+                // Final Output
+                compressor.connect(analyser);
+                compressor.connect(audioCtx.destination);
+
+                log("Routing Audio Selesai. Output ke Speaker.");
+                
+                // Visualizer
+                drawVisualizer();
+
+            } catch (e) {
+                log("Error Routing: " + e);
+            }
         }
 
-        function handleRemoteStream(stream) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            // BYPASS: Jangan gunakan <audio> tag HTML. Langsung masuk ke WebAudio Graph.
-            const source = audioCtx.createMediaStreamSource(stream);
-            
-            // Nodes
-            const gainNode = audioCtx.createGain(); // Volume
-            const delayNode = audioCtx.createDelay(1.0); // Echo Delay
-            const feedbackNode = audioCtx.createGain(); // Echo Repeat
-            const masterComp = audioCtx.createDynamicsCompressor(); // Limiter agar tidak pecah
-            analyser = audioCtx.createAnalyser();
-
-            // Setup Nodes Values
-            gainNode.gain.value = 1.0;
-            delayNode.delayTime.value = 0.15;
-            feedbackNode.gain.value = 0.3;
-            analyser.fftSize = 128;
-
-            // WIRING (Routing Audio)
-            // Jalur 1: Suara Asli (Dry) -> Output
-            source.connect(gainNode);
-            gainNode.connect(masterComp);
-            
-            // Jalur 2: Echo (Wet)
-            gainNode.connect(delayNode);
-            delayNode.connect(feedbackNode);
-            feedbackNode.connect(delayNode); // Loop feedback
-            delayNode.connect(masterComp);   // Mix echo ke output
-
-            // Final Output
-            masterComp.connect(analyser);
-            masterComp.connect(audioCtx.destination);
-
-            // Mulai Visualizer
-            drawVisualizer();
-
-            // Binding Controls TV
-            bindControl('tv-vol', (v) => { 
-                gainNode.gain.value = v; 
-                document.getElementById('vol-disp').innerText = Math.round(v*100)+'%';
-            });
-            bindControl('tv-echo', (v) => { 
-                delayNode.delayTime.value = v; 
-                document.getElementById('echo-disp').innerText = Math.round(v*1000)+'ms';
-            });
-            bindControl('tv-feed', (v) => { 
-                feedbackNode.gain.value = v; 
-                document.getElementById('feed-disp').innerText = Math.round(v*100)+'%';
-            });
+        // Fungsi Tombol Kuning
+        function resumeAudioContext() {
+            if(audioCtx) {
+                audioCtx.resume().then(() => {
+                    log("Audio Context dilanjutkan manual!");
+                    document.getElementById('force-audio-btn').classList.add('hidden');
+                });
+            }
         }
 
-        function bindControl(id, callback) {
-            document.getElementById(id).addEventListener('input', (e) => callback(parseFloat(e.target.value)));
-        }
+        // Control Binding
+        document.getElementById('tv-vol').addEventListener('input', e => {
+            if(gainNode) gainNode.gain.value = e.target.value;
+            document.getElementById('vol-disp').innerText = Math.round(e.target.value*100)+'%';
+        });
+        document.getElementById('tv-echo').addEventListener('input', e => {
+            if(delayNode) delayNode.delayTime.value = e.target.value;
+            document.getElementById('echo-disp').innerText = Math.round(e.target.value*1000)+'ms';
+        });
 
-        // ==========================================
-        // MIC LOGIC (PENGIRIM RAW)
-        // ==========================================
+        // =========================
+        // MIC LOGIC
+        // =========================
         function startMicMode() {
             show('mic-screen');
-            const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 15, qrbox: 250 },
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
                 (decodedText) => {
-                    html5QrCode.stop();
+                    scanner.stop();
                     connectToTV(decodedText);
-                },
-                () => {}
+                }
             );
         }
 
-        async function connectToTV(peerId) {
+        async function connectToTV(id) {
             document.getElementById('scan-area').classList.add('hidden');
             document.getElementById('mic-active').classList.remove('hidden');
+            
+            try {
+                // Constraints Mic Paling Penting
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        latency: 0,
+                        channelCount: 1 // Mono
+                    },
+                    video: false
+                });
 
-            peer = new Peer(peerConfig);
+                peer = new Peer(peerConfig);
+                peer.on('open', () => {
+                    const call = peer.call(id, stream);
+                    // Dummy audio play di HP agar background process jalan
+                    const a = new Audio();
+                    a.srcObject = stream;
+                    a.muted = true;
+                    a.play();
+                });
 
-            peer.on('open', async () => {
-                try {
-                    // --- CONSTRAINT SANGAT KRUSIAL UNTUK DELAY ---
-                    // Matikan semua processing software di HP.
-                    // Channel 1 (Mono) = Lebih sedikit data = Lebih cepat dikirim.
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            echoCancellation: false,
-                            noiseSuppression: false,
-                            autoGainControl: false,
-                            latency: 0,
-                            channelCount: 1, 
-                            sampleRate: 48000
-                        },
-                        video: false
-                    });
-
-                    // Kirim stream mentah langsung via PeerJS
-                    // Kita tidak memproses audio di HP sama sekali untuk hemat CPU & Waktu
-                    const call = peer.call(peerId, stream);
-
-                    // Keep alive hack untuk mobile browser agar tidak sleep
-                    const dummyAudio = document.createElement('audio');
-                    dummyAudio.srcObject = stream;
-                    dummyAudio.muted = true;
-                    dummyAudio.play();
-
-                } catch (err) {
-                    alert("Error Mic: " + err);
-                    location.reload();
-                }
-            });
+            } catch (err) {
+                alert("Gagal Mic: " + err + ". Pastikan HTTPS!");
+                location.reload();
+            }
         }
 
-        // ==========================================
-        // VISUALIZER (Ringan)
-        // ==========================================
+        // =========================
+        // VISUALIZER
+        // =========================
         function drawVisualizer() {
-            if (!analyser) return;
             const canvas = document.getElementById('visualizer');
             const ctx = canvas.getContext('2d');
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
+            
             function render() {
                 requestAnimationFrame(render);
-                analyser.getByteFrequencyData(dataArray);
+                if(!analyser) return;
+                
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Jika data array semuanya 0, berarti tidak ada suara masuk
+                let sum = 0;
+                for(let i=0; i<array.length; i++) sum += array[i];
+                if(sum > 0 && document.getElementById('debug-log').innerText.includes("Menunggu")) {
+                    log("Suara terdeteksi masuk!");
+                }
 
-                const barWidth = (canvas.width / bufferLength) * 2.5;
                 let x = 0;
-
-                for (let i = 0; i < bufferLength; i++) {
-                    const barHeight = (dataArray[i] / 255) * canvas.height;
-                    ctx.fillStyle = `rgb(${barHeight + 100}, 50, 200)`;
-                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                    x += barWidth + 1;
+                const w = (canvas.width / array.length) * 2.5;
+                for(let i=0; i<array.length; i++) {
+                    const h = (array[i]/255) * canvas.height;
+                    ctx.fillStyle = `hsl(${i * 2}, 100%, 50%)`;
+                    ctx.fillRect(x, canvas.height - h, w, h);
+                    x += w + 1;
                 }
             }
             render();
         }
-
-        // CSS Animation Pulse
-        const styleSheet = document.createElement("style");
-        styleSheet.innerText = `
-            @keyframes pulse {
-                0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
-                70% { box-shadow: 0 0 0 20px rgba(0, 255, 136, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
-            }
-        `;
-        document.head.appendChild(styleSheet);
     </script>
 </body>
 </html>
