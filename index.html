@@ -1,568 +1,390 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rainbow Rush 3D: TV vs Android</title>
+    <title>Cosmic Dodge: Dual Player</title>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        :root {
-            --bg-color: #1a1a2e;
-            --text-color: #ffffff;
-            --accent: #e94560;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow-x: hidden; /* Mencegah scroll horizontal di HP */
-            text-align: center;
-            /* Background halus agar 3D lebih menonjol */
-            background: radial-gradient(circle at center, #2a2a4e 0%, #1a1a2e 100%);
-        }
-        h1, h2, h3 { margin: 10px; }
-        button { font-family: inherit; }
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; touch-action: none; }
         
-        /* Utility Classes */
-        .hidden { display: none !important; }
-        .flex { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        
-        /* Screens */
-        #setup-screen, #host-screen, #client-screen, #game-ui-host, #game-ui-client {
-            width: 100%;
-            max-width: 800px;
-            padding: 20px;
-            box-sizing: border-box; /* Penting agar padding tidak melebar */
+        /* HOST UI */
+        #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        #qr-container { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #00ffcc;
+            pointer-events: auto;
+        }
+        #game-info { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; }
+        .p1-score { color: #ff3333; }
+        .p2-score { color: #3388ff; }
+        #game-over { 
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 50px; color: red; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; z-index: 10;
         }
 
-        /* QR Code Area */
-        #qrcode {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px auto;
-            width: fit-content;
-        }
-
-        /* --- TAMPILAN TV (HOST) - 3D SPHERES --- */
-        .tv-display-area {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin: 40px 0;
-            min-height: 100px;
-            perspective: 1000px; /* Untuk efek 3D */
-        }
-
-        .sphere-3d {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            position: relative;
-            /* Bayangan bawah agar terlihat melayang */
-            box-shadow: 0 15px 25px rgba(0,0,0,0.5);
-            /* Animasi muncul */
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            opacity: 0;
-            transform: scale(0);
-        }
-
-        /* Efek kilap 3D menggunakan pseudo-element */
-        .sphere-3d::after {
-            content: '';
-            position: absolute;
-            top: 5%;
-            left: 10%;
-            width: 40%;
-            height: 40%;
-            border-radius: 50%;
-            background: radial-gradient(circle at center, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
-            filter: blur(5px);
-        }
-
-        @keyframes popIn {
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* --- TAMPILAN ANDROID (CLIENT) - FLAT BUTTONS --- */
-        .input-display-area {
-            display: flex;
-            gap: 5px;
-            justify-content: flex-start;
-            overflow-x: auto;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            min-height: 50px;
-        }
-        
-        .flat-box {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            flex-shrink: 0;
-            border: 2px solid rgba(255,255,255,0.3);
-        }
-
-        .btn-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 kolom untuk 7 warna + reset */
-            gap: 10px;
-            padding: 10px;
-            max-width: 500px;
-            margin: auto;
-        }
-        .color-btn {
-            height: 70px;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            transition: transform 0.1s, filter 0.1s;
-        }
-        .color-btn:active { transform: scale(0.92); filter: brightness(1.2); }
-
-        /* --- DEFINISI WARNA MEJIKUHIBINIU --- */
-        /* Base Colors & Gradients for 3D Spheres */
-        .c-merah { background: linear-gradient(135deg, #ff4757, #c0392b); }
-        .c-jingga { background: linear-gradient(135deg, #ffa502, #e67e22); }
-        .c-kuning { background: linear-gradient(135deg, #f1c40f, #f39c12); }
-        .c-hijau { background: linear-gradient(135deg, #2ed573, #27ae60); }
-        .c-biru { background: linear-gradient(135deg, #1e90ff, #2980b9); }
-        .c-nila { background: linear-gradient(135deg, #3742fa, #192a56); /* Indigo */ }
-        .c-ungu { background: linear-gradient(135deg, #8e44ad, #6c5ce7); /* Violet */ }
-
-        /* --- Status & Timer --- */
-        #countdown { font-size: 6rem; font-weight: bold; color: var(--accent); text-shadow: 0 0 20px var(--accent); }
-        .player-status { padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 30px; margin: 5px; }
-        .winner-text { font-size: 3rem; color: #2ed573; font-weight: bold; text-transform: uppercase; animation: pulse 0.8s infinite alternate; }
-
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
-        
-        /* Tombol Utama */
-        .main-btn {
-             padding: 15px 30px; font-size: 1.2rem; cursor: pointer;
-             background: var(--accent); color: white; border: none; border-radius: 50px;
-             box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
-             transition: 0.3s;
-        }
-        .main-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(233, 69, 96, 0.6); }
+        /* CLIENT UI */
+        #client-ui { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: center; background: #222; }
+        .control-area { display: flex; width: 100%; height: 100%; }
+        .btn { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; active: opacity: 0.7; }
+        .btn-left { background: linear-gradient(to right, #444, #666); border-right: 1px solid #222; }
+        .btn-right { background: linear-gradient(to right, #666, #444); }
+        .btn:active { background: #888; }
+        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px;}
     </style>
 </head>
 <body>
 
-    <div id="setup-screen">
-        <h1 style="font-size: 3rem; margin-bottom: 5px;">🌈 Rainbow Rush 3D</h1>
-        <p style="font-size: 1.2rem; opacity: 0.8;">Adu Cepat Menyusun Mejikuhibiniu</p>
-        <br>
-        <p>Pilih peran perangkat ini:</p>
-        <button class="main-btn" onclick="initHost()">📺 Mode TV (Host)</button>
-        <p><small>Gunakan 2 HP untuk scan QR yang muncul di TV.</small></p>
-    </div>
-
-    <div id="host-lobby" class="hidden">
-        <h2>Scan untuk Join Game</h2>
-        <div id="qrcode"></div>
-        <div class="flex">
-            <div id="p1-status" class="player-status">Player 1: Menunggu...</div>
-            <div id="p2-status" class="player-status">Player 2: Menunggu...</div>
+    <div id="host-view">
+        <div id="game-info">
+            WAVE: <span id="wave-disp">1</span> | 
+            P1 (RED): <span id="p1-lives" class="p1-score">ALIVE</span> | 
+            P2 (BLUE): <span id="p2-lives" class="p2-score">WAITING...</span>
         </div>
-        <h3 id="lobby-msg" style="margin-top: 20px;">Menunggu 2 pemain...</h3>
-    </div>
-
-    <div id="host-game" class="hidden">
-        <h2>Level <span id="level-indicator" style="color:var(--accent); font-size: 2rem;">1</span></h2>
-        <div id="countdown" class="hidden">3</div>
-        
-        <div id="sequence-display" class="tv-display-area"></div>
-        
-        <h3 id="game-status-text" style="font-size: 1.5rem;">Bersiap...</h3>
-    </div>
-
-    <div id="client-screen" class="hidden">
-        <h2 id="player-id-disp" style="margin-bottom: 5px;">Player</h2>
-        <div id="client-msg" style="font-size: 1.3rem; margin: 20px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px;">
-            Menunggu Host...
+        <div id="qr-container">
+            <h2 style="margin-top:0;">Scan to Join</h2>
+            <div id="qrcode"></div>
+            <p style="font-size: 14px; color: #ccc;">Player 1 & Player 2 scan same code</p>
         </div>
-        
-        <div id="input-area" class="hidden">
-            <p style="margin: 5px;">Urutan Anda:</p>
-            <div class="input-display-area" id="my-input-display"></div>
-            
-            <p style="margin: 5px;">Tekan Cepat Sesuai TV!</p>
-            <div class="btn-grid">
-                <button class="color-btn c-merah" onclick="inputColor('merah')">Me</button>
-                <button class="color-btn c-jingga" onclick="inputColor('jingga')">Ji</button>
-                <button class="color-btn c-kuning" onclick="inputColor('kuning')">Ku</button>
-                <button class="color-btn c-hijau" onclick="inputColor('hijau')">Hi</button>
-                <button class="color-btn c-biru" onclick="inputColor('biru')">Bi</button>
-                <button class="color-btn c-nila" onclick="inputColor('nila')">Ni</button>
-                <button class="color-btn c-ungu" onclick="inputColor('ungu')">U</button>
-                
-                <button class="color-btn" style="background:#555; grid-column: span 1;" onclick="resetInput()">❌ RESET</button>
-            </div>
+        <div id="game-over">
+            GAME OVER<br>
+            <span id="final-score" style="font-size: 20px; color: white;"></span><br>
+            <button onclick="location.reload()" style="font-size: 20px; padding: 10px; margin-top: 20px; cursor: pointer;">RESTART</button>
         </div>
     </div>
 
-    <script>
-        // --- KONFIGURASI BARU (MEJIKUHIBINIU) ---
-        const COLORS = ['merah', 'jingga', 'kuning', 'hijau', 'biru', 'nila', 'ungu'];
-        const PEER_PREFIX = 'rainbow-rush-3d-';
+    <div id="client-ui">
+        <div id="status-text">Connecting...</div>
+        <div class="control-area">
+            <button class="btn btn-left" id="btn-left"><</button>
+            <button class="btn btn-right" id="btn-right">></button>
+        </div>
+    </div>
+
+<script>
+    // --- UTILS ---
+    const getParams = () => new URLSearchParams(window.location.search);
+    const isMobile = /Android|iPhone/i.test(navigator.userAgent);
+
+    // --- CONFIGURATION ---
+    const CONFIG = {
+        arenaWidth: 30,
+        playerSpeed: 0.3,
+        baseSpawnRate: 60, // Frames
+        colors: { p1: 0xff3333, p2: 0x3388ff, ground: 0x222222, meteor: 0xffaa00 }
+    };
+
+    // ==========================================
+    // LOGIC ROUTER
+    // ==========================================
+    const hostID = getParams().get('host');
+
+    if (hostID) {
+        initClient(hostID);
+    } else {
+        initHost();
+    }
+
+    // ==========================================
+    // HOST LOGIC (Game Engine & Rendering)
+    // ==========================================
+    function initHost() {
+        document.getElementById('host-ui').style.display = 'block'; // Logic handled by visibility of divs
         
-        // State Global
-        let myPeer = null;
-        let connections = []; // Untuk Host
-        let hostConn = null;  // Untuk Client
-        let gameLevel = 1;
-        let targetSequence = [];
-        let playerInput = [];
-        let isHost = false;
-        let myPlayerNum = 0;
-        let roundActive = false; // Mencegah input sebelum game mulai
+        // 1. Networking (Host)
+        const peer = new Peer(null, { debug: 1 }); // Let PeerJS server assign ID
+        const players = {
+            p1: { conn: null, x: -5, active: false, alive: true, obj: null },
+            p2: { conn: null, x: 5, active: false, alive: true, obj: null }
+        };
 
-        // --- INISIALISASI ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const hostIdParam = urlParams.get('host');
-
-        if (hostIdParam) {
-            // Jika ada parameter host, otomatis jadi CLIENT (Android)
-            initClient(hostIdParam);
-        }
-
-        // --- LOGIKA HOST (TV) ---
-        function initHost() {
-            isHost = true;
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('host-lobby').classList.remove('hidden');
-
-            const id = PEER_PREFIX + generateShortId();
-            // Menggunakan config peerjs publik (bisa diganti jika punya server sendiri)
-            myPeer = new Peer(id);
-
-            myPeer.on('open', (id) => {
-                console.log('Host ID:', id);
-                // Generate QR Code
-                const gameUrl = `${window.location.href.split('?')[0]}?host=${id}`;
-                document.getElementById("qrcode").innerHTML = "";
-                new QRCode(document.getElementById("qrcode"), {
-                    text: gameUrl,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
+        peer.on('open', (id) => {
+            console.log('Host ID:', id);
+            const joinUrl = `${window.location.href.split('?')[0]}?host=${id}`;
+            new QRCode(document.getElementById("qrcode"), {
+                text: joinUrl,
+                width: 200,
+                height: 200
             });
+        });
 
-            myPeer.on('connection', (conn) => {
-                if (connections.length >= 2) {
-                    // Kick jika sudah penuh
-                    conn.on('open', () => {
-                        conn.send({type: 'FULL'});
-                        setTimeout(() => conn.close(), 500);
-                    });
-                    return;
+        peer.on('connection', (conn) => {
+            conn.on('open', () => {
+                let assigned = false;
+                if (!players.p1.active) {
+                    players.p1.conn = conn;
+                    players.p1.active = true;
+                    document.getElementById('p1-lives').innerText = "READY";
+                    assigned = 'p1';
+                } else if (!players.p2.active) {
+                    players.p2.conn = conn;
+                    players.p2.active = true;
+                    document.getElementById('p2-lives').innerText = "READY";
+                    assigned = 'p2';
+                    // Hide QR when P2 joins
+                    document.getElementById('qr-container').style.display = 'none';
+                    startGameLoop();
                 }
 
-                connections.push(conn);
-                const pNum = connections.length;
-                setupHostConnection(conn, pNum);
-                updateLobbyStatus(pNum, true);
+                if(assigned) {
+                    conn.send({ type: 'init', player: assigned, color: assigned === 'p1' ? 'RED' : 'BLUE' });
+                    conn.on('data', (data) => {
+                        if (data.move && players[assigned].alive) {
+                            // Update intended position or velocity
+                            players[assigned].moveDir = data.move; // -1, 0, 1
+                        }
+                    });
+                    conn.on('close', () => {
+                        players[assigned].active = false;
+                        players[assigned].alive = false;
+                        // Handle disconnect logic if needed
+                    });
+                } else {
+                    conn.send({ type: 'full' });
+                    conn.close();
+                }
             });
+        });
+
+        // 2. Three.js Setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.03);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 15, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // Arena (Grid)
+        const gridHelper = new THREE.GridHelper(CONFIG.arenaWidth, 20, 0x00ffcc, 0x444444);
+        scene.add(gridHelper);
+        
+        // Ground Plane (Invisible mostly, for contrast)
+        const planeGeo = new THREE.PlaneGeometry(CONFIG.arenaWidth, 100);
+        const planeMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -0.1;
+        scene.add(plane);
+
+        // Players
+        function createPlayerMesh(color, x) {
+            const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, 0.75, 5);
+            scene.add(mesh);
+            return mesh;
         }
 
-        function updateLobbyStatus(pNum, connected) {
-            const el = document.getElementById(`p${pNum}-status`);
-            if(connected) {
-                el.innerText = `Player ${pNum}: SIAP!`;
-                el.style.background = '#2ed573'; // Hijau
-            } else {
-                el.innerText = `Player ${pNum}: Terputus`;
-                el.style.background = '#ff4757'; // Merah
+        players.p1.obj = createPlayerMesh(CONFIG.colors.p1, -5);
+        players.p2.obj = createPlayerMesh(CONFIG.colors.p2, 5);
+
+        // Game State
+        let obstacles = [];
+        let frame = 0;
+        let wave = 1;
+        let isGameOver = false;
+        let gameRunning = false;
+
+        function spawnObstacle() {
+            const size = Math.random() * 1.5 + 0.5;
+            const geo = new THREE.DodecahedronGeometry(size);
+            const mat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.meteor, flatShading: true });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            // Random start X within arena
+            const xPos = (Math.random() * CONFIG.arenaWidth) - (CONFIG.arenaWidth / 2);
+            mesh.position.set(xPos, 1, -40); // Spawn far back
+            
+            // Give it some "falling from sky" effect trajectory
+            mesh.position.y = 10 + Math.random() * 5;
+            
+            scene.add(mesh);
+            obstacles.push({ mesh: mesh, speed: 0.2 + (wave * 0.05), vy: -0.1 });
+        }
+
+        function updatePhysics() {
+            if (!gameRunning || isGameOver) return;
+
+            // Update Wave
+            frame++;
+            if (frame % 600 === 0) {
+                wave++;
+                document.getElementById('wave-disp').innerText = wave;
             }
 
-            if (connections.length === 2) {
-                document.getElementById('lobby-msg').innerHTML = "Semua pemain siap!<br>Game dimulai dalam 3 detik...";
-                setTimeout(startGameLoop, 3000);
+            // Spawn Logic
+            const spawnRate = Math.max(10, CONFIG.baseSpawnRate - (wave * 5));
+            if (frame % spawnRate === 0) {
+                spawnObstacle();
+            }
+
+            // Move Players
+            ['p1', 'p2'].forEach(key => {
+                const p = players[key];
+                if (p.alive && p.active && p.moveDir) {
+                    p.x += p.moveDir * CONFIG.playerSpeed;
+                    // Clamp
+                    const limit = CONFIG.arenaWidth / 2 - 1;
+                    if (p.x < -limit) p.x = -limit;
+                    if (p.x > limit) p.x = limit;
+                    
+                    p.obj.position.x += (p.x - p.obj.position.x) * 0.2; // Smooth lerp
+                    p.obj.rotation.z = -p.moveDir * 0.2; // Tilt effect
+                } else if (!p.alive) {
+                    p.obj.visible = false;
+                } else {
+                    p.obj.rotation.z = 0;
+                }
+            });
+
+            // Move Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.mesh.position.z += obs.speed;
+                
+                // Falling effect
+                if (obs.mesh.position.y > 0.75) {
+                    obs.mesh.position.y += obs.vy;
+                }
+
+                // Collision Check
+                ['p1', 'p2'].forEach(key => {
+                    const p = players[key];
+                    if (p.alive && p.active) {
+                        const dist = p.obj.position.distanceTo(obs.mesh.position);
+                        if (dist < 2.0) {
+                            // Hit!
+                            p.alive = false;
+                            document.getElementById(`${key}-lives`).innerText = "DEAD";
+                            
+                            // Visual explosion placeholder (scale down)
+                            p.obj.scale.set(0.1,0.1,0.1);
+                        }
+                    }
+                });
+
+                // Cleanup
+                if (obs.mesh.position.z > 10) {
+                    scene.remove(obs.mesh);
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Game Over Check
+            if (players.p1.active && players.p2.active) {
+                if (!players.p1.alive && !players.p2.alive) {
+                    endGame();
+                }
             }
         }
 
-        function setupHostConnection(conn, pNum) {
+        function endGame() {
+            isGameOver = true;
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-score').innerText = `WAVES SURVIVED: ${wave}`;
+        }
+
+        function startGameLoop() {
+            if (gameRunning) return;
+            gameRunning = true;
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            renderer.render(scene, camera);
+        }
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    // ==========================================
+    // CLIENT LOGIC (Controller)
+    // ==========================================
+    function initClient(targetId) {
+        document.getElementById('host-view').style.display = 'none'; // Hide host
+        document.getElementById('client-ui').style.display = 'flex'; // Show controls
+        
+        const peer = new Peer();
+        let conn = null;
+        let moveState = 0; // -1 left, 0 stop, 1 right
+
+        const statusText = document.getElementById('status-text');
+
+        peer.on('open', (id) => {
+            statusText.innerText = "Finding Host...";
+            conn = peer.connect(targetId);
+
             conn.on('open', () => {
-                // Kirim info player ke Android
-                conn.send({ type: 'WELCOME', player: pNum });
+                statusText.innerText = "Connected! Waiting for Game Start...";
             });
 
             conn.on('data', (data) => {
-                if (!roundActive) return; // Abaikan data jika ronde belum aktif
-
-                if (data.type === 'SUBMIT_SEQUENCE') {
-                    checkWinner(pNum, data.sequence);
+                if (data.type === 'init') {
+                    document.body.style.background = data.color === 'RED' ? '#500' : '#005';
+                    statusText.innerText = `YOU ARE ${data.color}`;
+                } else if (data.type === 'full') {
+                    statusText.innerText = "Game Full!";
                 }
             });
 
             conn.on('close', () => {
-                updateLobbyStatus(pNum, false);
-                alert(`Player ${pNum} terputus. Refresh TV untuk memulai ulang sesi.`);
-                location.reload();
+                statusText.innerText = "Disconnected.";
+                document.body.style.background = "#333";
             });
-        }
+        });
 
-        // --- GAME LOOP (HOST) ---
-        function startGameLoop() {
-            document.getElementById('host-lobby').classList.add('hidden');
-            document.getElementById('host-game').classList.remove('hidden');
-            startLevel(1);
-        }
-
-        function startLevel(lvl) {
-            roundActive = false;
-            gameLevel = lvl;
-            document.getElementById('level-indicator').innerText = gameLevel;
-            document.getElementById('sequence-display').innerHTML = '';
-            document.getElementById('game-status-text').innerText = "Bersiap...";
-            
-            // Generate Sequence (Panjang = Level + 2, misal Level 1 = 3 warna)
-            targetSequence = [];
-            const length = gameLevel + 2;
-            for(let i=0; i < length; i++) {
-                // Memastikan warna bersebelahan tidak sama persis agar lebih variatif
-                let newColor;
-                do {
-                     newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-                } while (i > 0 && newColor === targetSequence[i-1])
-                targetSequence.push(newColor);
+        // Input Handling
+        const sendMove = (dir) => {
+            if (conn && conn.open) {
+                conn.send({ move: dir });
             }
+        };
 
-            // Broadcast Reset ke Client
-            broadcast({ type: 'RESET_ROUND', level: gameLevel });
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
 
-            // Countdown
-            let count = 3;
-            const cdEl = document.getElementById('countdown');
-            cdEl.classList.remove('hidden');
-            cdEl.innerText = count;
-            
-            const cdInterval = setInterval(() => {
-                count--;
-                if(count > 0) {
-                     cdEl.innerText = count;
-                } else {
-                    clearInterval(cdInterval);
-                    cdEl.classList.add('hidden');
-                    cdEl.innerText = ""; // Clear text
-                    showSequenceAndStart();
-                }
-            }, 1000);
-        }
+        const startLeft = (e) => { e.preventDefault(); sendMove(-1); btnLeft.style.background='#999'; };
+        const endLeft = (e) => { e.preventDefault(); sendMove(0); btnLeft.style.background=''; };
+        
+        const startRight = (e) => { e.preventDefault(); sendMove(1); btnRight.style.background='#999'; };
+        const endRight = (e) => { e.preventDefault(); sendMove(0); btnRight.style.background=''; };
 
-        function showSequenceAndStart() {
-            const container = document.getElementById('sequence-display');
-            container.innerHTML = '';
-            
-            // Render 3D Spheres di TV
-            targetSequence.forEach((color, index) => {
-                const sphere = document.createElement('div');
-                // Tambahkan class sphere-3d dan class warna spesifik (c-merah, dll)
-                sphere.className = `sphere-3d c-${color}`;
-                // Sedikit delay animasi agar muncul berurutan "pop pop pop"
-                sphere.style.animationDelay = `${index * 0.1}s`;
-                container.appendChild(sphere);
-            });
+        // Touch events
+        btnLeft.addEventListener('touchstart', startLeft);
+        btnLeft.addEventListener('touchend', endLeft);
+        btnRight.addEventListener('touchstart', startRight);
+        btnRight.addEventListener('touchend', endRight);
 
-            // PERUBAHAN UTAMA: Warna TETAP MUNCUL. Langsung mulai game.
-            roundActive = true;
-            document.getElementById('game-status-text').innerText = "SUSUN SEKARANG! SIAPA CEPAT DIA MENANG!";
-            // Kirim sinyal ke HP untuk mengaktifkan tombol input
-            broadcast({ type: 'START_INPUT', length: targetSequence.length });
-        }
+        // Mouse events (for testing on desktop)
+        btnLeft.addEventListener('mousedown', startLeft);
+        btnLeft.addEventListener('mouseup', endLeft);
+        btnRight.addEventListener('mousedown', startRight);
+        btnRight.addEventListener('mouseup', endRight);
+    }
 
-        function checkWinner(playerNum, sequence) {
-            if (!roundActive) return;
-
-            // Cek kebenaran
-            if (JSON.stringify(sequence) === JSON.stringify(targetSequence)) {
-                // ADA PEMENANG!
-                roundActive = false; // Stop input lain
-                
-                const winnerName = playerNum === 1 ? "PLAYER 1" : "PLAYER 2";
-                const color = playerNum === 1 ? "#1e90ff" : "#ffa502"; // Biru vs Orange
-
-                document.getElementById('game-status-text').innerHTML = 
-                    `<div class="winner-text" style="color:${color}">${winnerName} MENANG!</div>`;
-                
-                // Broadcast hasil
-                broadcast({ type: 'GAME_OVER', winner: playerNum });
-                
-                // Lanjut level berikutnya setelah jeda
-                setTimeout(() => {
-                    if (gameLevel < 10) {
-                        startLevel(gameLevel + 1);
-                    } else {
-                        document.getElementById('game-status-text').innerHTML = 
-                            `<div class="winner-text">GAME SELESAI! ${winnerName} JUARA!</div>`;
-                        broadcast({ type: 'ALL_FINISHED', winner: playerNum });
-                    }
-                }, 4000);
-            } else {
-                // Opsional: Jika ingin memberi tahu di TV bahwa ada yang salah, tapi
-                // untuk speedrun biasanya dibiarkan saja sampai ada yang benar.
-                console.log(`Player ${playerNum} salah urutan.`);
-            }
-        }
-
-        function broadcast(data) {
-            connections.forEach(c => {
-                if(c.open) c.send(data);
-            });
-        }
-
-        // --- LOGIKA CLIENT (ANDROID) ---
-        function initClient(hostId) {
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('client-screen').classList.remove('hidden');
-
-            const myId = PEER_PREFIX + generateShortId();
-            myPeer = new Peer(myId);
-
-            myPeer.on('error', (err) => {
-                 document.getElementById('client-msg').innerText = "Error Koneksi: " + err.type;
-            });
-
-            myPeer.on('open', () => {
-                document.getElementById('client-msg').innerText = "Menghubungi TV...";
-                hostConn = myPeer.connect(hostId, {reliable: true});
-                
-                hostConn.on('open', () => {
-                    document.getElementById('client-msg').innerText = "Terhubung! Menunggu Host memulai...";
-                });
-
-                hostConn.on('data', handleClientData);
-                
-                hostConn.on('close', () => {
-                    document.getElementById('client-msg').innerText = "Koneksi ke TV terputus.";
-                    document.getElementById('input-area').classList.add('hidden');
-                    document.body.style.border = "none";
-                });
-            });
-        }
-
-        function handleClientData(data) {
-            const msgEl = document.getElementById('client-msg');
-            const inputArea = document.getElementById('input-area');
-
-            switch(data.type) {
-                case 'WELCOME':
-                    myPlayerNum = data.player;
-                    document.getElementById('player-id-disp').innerText = `Anda PLAYER ${myPlayerNum}`;
-                    // Beri border warna beda di HP (Biru untuk P1, Orange untuk P2)
-                    document.body.style.borderTop = myPlayerNum === 1 ? "10px solid #1e90ff" : "10px solid #ffa502";
-                    break;
-
-                case 'FULL':
-                     msgEl.innerText = "Game Penuh!";
-                     break;
-
-                case 'RESET_ROUND':
-                    inputArea.classList.add('hidden');
-                    msgEl.classList.remove('hidden');
-                    msgEl.innerHTML = `Level ${data.level} akan dimulai.<br>Siap-siap lihat TV!`;
-                    msgEl.style.background = 'rgba(255,255,255,0.1)';
-                    playerInput = [];
-                    updateInputDisplay();
-                    break;
-
-                case 'START_INPUT':
-                    msgEl.classList.add('hidden');
-                    inputArea.classList.remove('hidden');
-                    // Simpan target length untuk validasi auto-submit
-                    inputArea.dataset.length = data.length;
-                    // Vibrate sedikit di HP tanda mulai (jika didukung browser)
-                    if(navigator.vibrate) navigator.vibrate(200);
-                    break;
-
-                case 'GAME_OVER':
-                    inputArea.classList.add('hidden');
-                    msgEl.classList.remove('hidden');
-                    if (data.winner === myPlayerNum) {
-                        msgEl.innerHTML = "<h2 style='color:#2ed573; font-size:2.5rem;'>🏆 KAMU MENANG! 🏆</h2>";
-                        msgEl.style.background = 'rgba(46, 213, 115, 0.2)';
-                        if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
-                    } else {
-                        msgEl.innerHTML = "<h2 style='color:#ff4757'>❌ LAWAN LEBIH CEPAT!</h2>";
-                        msgEl.style.background = 'rgba(255, 71, 87, 0.2)';
-                        if(navigator.vibrate) navigator.vibrate(500);
-                    }
-                    break;
-                
-                case 'ALL_FINISHED':
-                     inputArea.classList.add('hidden');
-                     msgEl.classList.remove('hidden');
-                     msgEl.innerHTML = (data.winner === myPlayerNum) ? 
-                        "<h1>JUARA ULTIMATE!</h1>Game Selesai." : "<h1>GAME OVER</h1>Lawan Juara Ultimate.";
-                     break;
-            }
-        }
-
-        // Fungsi Input Player (Android)
-        function inputColor(color) {
-            const maxLen = parseInt(document.getElementById('input-area').dataset.length || 0);
-            
-            // Cegah input jika sudah mencapai panjang target (tunggu reset)
-            if (playerInput.length >= maxLen) return;
-
-            playerInput.push(color);
-            updateInputDisplay();
-
-            // Auto submit jika panjang sudah pas
-            if (playerInput.length === maxLen) {
-                hostConn.send({ type: 'SUBMIT_SEQUENCE', sequence: playerInput });
-            }
-        }
-
-        function resetInput() {
-            playerInput = [];
-            updateInputDisplay();
-        }
-
-        function updateInputDisplay() {
-            const disp = document.getElementById('my-input-display');
-            disp.innerHTML = '';
-            if(playerInput.length === 0) {
-                disp.innerHTML = '<span style="opacity:0.5; font-style:italic;">Belum ada input...</span>';
-            }
-            playerInput.forEach(c => {
-                const div = document.createElement('div');
-                // Gunakan class flat-box dan warna c-merah, dll
-                div.className = `flat-box c-${c}`;
-                disp.appendChild(div);
-            });
-            // Auto scroll ke kanan jika input panjang
-            disp.scrollLeft = disp.scrollWidth;
-        }
-
-        // --- UTILS ---
-        function generateShortId() {
-            // Menghasilkan ID acak 4 karakter agar URL QR tidak terlalu panjang
-            const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-            let result = '';
-            for (let i = 0; i < 4; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
-    </script>
+</script>
 </body>
 </html>
