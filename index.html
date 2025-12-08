@@ -2,329 +2,412 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Karaoke - Realtime Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Rush: TV vs Android</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
-        :root { --primary: #00f2ff; --secondary: #ff0055; --bg-dark: #0f0c29; --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; }
-        * { box-sizing: border-box; touch-action: manipulation; }
+        :root {
+            --bg-color: #1a1a2e;
+            --text-color: #ffffff;
+            --accent: #e94560;
+        }
         body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: var(--text); margin: 0; padding: 20px;
-            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            text-align: center;
         }
-        .app-title {
-            font-size: 2rem; font-weight: 800; margin-bottom: 5px;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .card {
-            background: var(--glass); backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.2); border-radius: 20px;
-            padding: 25px; width: 100%; max-width: 480px; margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-        }
-        .btn {
-            background: linear-gradient(90deg, var(--secondary), #ff4b1f);
-            color: white; border: none; padding: 15px; font-size: 1rem; font-weight: 600;
-            border-radius: 50px; cursor: pointer; width: 100%; margin: 8px 0;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-warning {
-            background: #ffcc00; color: #000; animation: bounce 2s infinite;
-        }
+        h1, h2, h3 { margin: 10px; }
+        
+        /* Utility Classes */
         .hidden { display: none !important; }
+        .flex { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
         
-        /* Debug Console di UI */
-        #debug-log {
-            font-family: monospace; font-size: 0.7rem; color: #00ff88;
-            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
-            margin-top: 10px; height: 60px; overflow-y: scroll; text-align: left;
+        /* Screens */
+        #setup-screen, #host-screen, #client-screen, #game-ui-host, #game-ui-client {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
         }
-        
-        /* Visualizer */
-        #visualizer { width: 100%; height: 80px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 10px 0; }
-        
-        input[type=range] { width: 100%; margin: 10px 0; }
-        
-        @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        /* QR Code Area */
+        #qrcode {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+        /* Color Blocks */
+        .color-display {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            min-height: 80px;
+        }
+        .color-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        /* Controller Buttons */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 10px;
+        }
+        .color-btn {
+            height: 80px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-btn:active { transform: scale(0.95); }
+
+        /* Colors */
+        .c-red { background-color: #ff4757; }
+        .c-green { background-color: #2ed573; }
+        .c-blue { background-color: #1e90ff; }
+        .c-yellow { background-color: #ffa502; }
+        .c-purple { background-color: #8e44ad; }
+        .c-orange { background-color: #e67e22; }
+        .c-cyan { background-color: #00d2d3; }
+
+        /* Status & Timer */
+        #countdown { font-size: 5rem; font-weight: bold; color: var(--accent); }
+        .player-status { padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px; margin: 5px; }
+        .winner-text { font-size: 3rem; color: #2ed573; animation: blink 1s infinite; }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
-    <div style="text-align: center;">
-        <div class="app-title">NEON REALTIME v2</div>
-        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 20px;">Low Latency + Audio Force</div>
+    <div id="setup-screen">
+        <h1>Color Rush</h1>
+        <p>Pilih peran perangkat ini:</p>
+        <button onclick="initHost()" style="padding: 15px 30px; font-size: 1.2rem; cursor: pointer;">📺 Mode TV (Host)</button>
+        <p><small>Gunakan HP untuk scan QR nanti.</small></p>
     </div>
 
-    <div id="menu-screen" class="card">
-        <div style="background: rgba(255,0,0,0.2); padding: 10px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; border: 1px solid red;">
-            <strong>PENTING:</strong> Wajib gunakan <strong>HTTPS</strong> atau <strong>localhost</strong>. Mic tidak akan jalan di HTTP biasa (IP Address lokal tanpa SSL).
+    <div id="host-lobby" class="hidden">
+        <h2>Scan untuk Join</h2>
+        <div id="qrcode"></div>
+        <div class="flex">
+            <div id="p1-status" class="player-status">Player 1: Menunggu...</div>
+            <div id="p2-status" class="player-status">Player 2: Menunggu...</div>
         </div>
-        <button onclick="startTVMode()" class="btn"><i class="fas fa-tv"></i> MODE SPEAKER (TV)</button>
-        <button onclick="startMicMode()" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid white;"><i class="fas fa-microphone"></i> MODE MIC (HP)</button>
+        <h3 id="lobby-msg">Menunggu 2 pemain...</h3>
     </div>
 
-    <div id="tv-screen" class="card hidden">
-        <h3 style="text-align:center; margin:0;">Scan QR</h3>
-        <div id="qr-container" style="background:white; padding:10px; border-radius:10px; margin:10px auto; width:fit-content;"></div>
+    <div id="host-game" class="hidden">
+        <h2>Level <span id="level-indicator">1</span></h2>
+        <div id="countdown" class="hidden">3</div>
         
-        <button id="force-audio-btn" class="btn btn-warning hidden" onclick="resumeAudioContext()">
-            <i class="fas fa-volume-up"></i> KLIK JIKA TIDAK ADA SUARA
-        </button>
-
-        <canvas id="visualizer"></canvas>
-        <div id="debug-log">Menunggu koneksi...</div>
-
-        <div style="margin-top:15px;">
-            <label>Volume: <span id="vol-disp">100%</span></label>
-            <input type="range" id="tv-vol" min="0" max="3" step="0.1" value="1">
-            
-            <label>Echo: <span id="echo-disp">100ms</span></label>
-            <input type="range" id="tv-echo" min="0" max="0.5" step="0.01" value="0.1">
-        </div>
+        <div id="sequence-display" class="color-display"></div>
         
-        <button onclick="location.reload()" class="btn" style="background:#333; margin-top:20px;">Reset</button>
+        <h3 id="game-status-text">Hafalkan warnanya!</h3>
     </div>
 
-    <div id="mic-screen" class="card hidden">
-        <div id="scan-area">
-            <h3 style="text-align:center;">Scan TV</h3>
-            <div id="reader" style="width:100%; border-radius:10px; overflow:hidden;"></div>
-        </div>
-        <div id="mic-active" class="hidden" style="text-align:center; padding: 20px;">
-            <i class="fas fa-microphone fa-3x" style="color:#00ff88; animation:bounce 1s infinite;"></i>
-            <h3>MIC ON AIR</h3>
-            <p>Dekatkan HP ke mulut.</p>
-            <button onclick="location.reload()" class="btn" style="background:#333;">Matikan</button>
+    <div id="client-screen" class="hidden">
+        <h2 id="player-id-disp">Player</h2>
+        <div id="client-msg" style="font-size: 1.5rem; margin: 20px;">Menunggu Host...</div>
+        
+        <div id="input-area" class="hidden">
+            <p>Urutkan warnanya!</p>
+            <div class="color-display" id="my-input-display" style="justify-content: flex-start; overflow-x: auto; padding: 5px;"></div>
+            <div class="btn-grid">
+                <button class="color-btn c-red" onclick="inputColor('red')"></button>
+                <button class="color-btn c-green" onclick="inputColor('green')"></button>
+                <button class="color-btn c-blue" onclick="inputColor('blue')"></button>
+                <button class="color-btn c-yellow" onclick="inputColor('yellow')"></button>
+                <button class="color-btn c-purple" onclick="inputColor('purple')"></button>
+                <button class="color-btn c-orange" onclick="inputColor('orange')"></button>
+                <button class="color-btn c-cyan" onclick="inputColor('cyan')"></button>
+                <button class="color-btn" style="background:#555" onclick="resetInput()">RESET</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- LOGGING HELPER ---
-        function log(msg) {
-            const d = document.getElementById('debug-log');
-            if(d) {
-                d.innerHTML = `> ${msg}<br>` + d.innerHTML;
-            }
-            console.log(msg);
+        // --- KONFIGURASI ---
+        const COLORS = ['red', 'green', 'blue', 'yellow', 'purple', 'orange', 'cyan'];
+        const PEER_PREFIX = 'color-rush-game-';
+        
+        // State Global
+        let myPeer = null;
+        let connections = []; // Untuk Host
+        let hostConn = null;  // Untuk Client
+        let gameLevel = 1;
+        let targetSequence = [];
+        let playerInput = [];
+        let isHost = false;
+        let myPlayerNum = 0;
+
+        // --- INISIALISASI ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const hostIdParam = urlParams.get('host');
+
+        if (hostIdParam) {
+            // Jika ada parameter host, otomatis jadi CLIENT (Android)
+            initClient(hostIdParam);
         }
 
-        const peerConfig = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } };
-        let peer, audioCtx, analyser;
-        let gainNode, delayNode;
+        // --- LOGIKA HOST (TV) ---
+        function initHost() {
+            isHost = true;
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('host-lobby').classList.remove('hidden');
 
-        function show(id) {
-            document.querySelectorAll('.card').forEach(e => e.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
+            const id = PEER_PREFIX + generateShortId();
+            myPeer = new Peer(id);
 
-        // =========================
-        // TV LOGIC
-        // =========================
-        function startTVMode() {
-            show('tv-screen');
-            // Init Context Awal
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
-            
-            log("Audio Context dibuat. State: " + audioCtx.state);
-            
-            const peerId = "karaoke-" + Math.floor(Math.random() * 9999);
-            peer = new Peer(peerId, peerConfig);
-
-            peer.on('open', (id) => {
-                new QRCode(document.getElementById("qr-container"), { text: id, width: 150, height: 150 });
-                log("Siap. ID: " + id);
+            myPeer.on('open', (id) => {
+                console.log('Host ID:', id);
+                // Generate QR Code
+                const gameUrl = `${window.location.href.split('?')[0]}?host=${id}`;
+                new QRCode(document.getElementById("qrcode"), {
+                    text: gameUrl,
+                    width: 256,
+                    height: 256
+                });
             });
 
-            peer.on('call', (call) => {
-                log("Menerima panggilan...");
-                document.getElementById('qr-container').style.display = 'none';
-                
-                call.answer(); // Terima call
-                
-                // HANYA COBA INI JIKA PERBAIKAN DI ATAS GAGAL TOTAL
-call.on('stream', (remoteStream) => {
-    const audioElem = document.getElementById('remote-audio'); // Tag <audio> harus ada di HTML
-    audioElem.srcObject = remoteStream;
-    audioElem.autoplay = true; // Sudah di HTML
-    
-    // Perbaikan Autoplay/Resume untuk <audio>
-    audioElem.play().then(() => {
-        log("Fallback Audio Play Berhasil.");
-    }).catch(err => {
-        log("Fallback Play Gagal. Silakan Klik di Layar TV.");
-        // Anda mungkin perlu menambahkan tombol "Play" sederhana di sini.
-    });
-});
-
-
-                function handleAudioStream(stream) {
-            // Kita tidak perlu lagi mengecek audioCtx.state === 'suspended'
-            // karena kita akan memaksa resume pada interaksi.
-
-            try {
-                const source = audioCtx.createMediaStreamSource(stream);
-                
-                // Nodes (Nodes lainnya dipertahankan seperti kode v2)
-                // ... (lanjutkan node routing)
-
-                // Final Output
-                compressor.connect(analyser);
-                compressor.connect(audioCtx.destination);
-
-                log("Routing Audio Selesai. Output ke Speaker.");
-                
-                // === PERBAIKAN PENTING DI SINI ===
-                // Setelah routing selesai, kita panggil fungsi untuk memastikan audio context aktif.
-                // Jika browser memblokir, kita lampirkan fungsi resume ke kontrol volume.
-                attachResumeToControls();
-
-                // Visualizer
-                drawVisualizer();
-
-            } catch (e) {
-                log("Error Routing: " + e);
-            }
-        }
-        
-        // Fungsi baru untuk memasang pemicu resume
-        function attachResumeToControls() {
-            // Dapatkan kontrol volume TV
-            const volControl = document.getElementById('tv-vol');
-            
-            // Pasang event listener SATU KALI SAJA. Begitu dipicu, hapus listener-nya.
-            const resumeListener = () => {
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume().then(() => {
-                        log("Audio Context dilanjutkan melalui interaksi kontrol volume!");
-                        volControl.removeEventListener('input', resumeListener); // Hapus listener setelah berhasil
-                        document.getElementById('force-audio-btn').classList.add('hidden'); // Sembunyikan tombol jika ada
-                    }).catch(err => log("Gagal resume: " + err));
-                } else {
-                    // Jika sudah running, hapus listener agar tidak ada overhead
-                    volControl.removeEventListener('input', resumeListener);
+            myPeer.on('connection', (conn) => {
+                if (connections.length >= 2) {
+                    conn.send({type: 'FULL'});
+                    setTimeout(() => conn.close(), 1000);
+                    return;
                 }
-            };
 
-            // Tambahkan tombol darurat visual
-            document.getElementById('force-audio-btn').classList.remove('hidden');
-
-            // Pasang listener ke kontrol volume
-            volControl.addEventListener('input', resumeListener);
-        }
-        
-        // Fungsi Tombol Kuning (dipanggil jika user klik tombol darurat)
-        function resumeAudioContext() {
-            if(audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume().then(() => {
-                    log("Audio Context dilanjutkan manual!");
-                    document.getElementById('force-audio-btn').classList.add('hidden');
-                }).catch(err => log("Gagal resume manual: " + err));
-            } else if (audioCtx) {
-                log("Audio Context sudah aktif.");
-                document.getElementById('force-audio-btn').classList.add('hidden');
-            }
+                connections.push(conn);
+                const pNum = connections.length;
+                
+                setupHostConnection(conn, pNum);
+            });
         }
 
+        function setupHostConnection(conn, pNum) {
+            conn.on('open', () => {
+                document.getElementById(`p${pNum}-status`).innerText = `Player ${pNum}: TERHUBUNG`;
+                document.getElementById(`p${pNum}-status`).style.background = '#2ed573';
+                
+                conn.send({ type: 'WELCOME', player: pNum });
 
-        // Control Binding
-        document.getElementById('tv-vol').addEventListener('input', e => {
-            if(gainNode) gainNode.gain.value = e.target.value;
-            document.getElementById('vol-disp').innerText = Math.round(e.target.value*100)+'%';
-        });
-        document.getElementById('tv-echo').addEventListener('input', e => {
-            if(delayNode) delayNode.delayTime.value = e.target.value;
-            document.getElementById('echo-disp').innerText = Math.round(e.target.value*1000)+'ms';
-        });
-
-        // =========================
-        // MIC LOGIC
-        // =========================
-        function startMicMode() {
-            show('mic-screen');
-            const scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                (decodedText) => {
-                    scanner.stop();
-                    connectToTV(decodedText);
+                if (connections.length === 2) {
+                    document.getElementById('lobby-msg').innerText = "Semua pemain siap! Mulai dalam 3 detik...";
+                    setTimeout(startGameLoop, 3000);
                 }
-            );
-        }
+            });
 
-        async function connectToTV(id) {
-            document.getElementById('scan-area').classList.add('hidden');
-            document.getElementById('mic-active').classList.remove('hidden');
-            
-            try {
-                // Constraints Mic Paling Penting
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        latency: 0,
-                        channelCount: 1 // Mono
-                    },
-                    video: false
-                });
+            conn.on('data', (data) => {
+                if (data.type === 'SUBMIT_SEQUENCE') {
+                    checkWinner(pNum, data.sequence);
+                }
+            });
 
-                peer = new Peer(peerConfig);
-                peer.on('open', () => {
-                    const call = peer.call(id, stream);
-                    // Dummy audio play di HP agar background process jalan
-                    const a = new Audio();
-                    a.srcObject = stream;
-                    a.muted = true;
-                    a.play();
-                });
-
-            } catch (err) {
-                alert("Gagal Mic: " + err + ". Pastikan HTTPS!");
+            conn.on('close', () => {
+                alert(`Player ${pNum} terputus. Refresh untuk ulang.`);
                 location.reload();
+            });
+        }
+
+        // --- GAME LOOP (HOST) ---
+        function startGameLoop() {
+            document.getElementById('host-lobby').classList.add('hidden');
+            document.getElementById('host-game').classList.remove('hidden');
+            startLevel(1);
+        }
+
+        function startLevel(lvl) {
+            gameLevel = lvl;
+            document.getElementById('level-indicator').innerText = gameLevel;
+            document.getElementById('sequence-display').innerHTML = '';
+            document.getElementById('game-status-text').innerText = "Bersiap...";
+            
+            // Generate Sequence (Panjang = Level + 2)
+            targetSequence = [];
+            for(let i=0; i < (gameLevel + 2); i++) {
+                targetSequence.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+            }
+
+            // Broadcast Reset
+            broadcast({ type: 'RESET_ROUND', level: gameLevel });
+
+            // Countdown
+            let count = 3;
+            const cdEl = document.getElementById('countdown');
+            cdEl.classList.remove('hidden');
+            
+            const cdInterval = setInterval(() => {
+                cdEl.innerText = count;
+                if(count <= 0) {
+                    clearInterval(cdInterval);
+                    cdEl.classList.add('hidden');
+                    showSequenceOnTV();
+                }
+                count--;
+            }, 1000);
+        }
+
+        function showSequenceOnTV() {
+            const container = document.getElementById('sequence-display');
+            container.innerHTML = '';
+            
+            // Tampilkan warna satu per satu atau sekaligus? 
+            // Sesuai request: "Menampilkan urutan warna"
+            targetSequence.forEach(color => {
+                const div = document.createElement('div');
+                div.className = `color-box c-${color}`;
+                container.appendChild(div);
+            });
+
+            document.getElementById('game-status-text').innerText = "Hafalkan!";
+            
+            // Setelah 5 detik (atau dinamis), sembunyikan dan mulai input
+            setTimeout(() => {
+                container.innerHTML = '<h2 style="font-size:3rem">GO!</h2>'; // Sembunyikan warna
+                document.getElementById('game-status-text').innerText = "Ayo Susun di HP!";
+                broadcast({ type: 'START_INPUT', length: targetSequence.length });
+            }, 2000 + (gameLevel * 500)); // Waktu tampil makin lama jika level tinggi
+        }
+
+        function checkWinner(playerNum, sequence) {
+            // Cek kebenaran
+            if (JSON.stringify(sequence) === JSON.stringify(targetSequence)) {
+                // WINNER
+                document.getElementById('game-status-text').innerHTML = `<span class="winner-text">PLAYER ${playerNum} MENANG!</span>`;
+                broadcast({ type: 'GAME_OVER', winner: playerNum });
+                
+                setTimeout(() => {
+                    if (gameLevel < 10) {
+                        startLevel(gameLevel + 1);
+                    } else {
+                        document.getElementById('game-status-text').innerText = "GAME TAMAT! Pemenang Akhir ditentukan.";
+                    }
+                }, 4000);
+            } else {
+                // Salah urutan (opsional: beri penalti atau biarkan lanjut)
+                // Disini kita abaikan saja sampai ada yang benar
             }
         }
 
-        // =========================
-        // VISUALIZER
-        // =========================
-        function drawVisualizer() {
-            const canvas = document.getElementById('visualizer');
-            const ctx = canvas.getContext('2d');
-            
-            function render() {
-                requestAnimationFrame(render);
-                if(!analyser) return;
-                
-                const array = new Uint8Array(analyser.frequencyBinCount);
-                analyser.getByteFrequencyData(array);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Jika data array semuanya 0, berarti tidak ada suara masuk
-                let sum = 0;
-                for(let i=0; i<array.length; i++) sum += array[i];
-                if(sum > 0 && document.getElementById('debug-log').innerText.includes("Menunggu")) {
-                    log("Suara terdeteksi masuk!");
-                }
+        function broadcast(data) {
+            connections.forEach(c => c.send(data));
+        }
 
-                let x = 0;
-                const w = (canvas.width / array.length) * 2.5;
-                for(let i=0; i<array.length; i++) {
-                    const h = (array[i]/255) * canvas.height;
-                    ctx.fillStyle = `hsl(${i * 2}, 100%, 50%)`;
-                    ctx.fillRect(x, canvas.height - h, w, h);
-                    x += w + 1;
-                }
+        // --- LOGIKA CLIENT (ANDROID) ---
+        function initClient(hostId) {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('client-screen').classList.remove('hidden');
+
+            const myId = PEER_PREFIX + generateShortId();
+            myPeer = new Peer(myId);
+
+            myPeer.on('open', () => {
+                hostConn = myPeer.connect(hostId);
+                
+                hostConn.on('open', () => {
+                    document.getElementById('client-msg').innerText = "Terhubung! Menunggu Host...";
+                });
+
+                hostConn.on('data', handleClientData);
+                
+                hostConn.on('close', () => {
+                    alert("Koneksi ke TV terputus.");
+                });
+            });
+        }
+
+        function handleClientData(data) {
+            const msgEl = document.getElementById('client-msg');
+            const inputArea = document.getElementById('input-area');
+
+            if (data.type === 'WELCOME') {
+                myPlayerNum = data.player;
+                document.getElementById('player-id-disp').innerText = `Anda PLAYER ${myPlayerNum}`;
+                document.body.style.border = myPlayerNum === 1 ? "5px solid cyan" : "5px solid orange";
             }
-            render();
+            else if (data.type === 'RESET_ROUND') {
+                inputArea.classList.add('hidden');
+                msgEl.classList.remove('hidden');
+                msgEl.innerText = `Level ${data.level}. Perhatikan TV!`;
+                playerInput = [];
+                updateInputDisplay();
+            }
+            else if (data.type === 'START_INPUT') {
+                msgEl.classList.add('hidden');
+                inputArea.classList.remove('hidden');
+                // Simpan target length untuk validasi
+                inputArea.dataset.length = data.length;
+            }
+            else if (data.type === 'GAME_OVER') {
+                inputArea.classList.add('hidden');
+                msgEl.classList.remove('hidden');
+                if (data.winner === myPlayerNum) {
+                    msgEl.innerText = "🏆 KAMU MENANG! 🏆";
+                    document.body.style.backgroundColor = "#2ed573";
+                } else {
+                    msgEl.innerText = "❌ KAMU KALAH!";
+                    document.body.style.backgroundColor = "#ff4757";
+                }
+                setTimeout(() => {
+                    document.body.style.backgroundColor = ""; // Reset bg
+                }, 3000);
+            }
+        }
+
+        // Fungsi Input Player
+        function inputColor(color) {
+            const maxLen = parseInt(document.getElementById('input-area').dataset.length || 0);
+            if (playerInput.length >= maxLen) return;
+
+            playerInput.push(color);
+            updateInputDisplay();
+
+            // Auto submit jika panjang sudah pas
+            if (playerInput.length === maxLen) {
+                hostConn.send({ type: 'SUBMIT_SEQUENCE', sequence: playerInput });
+            }
+        }
+
+        function resetInput() {
+            playerInput = [];
+            updateInputDisplay();
+        }
+
+        function updateInputDisplay() {
+            const disp = document.getElementById('my-input-display');
+            disp.innerHTML = '';
+            playerInput.forEach(c => {
+                const div = document.createElement('div');
+                div.className = `color-box c-${c}`;
+                div.style.width = '40px'; 
+                div.style.height = '40px';
+                disp.appendChild(div);
+            });
+        }
+
+        // --- UTILS ---
+        function generateShortId() {
+            return Math.random().toString(36).substr(2, 6);
         }
     </script>
 </body>
