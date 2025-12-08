@@ -10,15 +10,23 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; touch-action: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; color: white; touch-action: none; }
         
         /* HOST UI */
         #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
         
-        #qr-container { 
+        #qr-panel { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #00ffcc;
-            pointer-events: auto; z-index: 10;
+            background: rgba(0,0,0,0.85); padding: 30px; border-radius: 15px; text-align: center; border: 2px solid #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); z-index: 100;
+        }
+        
+        #qrcode { 
+            background: white; padding: 10px; border-radius: 5px; display: inline-block; margin: 15px 0;
+        }
+
+        #host-id-display {
+            font-size: 24px; color: #ffeb3b; font-weight: bold; letter-spacing: 2px; margin: 10px 0; border: 1px dashed #666; padding: 5px;
         }
         
         #game-info { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; z-index: 5; }
@@ -27,17 +35,27 @@
         
         #game-over { 
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 50px; color: red; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; z-index: 20;
+            font-size: 40px; color: red; text-align: center; background: rgba(0,0,0,0.95); padding: 40px; border: 1px solid red; z-index: 200;
         }
 
         /* CLIENT UI */
         #client-ui { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: center; background: #222; }
-        .control-area { display: flex; width: 100%; height: 100%; }
-        .btn { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; cursor: pointer; }
-        .btn-left { background: linear-gradient(to right, #444, #666); border-right: 1px solid #222; }
-        .btn-right { background: linear-gradient(to right, #666, #444); }
-        .btn:active { background: #888; }
-        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px; z-index: 5; }
+        
+        #manual-login {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 50;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        
+        input { padding: 10px; font-size: 20px; text-align: center; width: 80%; margin-bottom: 20px; border-radius: 5px; border: none; }
+        button.join-btn { padding: 15px 30px; font-size: 20px; background: #00ffcc; border: none; border-radius: 5px; cursor: pointer; color: black; font-weight: bold; }
+
+        .control-area { display: none; width: 100%; height: 100%; }
+        .btn { flex: 1; border: none; font-size: 60px; font-weight: bold; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .btn-left { background: linear-gradient(to right, #b71c1c, #d32f2f); border-right: 2px solid #000; }
+        .btn-right { background: linear-gradient(to right, #0d47a1, #1976d2); }
+        .btn:active { opacity: 0.7; }
+        
+        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px; z-index: 60; text-shadow: 1px 1px 2px black;}
     </style>
 </head>
 <body>
@@ -49,13 +67,14 @@
             P2: <span id="p2-lives" class="p2-score">WAITING...</span>
         </div>
         
-        <div id="qr-container">
-            <h2 style="margin-top:0;">Scan to Join</h2>
-            <div id="qrcode" style="display: flex; justify-content: center;"></div>
-            <p style="font-size: 14px; color: #ccc; margin-top: 10px;">
-                Player 1 & Player 2 scan same code<br>
-                <small id="loading-msg">Generating ID...</small>
-            </p>
+        <div id="qr-panel">
+            <h2 style="margin:0;">SCAN TO JOIN</h2>
+            <div id="qrcode"></div>
+            <div>
+                <p>OR TYPE ID ON PHONE:</p>
+                <div id="host-id-display">Generating...</div>
+            </div>
+            <p style="font-size: 14px; color: #aaa; margin-top: 10px;">Waiting for players...</p>
         </div>
 
         <div id="game-over">
@@ -66,10 +85,18 @@
     </div>
 
     <div id="client-ui">
-        <div id="status-text">Connecting...</div>
-        <div class="control-area">
-            <button class="btn btn-left" id="btn-left"><</button>
-            <button class="btn btn-right" id="btn-right">></button>
+        <div id="manual-login">
+            <h2 style="color:#00ffcc">JOIN GAME</h2>
+            <p>Scan QR or Enter ID from TV:</p>
+            <input type="text" id="host-id-input" placeholder="e.g. bold-tiger-99">
+            <button class="join-btn" onclick="manualJoin()">JOIN</button>
+            <div id="client-status" style="margin-top: 20px; color: #888;"></div>
+        </div>
+
+        <div class="control-area" id="game-controls">
+            <div id="status-text">CONNECTED</div>
+            <button class="btn btn-left" id="btn-left">LEFT</button>
+            <button class="btn btn-right" id="btn-right">RIGHT</button>
         </div>
     </div>
 
@@ -79,22 +106,24 @@
     
     // --- CONFIGURATION ---
     const CONFIG = {
-        arenaWidth: 30,
-        playerSpeed: 0.3,
-        baseSpawnRate: 60,
-        colors: { p1: 0xff3333, p2: 0x3388ff, ground: 0x222222, meteor: 0xffaa00 }
+        arenaWidth: 34,
+        playerSpeed: 0.35,
+        baseSpawnRate: 50,
+        colors: { p1: 0xff3333, p2: 0x3388ff, meteor: 0xffaa00 }
     };
 
     // ==========================================
     // LOGIC ROUTER
     // ==========================================
-    const hostID = getParams().get('host');
+    const urlHostID = getParams().get('host');
 
-    // Pastikan DOM sudah load sebelum menjalankan logic
     window.addEventListener('load', () => {
-        if (hostID) {
-            initClient(hostID);
+        if (urlHostID) {
+            // Jika ada parameter host di URL, langsung coba connect
+            initClient(urlHostID);
         } else {
+            // Jika tidak ada parameter, cek apakah ini halaman manual login Client atau Host
+            // Default ke Host jika URL bersih
             initHost();
         }
     });
@@ -103,40 +132,45 @@
     // HOST LOGIC
     // ==========================================
     function initHost() {
-        // Tampilkan UI Host
-        const hostDiv = document.getElementById('host-ui');
-        if(hostDiv) hostDiv.style.display = 'block';
+        // Cek jika user tidak sengaja masuk mode host di HP kecil
+        if(window.innerWidth < 600 && !confirm("Layar kecil terdeteksi. Apakah ini TV/Host? Klik Cancel untuk menjadi Controller.")) {
+             document.getElementById('host-ui').style.display = 'none';
+             initClient(null); // Switch ke mode manual client
+             return;
+        }
 
-        // 1. Networking (Host)
-        const peer = new Peer(null, { debug: 1 });
+        const hostDiv = document.getElementById('host-ui');
+        hostDiv.style.display = 'block';
+
+        // Custom ID generation agar pendek dan mudah diketik (optional)
+        // Kita biarkan PeerJS generate default random string tapi kita ambil substring kalau mau
+        // Untuk kestabilan, biarkan PeerJS handle ID, tapi kita tampilkan dengan jelas.
+        const peer = new Peer(); 
         
         const players = {
-            p1: { conn: null, x: -5, active: false, alive: true, obj: null },
-            p2: { conn: null, x: 5, active: false, alive: true, obj: null }
+            p1: { conn: null, x: -6, active: false, alive: true, obj: null },
+            p2: { conn: null, x: 6, active: false, alive: true, obj: null }
         };
 
         peer.on('open', (id) => {
             console.log('Host ID:', id);
-            document.getElementById('loading-msg').style.display = 'none'; // Sembunyikan loading
+            document.getElementById('host-id-display').innerText = id;
             
-            const joinUrl = `${window.location.href.split('?')[0]}?host=${id}`;
-            
-            // Clear QR lama jika ada
-            document.getElementById("qrcode").innerHTML = "";
+            // Buat URL lengkap
+            // HACK: Jika localhost, kita peringatkan user
+            let currentUrl = window.location.href.split('?')[0];
+            if(currentUrl.includes("file://")) {
+                alert("PERINGATAN: Anda membuka file secara lokal (file://). QR Scan tidak akan bekerja di HP. Silakan ketik ID secara manual di HP atau upload file ini ke hosting (Netlify/Vercel).");
+            }
+
+            const joinUrl = `${currentUrl}?host=${id}`;
             
             new QRCode(document.getElementById("qrcode"), {
                 text: joinUrl,
-                width: 200,
-                height: 200,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                width: 180,
+                height: 180,
+                correctLevel : QRCode.CorrectLevel.L // Low correction agar QR tidak terlalu padat
             });
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            alert("Error PeerJS: " + err.type);
         });
 
         peer.on('connection', (conn) => {
@@ -153,20 +187,18 @@
                     document.getElementById('p2-lives').innerText = "READY";
                     assigned = 'p2';
                     
-                    // Mulai game saat P2 masuk
-                    document.getElementById('qr-container').style.display = 'none';
+                    // START GAME
+                    document.getElementById('qr-panel').style.display = 'none';
                     startGameLoop();
                 }
 
                 if(assigned) {
                     conn.send({ type: 'init', player: assigned, color: assigned === 'p1' ? 'RED' : 'BLUE' });
-                    
                     conn.on('data', (data) => {
                         if (data.move !== undefined && players[assigned].alive) {
                             players[assigned].moveDir = data.move;
                         }
                     });
-                    
                     conn.on('close', () => {
                         players[assigned].active = false;
                         players[assigned].alive = false;
@@ -178,98 +210,91 @@
             });
         });
 
-        // 2. Three.js Setup
+        // --- THREE JS RENDERER ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.03);
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
         
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 15, 20);
-        camera.lookAt(0, 0, 0);
+        camera.position.set(0, 20, 25);
+        camera.lookAt(0, 0, -5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // Masukkan canvas ke dalam host-ui agar tidak menimpa elemen lain
         hostDiv.insertBefore(renderer.domElement, hostDiv.firstChild);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
+        dirLight.position.set(0, 50, 20);
         scene.add(dirLight);
 
-        // Grid & Plane
-        const gridHelper = new THREE.GridHelper(CONFIG.arenaWidth, 20, 0x00ffcc, 0x444444);
+        // Arena
+        const gridHelper = new THREE.GridHelper(CONFIG.arenaWidth, 20, 0x00ffcc, 0x222222);
         scene.add(gridHelper);
         
-        const planeGeo = new THREE.PlaneGeometry(CONFIG.arenaWidth, 100);
-        const planeMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-        const plane = new THREE.Mesh(planeGeo, planeMat);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -0.1;
-        scene.add(plane);
-
-        // Player Meshes
-        function createPlayerMesh(color, x) {
-            const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-            const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
+        // Players
+        function createPlayer(color, x) {
+            const geo = new THREE.ConeGeometry(1.5, 3, 4);
+            const mat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, flatShading: true });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, 0.75, 5);
+            mesh.position.set(x, 1.5, 5);
+            mesh.rotation.y = Math.PI / 4; 
             scene.add(mesh);
             return mesh;
         }
 
-        players.p1.obj = createPlayerMesh(CONFIG.colors.p1, -5);
-        players.p2.obj = createPlayerMesh(CONFIG.colors.p2, 5);
+        players.p1.obj = createPlayer(CONFIG.colors.p1, -6);
+        players.p2.obj = createPlayer(CONFIG.colors.p2, 6);
 
-        // Game Loop Variables
+        // Game Loop
         let obstacles = [];
         let frame = 0;
         let wave = 1;
-        let isGameOver = false;
         let gameRunning = false;
+        let isGameOver = false;
 
         function spawnObstacle() {
-            const size = Math.random() * 1.5 + 0.5;
-            const geo = new THREE.DodecahedronGeometry(size);
-            const mat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.meteor, flatShading: true });
+            const size = Math.random() * 2 + 0.5;
+            const geo = new THREE.IcosahedronGeometry(size, 0);
+            const mat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.meteor, flatShading: true, roughness: 0.8 });
             const mesh = new THREE.Mesh(geo, mat);
             
             const xPos = (Math.random() * CONFIG.arenaWidth) - (CONFIG.arenaWidth / 2);
-            mesh.position.set(xPos, 15 + Math.random() * 5, -40);
+            mesh.position.set(xPos, 20, -50);
             
             scene.add(mesh);
-            obstacles.push({ mesh: mesh, speed: 0.2 + (wave * 0.05), vy: -0.15 });
+            obstacles.push({ mesh: mesh, speed: 0.3 + (wave * 0.08), vy: -0.2 });
         }
 
         function updatePhysics() {
             if (!gameRunning || isGameOver) return;
 
             frame++;
-            if (frame % 600 === 0) {
+            if (frame % 500 === 0) {
                 wave++;
                 document.getElementById('wave-disp').innerText = wave;
             }
 
-            const spawnRate = Math.max(15, CONFIG.baseSpawnRate - (wave * 5));
+            const spawnRate = Math.max(10, CONFIG.baseSpawnRate - (wave * 4));
             if (frame % spawnRate === 0) spawnObstacle();
 
-            // Player Movement
+            // Players
             ['p1', 'p2'].forEach(key => {
                 const p = players[key];
-                if (p.alive && p.active && p.moveDir !== undefined) {
-                    p.x += p.moveDir * CONFIG.playerSpeed;
+                if (p.alive && p.active) {
+                    // Movement
+                    if (p.moveDir) p.x += p.moveDir * CONFIG.playerSpeed;
                     
-                    const limit = CONFIG.arenaWidth / 2 - 1;
-                    if (p.x < -limit) p.x = -limit;
-                    if (p.x > limit) p.x = limit;
+                    // Boundary
+                    const limit = CONFIG.arenaWidth / 2 - 1.5;
+                    p.x = Math.max(-limit, Math.min(limit, p.x));
                     
-                    p.obj.position.x += (p.x - p.obj.position.x) * 0.2;
-                    p.obj.rotation.z = -p.moveDir * 0.2;
+                    // Lerp visual
+                    p.obj.position.x += (p.x - p.obj.position.x) * 0.3;
+                    p.obj.rotation.z = -p.moveDir * 0.3;
                 } else if (!p.alive) {
                     p.obj.visible = false;
-                } else {
-                    p.obj.rotation.z = 0;
                 }
             });
 
@@ -277,43 +302,34 @@
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
                 obs.mesh.position.z += obs.speed;
-                if (obs.mesh.position.y > 0.75) obs.mesh.position.y += obs.vy;
+                obs.mesh.position.y += obs.vy;
+                obs.mesh.rotation.x += 0.05;
+                obs.mesh.rotation.y += 0.05;
 
                 // Collision
-                ['p1', 'p2'].forEach(key => {
-                    const p = players[key];
-                    if (p.alive && p.active) {
-                        const dist = p.obj.position.distanceTo(obs.mesh.position);
-                        if (dist < 2.0) {
-                            p.alive = false;
-                            document.getElementById(`${key}-lives`).innerText = "DEAD";
-                            p.obj.scale.set(0.1,0.1,0.1);
+                if (obs.mesh.position.y < 5 && obs.mesh.position.z > 0) {
+                     ['p1', 'p2'].forEach(key => {
+                        const p = players[key];
+                        if (p.alive && p.active) {
+                            if (p.obj.position.distanceTo(obs.mesh.position) < 3.0) {
+                                p.alive = false;
+                                document.getElementById(`${key}-lives`).innerText = "DEAD";
+                            }
                         }
-                    }
-                });
+                    });
+                }
 
-                if (obs.mesh.position.z > 10) {
+                if (obs.mesh.position.z > 15 || obs.mesh.position.y < -5) {
                     scene.remove(obs.mesh);
                     obstacles.splice(i, 1);
                 }
             }
 
-            // Check Game Over
-            if (players.p1.active && players.p2.active) {
-                if (!players.p1.alive && !players.p2.alive) endGame();
+            if (players.p1.active && players.p2.active && !players.p1.alive && !players.p2.alive) {
+                isGameOver = true;
+                document.getElementById('game-over').style.display = 'block';
+                document.getElementById('final-score').innerText = `SCORE: ${wave * 100 + frame}`;
             }
-        }
-
-        function endGame() {
-            isGameOver = true;
-            document.getElementById('game-over').style.display = 'block';
-            document.getElementById('final-score').innerText = `WAVES SURVIVED: ${wave}`;
-        }
-
-        function startGameLoop() {
-            if (gameRunning) return;
-            gameRunning = true;
-            animate();
         }
 
         function animate() {
@@ -322,6 +338,13 @@
             renderer.render(scene, camera);
         }
 
+        function startGameLoop() {
+            if(!gameRunning) {
+                gameRunning = true;
+                animate();
+            }
+        }
+        
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -332,46 +355,82 @@
     // ==========================================
     // CLIENT LOGIC
     // ==========================================
+    
+    // Fungsi dipanggil tombol Manual Join
+    window.manualJoin = function() {
+        const id = document.getElementById('host-id-input').value.trim();
+        if(id) initClient(id);
+    }
+
     function initClient(targetId) {
         document.getElementById('host-ui').style.display = 'none';
         document.getElementById('client-ui').style.display = 'flex';
         
+        const statusDiv = document.getElementById('client-status');
+        statusDiv.innerText = "Connecting to " + targetId + "...";
+
         const peer = new Peer();
         let conn = null;
-        const statusText = document.getElementById('status-text');
 
-        peer.on('open', (id) => {
-            statusText.innerText = "Finding Host...";
+        peer.on('open', (myId) => {
             conn = peer.connect(targetId);
 
             conn.on('open', () => {
-                statusText.innerText = "Connected! Waiting...";
+                // Koneksi sukses, sembunyikan form login, tampilkan kontrol
+                document.getElementById('manual-login').style.display = 'none';
+                document.getElementById('game-controls').style.display = 'flex';
+                document.getElementById('status-text').innerText = "WAITING FOR P2...";
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'init') {
-                    document.body.style.background = data.color === 'RED' ? '#500' : '#005';
-                    statusText.innerText = `YOU ARE ${data.color}`;
+                    const isP1 = data.color === 'RED';
+                    document.body.style.background = isP1 ? '#b71c1c' : '#0d47a1';
+                    
+                    // Update tampilan tombol agar sesuai player
+                    if(isP1) {
+                        document.querySelector('.btn-left').style.background = 'linear-gradient(to right, #b71c1c, #d32f2f)';
+                    } else {
+                        document.querySelector('.btn-left').style.background = 'linear-gradient(to right, #0d47a1, #1976d2)';
+                    }
+
+                    document.getElementById('status-text').innerText = `YOU ARE ${data.color}`;
                 } else if (data.type === 'full') {
-                    statusText.innerText = "Game Full!";
+                    alert("Game is full!");
+                    location.reload();
                 }
             });
+
+            conn.on('close', () => {
+                alert("Host disconnected");
+                location.reload();
+            });
             
-            conn.on('close', () => statusText.innerText = "Disconnected.");
-            conn.on('error', () => statusText.innerText = "Connection Error");
+            // Error handling koneksi
+            setTimeout(() => {
+                if(!conn.open) {
+                    statusDiv.innerText = "Connection timed out. Check ID.";
+                }
+            }, 5000);
+        });
+        
+        peer.on('error', (err) => {
+            statusDiv.innerText = "Error: " + err.type;
         });
 
+        // Controls
         const sendMove = (dir) => {
             if (conn && conn.open) conn.send({ move: dir });
         };
 
         const setupBtn = (id, dir) => {
             const btn = document.getElementById(id);
-            const start = (e) => { e.preventDefault(); sendMove(dir); btn.style.background='#999'; };
-            const end = (e) => { e.preventDefault(); sendMove(0); btn.style.background=''; };
+            const start = (e) => { e.preventDefault(); sendMove(dir); btn.style.opacity = '0.5'; };
+            const end = (e) => { e.preventDefault(); sendMove(0); btn.style.opacity = '1'; };
             
-            btn.addEventListener('touchstart', start);
-            btn.addEventListener('touchend', end);
+            // Support Mobile Touch & Mouse
+            btn.addEventListener('touchstart', start, {passive: false});
+            btn.addEventListener('touchend', end, {passive: false});
             btn.addEventListener('mousedown', start);
             btn.addEventListener('mouseup', end);
         };
