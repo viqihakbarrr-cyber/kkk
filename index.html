@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Color Rush: TV vs Android</title>
+    <title>Rainbow Rush 3D: TV vs Android</title>
     
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,11 +23,14 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-x: hidden; /* Mencegah scroll horizontal di HP */
             text-align: center;
+            /* Background halus agar 3D lebih menonjol */
+            background: radial-gradient(circle at center, #2a2a4e 0%, #1a1a2e 100%);
         }
         h1, h2, h3 { margin: 10px; }
+        button { font-family: inherit; }
         
         /* Utility Classes */
         .hidden { display: none !important; }
@@ -38,6 +41,7 @@
             width: 100%;
             max-width: 800px;
             padding: 20px;
+            box-sizing: border-box; /* Penting agar padding tidak melebar */
         }
 
         /* QR Code Area */
@@ -49,107 +53,173 @@
             width: fit-content;
         }
 
-        /* Color Blocks */
-        .color-display {
+        /* --- TAMPILAN TV (HOST) - 3D SPHERES --- */
+        .tv-display-area {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             justify-content: center;
-            margin: 20px 0;
-            min-height: 80px;
-        }
-        .color-box {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            margin: 40px 0;
+            min-height: 100px;
+            perspective: 1000px; /* Untuk efek 3D */
         }
 
-        /* Controller Buttons */
+        .sphere-3d {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            position: relative;
+            /* Bayangan bawah agar terlihat melayang */
+            box-shadow: 0 15px 25px rgba(0,0,0,0.5);
+            /* Animasi muncul */
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        /* Efek kilap 3D menggunakan pseudo-element */
+        .sphere-3d::after {
+            content: '';
+            position: absolute;
+            top: 5%;
+            left: 10%;
+            width: 40%;
+            height: 40%;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
+            filter: blur(5px);
+        }
+
+        @keyframes popIn {
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- TAMPILAN ANDROID (CLIENT) - FLAT BUTTONS --- */
+        .input-display-area {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            min-height: 50px;
+        }
+        
+        .flat-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
         .btn-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(4, 1fr); /* 4 kolom untuk 7 warna + reset */
+            gap: 10px;
             padding: 10px;
+            max-width: 500px;
+            margin: auto;
         }
         .color-btn {
-            height: 80px;
+            height: 70px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: transform 0.1s;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            transition: transform 0.1s, filter 0.1s;
         }
-        .color-btn:active { transform: scale(0.95); }
+        .color-btn:active { transform: scale(0.92); filter: brightness(1.2); }
 
-        /* Colors */
-        .c-red { background-color: #ff4757; }
-        .c-green { background-color: #2ed573; }
-        .c-blue { background-color: #1e90ff; }
-        .c-yellow { background-color: #ffa502; }
-        .c-purple { background-color: #8e44ad; }
-        .c-orange { background-color: #e67e22; }
-        .c-cyan { background-color: #00d2d3; }
+        /* --- DEFINISI WARNA MEJIKUHIBINIU --- */
+        /* Base Colors & Gradients for 3D Spheres */
+        .c-merah { background: linear-gradient(135deg, #ff4757, #c0392b); }
+        .c-jingga { background: linear-gradient(135deg, #ffa502, #e67e22); }
+        .c-kuning { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .c-hijau { background: linear-gradient(135deg, #2ed573, #27ae60); }
+        .c-biru { background: linear-gradient(135deg, #1e90ff, #2980b9); }
+        .c-nila { background: linear-gradient(135deg, #3742fa, #192a56); /* Indigo */ }
+        .c-ungu { background: linear-gradient(135deg, #8e44ad, #6c5ce7); /* Violet */ }
 
-        /* Status & Timer */
-        #countdown { font-size: 5rem; font-weight: bold; color: var(--accent); }
-        .player-status { padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px; margin: 5px; }
-        .winner-text { font-size: 3rem; color: #2ed573; animation: blink 1s infinite; }
+        /* --- Status & Timer --- */
+        #countdown { font-size: 6rem; font-weight: bold; color: var(--accent); text-shadow: 0 0 20px var(--accent); }
+        .player-status { padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 30px; margin: 5px; }
+        .winner-text { font-size: 3rem; color: #2ed573; font-weight: bold; text-transform: uppercase; animation: pulse 0.8s infinite alternate; }
 
-        @keyframes blink { 50% { opacity: 0.5; } }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        
+        /* Tombol Utama */
+        .main-btn {
+             padding: 15px 30px; font-size: 1.2rem; cursor: pointer;
+             background: var(--accent); color: white; border: none; border-radius: 50px;
+             box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+             transition: 0.3s;
+        }
+        .main-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(233, 69, 96, 0.6); }
     </style>
 </head>
 <body>
 
     <div id="setup-screen">
-        <h1>Color Rush</h1>
+        <h1 style="font-size: 3rem; margin-bottom: 5px;">🌈 Rainbow Rush 3D</h1>
+        <p style="font-size: 1.2rem; opacity: 0.8;">Adu Cepat Menyusun Mejikuhibiniu</p>
+        <br>
         <p>Pilih peran perangkat ini:</p>
-        <button onclick="initHost()" style="padding: 15px 30px; font-size: 1.2rem; cursor: pointer;">📺 Mode TV (Host)</button>
-        <p><small>Gunakan HP untuk scan QR nanti.</small></p>
+        <button class="main-btn" onclick="initHost()">📺 Mode TV (Host)</button>
+        <p><small>Gunakan 2 HP untuk scan QR yang muncul di TV.</small></p>
     </div>
 
     <div id="host-lobby" class="hidden">
-        <h2>Scan untuk Join</h2>
+        <h2>Scan untuk Join Game</h2>
         <div id="qrcode"></div>
         <div class="flex">
             <div id="p1-status" class="player-status">Player 1: Menunggu...</div>
             <div id="p2-status" class="player-status">Player 2: Menunggu...</div>
         </div>
-        <h3 id="lobby-msg">Menunggu 2 pemain...</h3>
+        <h3 id="lobby-msg" style="margin-top: 20px;">Menunggu 2 pemain...</h3>
     </div>
 
     <div id="host-game" class="hidden">
-        <h2>Level <span id="level-indicator">1</span></h2>
+        <h2>Level <span id="level-indicator" style="color:var(--accent); font-size: 2rem;">1</span></h2>
         <div id="countdown" class="hidden">3</div>
         
-        <div id="sequence-display" class="color-display"></div>
+        <div id="sequence-display" class="tv-display-area"></div>
         
-        <h3 id="game-status-text">Hafalkan warnanya!</h3>
+        <h3 id="game-status-text" style="font-size: 1.5rem;">Bersiap...</h3>
     </div>
 
     <div id="client-screen" class="hidden">
-        <h2 id="player-id-disp">Player</h2>
-        <div id="client-msg" style="font-size: 1.5rem; margin: 20px;">Menunggu Host...</div>
+        <h2 id="player-id-disp" style="margin-bottom: 5px;">Player</h2>
+        <div id="client-msg" style="font-size: 1.3rem; margin: 20px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px;">
+            Menunggu Host...
+        </div>
         
         <div id="input-area" class="hidden">
-            <p>Urutkan warnanya!</p>
-            <div class="color-display" id="my-input-display" style="justify-content: flex-start; overflow-x: auto; padding: 5px;"></div>
+            <p style="margin: 5px;">Urutan Anda:</p>
+            <div class="input-display-area" id="my-input-display"></div>
+            
+            <p style="margin: 5px;">Tekan Cepat Sesuai TV!</p>
             <div class="btn-grid">
-                <button class="color-btn c-red" onclick="inputColor('red')"></button>
-                <button class="color-btn c-green" onclick="inputColor('green')"></button>
-                <button class="color-btn c-blue" onclick="inputColor('blue')"></button>
-                <button class="color-btn c-yellow" onclick="inputColor('yellow')"></button>
-                <button class="color-btn c-purple" onclick="inputColor('purple')"></button>
-                <button class="color-btn c-orange" onclick="inputColor('orange')"></button>
-                <button class="color-btn c-cyan" onclick="inputColor('cyan')"></button>
-                <button class="color-btn" style="background:#555" onclick="resetInput()">RESET</button>
+                <button class="color-btn c-merah" onclick="inputColor('merah')">Me</button>
+                <button class="color-btn c-jingga" onclick="inputColor('jingga')">Ji</button>
+                <button class="color-btn c-kuning" onclick="inputColor('kuning')">Ku</button>
+                <button class="color-btn c-hijau" onclick="inputColor('hijau')">Hi</button>
+                <button class="color-btn c-biru" onclick="inputColor('biru')">Bi</button>
+                <button class="color-btn c-nila" onclick="inputColor('nila')">Ni</button>
+                <button class="color-btn c-ungu" onclick="inputColor('ungu')">U</button>
+                
+                <button class="color-btn" style="background:#555; grid-column: span 1;" onclick="resetInput()">❌ RESET</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- KONFIGURASI ---
-        const COLORS = ['red', 'green', 'blue', 'yellow', 'purple', 'orange', 'cyan'];
-        const PEER_PREFIX = 'color-rush-game-';
+        // --- KONFIGURASI BARU (MEJIKUHIBINIU) ---
+        const COLORS = ['merah', 'jingga', 'kuning', 'hijau', 'biru', 'nila', 'ungu'];
+        const PEER_PREFIX = 'rainbow-rush-3d-';
         
         // State Global
         let myPeer = null;
@@ -160,6 +230,7 @@
         let playerInput = [];
         let isHost = false;
         let myPlayerNum = 0;
+        let roundActive = false; // Mencegah input sebelum game mulai
 
         // --- INISIALISASI ---
         const urlParams = new URLSearchParams(window.location.search);
@@ -177,54 +248,74 @@
             document.getElementById('host-lobby').classList.remove('hidden');
 
             const id = PEER_PREFIX + generateShortId();
+            // Menggunakan config peerjs publik (bisa diganti jika punya server sendiri)
             myPeer = new Peer(id);
 
             myPeer.on('open', (id) => {
                 console.log('Host ID:', id);
                 // Generate QR Code
                 const gameUrl = `${window.location.href.split('?')[0]}?host=${id}`;
+                document.getElementById("qrcode").innerHTML = "";
                 new QRCode(document.getElementById("qrcode"), {
                     text: gameUrl,
-                    width: 256,
-                    height: 256
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
                 });
             });
 
             myPeer.on('connection', (conn) => {
                 if (connections.length >= 2) {
-                    conn.send({type: 'FULL'});
-                    setTimeout(() => conn.close(), 1000);
+                    // Kick jika sudah penuh
+                    conn.on('open', () => {
+                        conn.send({type: 'FULL'});
+                        setTimeout(() => conn.close(), 500);
+                    });
                     return;
                 }
 
                 connections.push(conn);
                 const pNum = connections.length;
-                
                 setupHostConnection(conn, pNum);
+                updateLobbyStatus(pNum, true);
             });
+        }
+
+        function updateLobbyStatus(pNum, connected) {
+            const el = document.getElementById(`p${pNum}-status`);
+            if(connected) {
+                el.innerText = `Player ${pNum}: SIAP!`;
+                el.style.background = '#2ed573'; // Hijau
+            } else {
+                el.innerText = `Player ${pNum}: Terputus`;
+                el.style.background = '#ff4757'; // Merah
+            }
+
+            if (connections.length === 2) {
+                document.getElementById('lobby-msg').innerHTML = "Semua pemain siap!<br>Game dimulai dalam 3 detik...";
+                setTimeout(startGameLoop, 3000);
+            }
         }
 
         function setupHostConnection(conn, pNum) {
             conn.on('open', () => {
-                document.getElementById(`p${pNum}-status`).innerText = `Player ${pNum}: TERHUBUNG`;
-                document.getElementById(`p${pNum}-status`).style.background = '#2ed573';
-                
+                // Kirim info player ke Android
                 conn.send({ type: 'WELCOME', player: pNum });
-
-                if (connections.length === 2) {
-                    document.getElementById('lobby-msg').innerText = "Semua pemain siap! Mulai dalam 3 detik...";
-                    setTimeout(startGameLoop, 3000);
-                }
             });
 
             conn.on('data', (data) => {
+                if (!roundActive) return; // Abaikan data jika ronde belum aktif
+
                 if (data.type === 'SUBMIT_SEQUENCE') {
                     checkWinner(pNum, data.sequence);
                 }
             });
 
             conn.on('close', () => {
-                alert(`Player ${pNum} terputus. Refresh untuk ulang.`);
+                updateLobbyStatus(pNum, false);
+                alert(`Player ${pNum} terputus. Refresh TV untuk memulai ulang sesi.`);
                 location.reload();
             });
         }
@@ -237,80 +328,105 @@
         }
 
         function startLevel(lvl) {
+            roundActive = false;
             gameLevel = lvl;
             document.getElementById('level-indicator').innerText = gameLevel;
             document.getElementById('sequence-display').innerHTML = '';
             document.getElementById('game-status-text').innerText = "Bersiap...";
             
-            // Generate Sequence (Panjang = Level + 2)
+            // Generate Sequence (Panjang = Level + 2, misal Level 1 = 3 warna)
             targetSequence = [];
-            for(let i=0; i < (gameLevel + 2); i++) {
-                targetSequence.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+            const length = gameLevel + 2;
+            for(let i=0; i < length; i++) {
+                // Memastikan warna bersebelahan tidak sama persis agar lebih variatif
+                let newColor;
+                do {
+                     newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                } while (i > 0 && newColor === targetSequence[i-1])
+                targetSequence.push(newColor);
             }
 
-            // Broadcast Reset
+            // Broadcast Reset ke Client
             broadcast({ type: 'RESET_ROUND', level: gameLevel });
 
             // Countdown
             let count = 3;
             const cdEl = document.getElementById('countdown');
             cdEl.classList.remove('hidden');
+            cdEl.innerText = count;
             
             const cdInterval = setInterval(() => {
-                cdEl.innerText = count;
-                if(count <= 0) {
+                count--;
+                if(count > 0) {
+                     cdEl.innerText = count;
+                } else {
                     clearInterval(cdInterval);
                     cdEl.classList.add('hidden');
-                    showSequenceOnTV();
+                    cdEl.innerText = ""; // Clear text
+                    showSequenceAndStart();
                 }
-                count--;
             }, 1000);
         }
 
-        function showSequenceOnTV() {
+        function showSequenceAndStart() {
             const container = document.getElementById('sequence-display');
             container.innerHTML = '';
             
-            // Tampilkan warna satu per satu atau sekaligus? 
-            // Sesuai request: "Menampilkan urutan warna"
-            targetSequence.forEach(color => {
-                const div = document.createElement('div');
-                div.className = `color-box c-${color}`;
-                container.appendChild(div);
+            // Render 3D Spheres di TV
+            targetSequence.forEach((color, index) => {
+                const sphere = document.createElement('div');
+                // Tambahkan class sphere-3d dan class warna spesifik (c-merah, dll)
+                sphere.className = `sphere-3d c-${color}`;
+                // Sedikit delay animasi agar muncul berurutan "pop pop pop"
+                sphere.style.animationDelay = `${index * 0.1}s`;
+                container.appendChild(sphere);
             });
 
-            document.getElementById('game-status-text').innerText = "Hafalkan!";
-            
-            // Setelah 5 detik (atau dinamis), sembunyikan dan mulai input
-            setTimeout(() => {
-                container.innerHTML = '<h2 style="font-size:3rem">GO!</h2>'; // Sembunyikan warna
-                document.getElementById('game-status-text').innerText = "Ayo Susun di HP!";
-                broadcast({ type: 'START_INPUT', length: targetSequence.length });
-            }, 2000 + (gameLevel * 500)); // Waktu tampil makin lama jika level tinggi
+            // PERUBAHAN UTAMA: Warna TETAP MUNCUL. Langsung mulai game.
+            roundActive = true;
+            document.getElementById('game-status-text').innerText = "SUSUN SEKARANG! SIAPA CEPAT DIA MENANG!";
+            // Kirim sinyal ke HP untuk mengaktifkan tombol input
+            broadcast({ type: 'START_INPUT', length: targetSequence.length });
         }
 
         function checkWinner(playerNum, sequence) {
+            if (!roundActive) return;
+
             // Cek kebenaran
             if (JSON.stringify(sequence) === JSON.stringify(targetSequence)) {
-                // WINNER
-                document.getElementById('game-status-text').innerHTML = `<span class="winner-text">PLAYER ${playerNum} MENANG!</span>`;
+                // ADA PEMENANG!
+                roundActive = false; // Stop input lain
+                
+                const winnerName = playerNum === 1 ? "PLAYER 1" : "PLAYER 2";
+                const color = playerNum === 1 ? "#1e90ff" : "#ffa502"; // Biru vs Orange
+
+                document.getElementById('game-status-text').innerHTML = 
+                    `<div class="winner-text" style="color:${color}">${winnerName} MENANG!</div>`;
+                
+                // Broadcast hasil
                 broadcast({ type: 'GAME_OVER', winner: playerNum });
                 
+                // Lanjut level berikutnya setelah jeda
                 setTimeout(() => {
                     if (gameLevel < 10) {
                         startLevel(gameLevel + 1);
                     } else {
-                        document.getElementById('game-status-text').innerText = "GAME TAMAT! Pemenang Akhir ditentukan.";
+                        document.getElementById('game-status-text').innerHTML = 
+                            `<div class="winner-text">GAME SELESAI! ${winnerName} JUARA!</div>`;
+                        broadcast({ type: 'ALL_FINISHED', winner: playerNum });
                     }
                 }, 4000);
             } else {
-                // Salah urutan (opsional: beri penalti atau biarkan lanjut)
-                // Disini kita abaikan saja sampai ada yang benar
+                // Opsional: Jika ingin memberi tahu di TV bahwa ada yang salah, tapi
+                // untuk speedrun biasanya dibiarkan saja sampai ada yang benar.
+                console.log(`Player ${playerNum} salah urutan.`);
             }
         }
 
         function broadcast(data) {
-            connections.forEach(c => c.send(data));
+            connections.forEach(c => {
+                if(c.open) c.send(data);
+            });
         }
 
         // --- LOGIKA CLIENT (ANDROID) ---
@@ -321,17 +437,24 @@
             const myId = PEER_PREFIX + generateShortId();
             myPeer = new Peer(myId);
 
+            myPeer.on('error', (err) => {
+                 document.getElementById('client-msg').innerText = "Error Koneksi: " + err.type;
+            });
+
             myPeer.on('open', () => {
-                hostConn = myPeer.connect(hostId);
+                document.getElementById('client-msg').innerText = "Menghubungi TV...";
+                hostConn = myPeer.connect(hostId, {reliable: true});
                 
                 hostConn.on('open', () => {
-                    document.getElementById('client-msg').innerText = "Terhubung! Menunggu Host...";
+                    document.getElementById('client-msg').innerText = "Terhubung! Menunggu Host memulai...";
                 });
 
                 hostConn.on('data', handleClientData);
                 
                 hostConn.on('close', () => {
-                    alert("Koneksi ke TV terputus.");
+                    document.getElementById('client-msg').innerText = "Koneksi ke TV terputus.";
+                    document.getElementById('input-area').classList.add('hidden');
+                    document.body.style.border = "none";
                 });
             });
         }
@@ -340,43 +463,64 @@
             const msgEl = document.getElementById('client-msg');
             const inputArea = document.getElementById('input-area');
 
-            if (data.type === 'WELCOME') {
-                myPlayerNum = data.player;
-                document.getElementById('player-id-disp').innerText = `Anda PLAYER ${myPlayerNum}`;
-                document.body.style.border = myPlayerNum === 1 ? "5px solid cyan" : "5px solid orange";
-            }
-            else if (data.type === 'RESET_ROUND') {
-                inputArea.classList.add('hidden');
-                msgEl.classList.remove('hidden');
-                msgEl.innerText = `Level ${data.level}. Perhatikan TV!`;
-                playerInput = [];
-                updateInputDisplay();
-            }
-            else if (data.type === 'START_INPUT') {
-                msgEl.classList.add('hidden');
-                inputArea.classList.remove('hidden');
-                // Simpan target length untuk validasi
-                inputArea.dataset.length = data.length;
-            }
-            else if (data.type === 'GAME_OVER') {
-                inputArea.classList.add('hidden');
-                msgEl.classList.remove('hidden');
-                if (data.winner === myPlayerNum) {
-                    msgEl.innerText = "🏆 KAMU MENANG! 🏆";
-                    document.body.style.backgroundColor = "#2ed573";
-                } else {
-                    msgEl.innerText = "❌ KAMU KALAH!";
-                    document.body.style.backgroundColor = "#ff4757";
-                }
-                setTimeout(() => {
-                    document.body.style.backgroundColor = ""; // Reset bg
-                }, 3000);
+            switch(data.type) {
+                case 'WELCOME':
+                    myPlayerNum = data.player;
+                    document.getElementById('player-id-disp').innerText = `Anda PLAYER ${myPlayerNum}`;
+                    // Beri border warna beda di HP (Biru untuk P1, Orange untuk P2)
+                    document.body.style.borderTop = myPlayerNum === 1 ? "10px solid #1e90ff" : "10px solid #ffa502";
+                    break;
+
+                case 'FULL':
+                     msgEl.innerText = "Game Penuh!";
+                     break;
+
+                case 'RESET_ROUND':
+                    inputArea.classList.add('hidden');
+                    msgEl.classList.remove('hidden');
+                    msgEl.innerHTML = `Level ${data.level} akan dimulai.<br>Siap-siap lihat TV!`;
+                    msgEl.style.background = 'rgba(255,255,255,0.1)';
+                    playerInput = [];
+                    updateInputDisplay();
+                    break;
+
+                case 'START_INPUT':
+                    msgEl.classList.add('hidden');
+                    inputArea.classList.remove('hidden');
+                    // Simpan target length untuk validasi auto-submit
+                    inputArea.dataset.length = data.length;
+                    // Vibrate sedikit di HP tanda mulai (jika didukung browser)
+                    if(navigator.vibrate) navigator.vibrate(200);
+                    break;
+
+                case 'GAME_OVER':
+                    inputArea.classList.add('hidden');
+                    msgEl.classList.remove('hidden');
+                    if (data.winner === myPlayerNum) {
+                        msgEl.innerHTML = "<h2 style='color:#2ed573; font-size:2.5rem;'>🏆 KAMU MENANG! 🏆</h2>";
+                        msgEl.style.background = 'rgba(46, 213, 115, 0.2)';
+                        if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
+                    } else {
+                        msgEl.innerHTML = "<h2 style='color:#ff4757'>❌ LAWAN LEBIH CEPAT!</h2>";
+                        msgEl.style.background = 'rgba(255, 71, 87, 0.2)';
+                        if(navigator.vibrate) navigator.vibrate(500);
+                    }
+                    break;
+                
+                case 'ALL_FINISHED':
+                     inputArea.classList.add('hidden');
+                     msgEl.classList.remove('hidden');
+                     msgEl.innerHTML = (data.winner === myPlayerNum) ? 
+                        "<h1>JUARA ULTIMATE!</h1>Game Selesai." : "<h1>GAME OVER</h1>Lawan Juara Ultimate.";
+                     break;
             }
         }
 
-        // Fungsi Input Player
+        // Fungsi Input Player (Android)
         function inputColor(color) {
             const maxLen = parseInt(document.getElementById('input-area').dataset.length || 0);
+            
+            // Cegah input jika sudah mencapai panjang target (tunggu reset)
             if (playerInput.length >= maxLen) return;
 
             playerInput.push(color);
@@ -396,18 +540,28 @@
         function updateInputDisplay() {
             const disp = document.getElementById('my-input-display');
             disp.innerHTML = '';
+            if(playerInput.length === 0) {
+                disp.innerHTML = '<span style="opacity:0.5; font-style:italic;">Belum ada input...</span>';
+            }
             playerInput.forEach(c => {
                 const div = document.createElement('div');
-                div.className = `color-box c-${c}`;
-                div.style.width = '40px'; 
-                div.style.height = '40px';
+                // Gunakan class flat-box dan warna c-merah, dll
+                div.className = `flat-box c-${c}`;
                 disp.appendChild(div);
             });
+            // Auto scroll ke kanan jika input panjang
+            disp.scrollLeft = disp.scrollWidth;
         }
 
         // --- UTILS ---
         function generateShortId() {
-            return Math.random().toString(36).substr(2, 6);
+            // Menghasilkan ID acak 4 karakter agar URL QR tidak terlalu panjang
+            const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+            let result = '';
+            for (let i = 0; i < 4; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
         }
     </script>
 </body>
