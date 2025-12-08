@@ -13,43 +13,51 @@
         body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; touch-action: none; }
         
         /* HOST UI */
-        #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
+        
         #qr-container { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             background: rgba(0,0,0,0.8); padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #00ffcc;
-            pointer-events: auto;
+            pointer-events: auto; z-index: 10;
         }
-        #game-info { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; }
+        
+        #game-info { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; z-index: 5; }
         .p1-score { color: #ff3333; }
         .p2-score { color: #3388ff; }
+        
         #game-over { 
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 50px; color: red; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; z-index: 10;
+            font-size: 50px; color: red; text-align: center; background: rgba(0,0,0,0.9); padding: 40px; z-index: 20;
         }
 
         /* CLIENT UI */
         #client-ui { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: center; background: #222; }
         .control-area { display: flex; width: 100%; height: 100%; }
-        .btn { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; active: opacity: 0.7; }
+        .btn { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; cursor: pointer; }
         .btn-left { background: linear-gradient(to right, #444, #666); border-right: 1px solid #222; }
         .btn-right { background: linear-gradient(to right, #666, #444); }
         .btn:active { background: #888; }
-        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px;}
+        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px; z-index: 5; }
     </style>
 </head>
 <body>
 
-    <div id="host-view">
+    <div id="host-ui">
         <div id="game-info">
             WAVE: <span id="wave-disp">1</span> | 
-            P1 (RED): <span id="p1-lives" class="p1-score">ALIVE</span> | 
-            P2 (BLUE): <span id="p2-lives" class="p2-score">WAITING...</span>
+            P1: <span id="p1-lives" class="p1-score">ALIVE</span> | 
+            P2: <span id="p2-lives" class="p2-score">WAITING...</span>
         </div>
+        
         <div id="qr-container">
             <h2 style="margin-top:0;">Scan to Join</h2>
-            <div id="qrcode"></div>
-            <p style="font-size: 14px; color: #ccc;">Player 1 & Player 2 scan same code</p>
+            <div id="qrcode" style="display: flex; justify-content: center;"></div>
+            <p style="font-size: 14px; color: #ccc; margin-top: 10px;">
+                Player 1 & Player 2 scan same code<br>
+                <small id="loading-msg">Generating ID...</small>
+            </p>
         </div>
+
         <div id="game-over">
             GAME OVER<br>
             <span id="final-score" style="font-size: 20px; color: white;"></span><br>
@@ -68,13 +76,12 @@
 <script>
     // --- UTILS ---
     const getParams = () => new URLSearchParams(window.location.search);
-    const isMobile = /Android|iPhone/i.test(navigator.userAgent);
-
+    
     // --- CONFIGURATION ---
     const CONFIG = {
         arenaWidth: 30,
         playerSpeed: 0.3,
-        baseSpawnRate: 60, // Frames
+        baseSpawnRate: 60,
         colors: { p1: 0xff3333, p2: 0x3388ff, ground: 0x222222, meteor: 0xffaa00 }
     };
 
@@ -83,20 +90,26 @@
     // ==========================================
     const hostID = getParams().get('host');
 
-    if (hostID) {
-        initClient(hostID);
-    } else {
-        initHost();
-    }
+    // Pastikan DOM sudah load sebelum menjalankan logic
+    window.addEventListener('load', () => {
+        if (hostID) {
+            initClient(hostID);
+        } else {
+            initHost();
+        }
+    });
 
     // ==========================================
-    // HOST LOGIC (Game Engine & Rendering)
+    // HOST LOGIC
     // ==========================================
     function initHost() {
-        document.getElementById('host-ui').style.display = 'block'; // Logic handled by visibility of divs
-        
+        // Tampilkan UI Host
+        const hostDiv = document.getElementById('host-ui');
+        if(hostDiv) hostDiv.style.display = 'block';
+
         // 1. Networking (Host)
-        const peer = new Peer(null, { debug: 1 }); // Let PeerJS server assign ID
+        const peer = new Peer(null, { debug: 1 });
+        
         const players = {
             p1: { conn: null, x: -5, active: false, alive: true, obj: null },
             p2: { conn: null, x: 5, active: false, alive: true, obj: null }
@@ -104,12 +117,26 @@
 
         peer.on('open', (id) => {
             console.log('Host ID:', id);
+            document.getElementById('loading-msg').style.display = 'none'; // Sembunyikan loading
+            
             const joinUrl = `${window.location.href.split('?')[0]}?host=${id}`;
+            
+            // Clear QR lama jika ada
+            document.getElementById("qrcode").innerHTML = "";
+            
             new QRCode(document.getElementById("qrcode"), {
                 text: joinUrl,
                 width: 200,
-                height: 200
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
             });
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            alert("Error PeerJS: " + err.type);
         });
 
         peer.on('connection', (conn) => {
@@ -125,27 +152,28 @@
                     players.p2.active = true;
                     document.getElementById('p2-lives').innerText = "READY";
                     assigned = 'p2';
-                    // Hide QR when P2 joins
+                    
+                    // Mulai game saat P2 masuk
                     document.getElementById('qr-container').style.display = 'none';
                     startGameLoop();
                 }
 
                 if(assigned) {
                     conn.send({ type: 'init', player: assigned, color: assigned === 'p1' ? 'RED' : 'BLUE' });
+                    
                     conn.on('data', (data) => {
-                        if (data.move && players[assigned].alive) {
-                            // Update intended position or velocity
-                            players[assigned].moveDir = data.move; // -1, 0, 1
+                        if (data.move !== undefined && players[assigned].alive) {
+                            players[assigned].moveDir = data.move;
                         }
                     });
+                    
                     conn.on('close', () => {
                         players[assigned].active = false;
                         players[assigned].alive = false;
-                        // Handle disconnect logic if needed
                     });
                 } else {
                     conn.send({ type: 'full' });
-                    conn.close();
+                    setTimeout(() => conn.close(), 500);
                 }
             });
         });
@@ -160,7 +188,8 @@
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        // Masukkan canvas ke dalam host-ui agar tidak menimpa elemen lain
+        hostDiv.insertBefore(renderer.domElement, hostDiv.firstChild);
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -169,11 +198,10 @@
         dirLight.position.set(10, 20, 10);
         scene.add(dirLight);
 
-        // Arena (Grid)
+        // Grid & Plane
         const gridHelper = new THREE.GridHelper(CONFIG.arenaWidth, 20, 0x00ffcc, 0x444444);
         scene.add(gridHelper);
         
-        // Ground Plane (Invisible mostly, for contrast)
         const planeGeo = new THREE.PlaneGeometry(CONFIG.arenaWidth, 100);
         const planeMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
         const plane = new THREE.Mesh(planeGeo, planeMat);
@@ -181,7 +209,7 @@
         plane.position.y = -0.1;
         scene.add(plane);
 
-        // Players
+        // Player Meshes
         function createPlayerMesh(color, x) {
             const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
             const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
@@ -194,7 +222,7 @@
         players.p1.obj = createPlayerMesh(CONFIG.colors.p1, -5);
         players.p2.obj = createPlayerMesh(CONFIG.colors.p2, 5);
 
-        // Game State
+        // Game Loop Variables
         let obstacles = [];
         let frame = 0;
         let wave = 1;
@@ -207,45 +235,37 @@
             const mat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.meteor, flatShading: true });
             const mesh = new THREE.Mesh(geo, mat);
             
-            // Random start X within arena
             const xPos = (Math.random() * CONFIG.arenaWidth) - (CONFIG.arenaWidth / 2);
-            mesh.position.set(xPos, 1, -40); // Spawn far back
-            
-            // Give it some "falling from sky" effect trajectory
-            mesh.position.y = 10 + Math.random() * 5;
+            mesh.position.set(xPos, 15 + Math.random() * 5, -40);
             
             scene.add(mesh);
-            obstacles.push({ mesh: mesh, speed: 0.2 + (wave * 0.05), vy: -0.1 });
+            obstacles.push({ mesh: mesh, speed: 0.2 + (wave * 0.05), vy: -0.15 });
         }
 
         function updatePhysics() {
             if (!gameRunning || isGameOver) return;
 
-            // Update Wave
             frame++;
             if (frame % 600 === 0) {
                 wave++;
                 document.getElementById('wave-disp').innerText = wave;
             }
 
-            // Spawn Logic
-            const spawnRate = Math.max(10, CONFIG.baseSpawnRate - (wave * 5));
-            if (frame % spawnRate === 0) {
-                spawnObstacle();
-            }
+            const spawnRate = Math.max(15, CONFIG.baseSpawnRate - (wave * 5));
+            if (frame % spawnRate === 0) spawnObstacle();
 
-            // Move Players
+            // Player Movement
             ['p1', 'p2'].forEach(key => {
                 const p = players[key];
-                if (p.alive && p.active && p.moveDir) {
+                if (p.alive && p.active && p.moveDir !== undefined) {
                     p.x += p.moveDir * CONFIG.playerSpeed;
-                    // Clamp
+                    
                     const limit = CONFIG.arenaWidth / 2 - 1;
                     if (p.x < -limit) p.x = -limit;
                     if (p.x > limit) p.x = limit;
                     
-                    p.obj.position.x += (p.x - p.obj.position.x) * 0.2; // Smooth lerp
-                    p.obj.rotation.z = -p.moveDir * 0.2; // Tilt effect
+                    p.obj.position.x += (p.x - p.obj.position.x) * 0.2;
+                    p.obj.rotation.z = -p.moveDir * 0.2;
                 } else if (!p.alive) {
                     p.obj.visible = false;
                 } else {
@@ -253,44 +273,34 @@
                 }
             });
 
-            // Move Obstacles
+            // Obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
                 obs.mesh.position.z += obs.speed;
-                
-                // Falling effect
-                if (obs.mesh.position.y > 0.75) {
-                    obs.mesh.position.y += obs.vy;
-                }
+                if (obs.mesh.position.y > 0.75) obs.mesh.position.y += obs.vy;
 
-                // Collision Check
+                // Collision
                 ['p1', 'p2'].forEach(key => {
                     const p = players[key];
                     if (p.alive && p.active) {
                         const dist = p.obj.position.distanceTo(obs.mesh.position);
                         if (dist < 2.0) {
-                            // Hit!
                             p.alive = false;
                             document.getElementById(`${key}-lives`).innerText = "DEAD";
-                            
-                            // Visual explosion placeholder (scale down)
                             p.obj.scale.set(0.1,0.1,0.1);
                         }
                     }
                 });
 
-                // Cleanup
                 if (obs.mesh.position.z > 10) {
                     scene.remove(obs.mesh);
                     obstacles.splice(i, 1);
                 }
             }
 
-            // Game Over Check
+            // Check Game Over
             if (players.p1.active && players.p2.active) {
-                if (!players.p1.alive && !players.p2.alive) {
-                    endGame();
-                }
+                if (!players.p1.alive && !players.p2.alive) endGame();
             }
         }
 
@@ -312,7 +322,6 @@
             renderer.render(scene, camera);
         }
 
-        // Resize handler
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -321,16 +330,14 @@
     }
 
     // ==========================================
-    // CLIENT LOGIC (Controller)
+    // CLIENT LOGIC
     // ==========================================
     function initClient(targetId) {
-        document.getElementById('host-view').style.display = 'none'; // Hide host
-        document.getElementById('client-ui').style.display = 'flex'; // Show controls
+        document.getElementById('host-ui').style.display = 'none';
+        document.getElementById('client-ui').style.display = 'flex';
         
         const peer = new Peer();
         let conn = null;
-        let moveState = 0; // -1 left, 0 stop, 1 right
-
         const statusText = document.getElementById('status-text');
 
         peer.on('open', (id) => {
@@ -338,7 +345,7 @@
             conn = peer.connect(targetId);
 
             conn.on('open', () => {
-                statusText.innerText = "Connected! Waiting for Game Start...";
+                statusText.innerText = "Connected! Waiting...";
             });
 
             conn.on('data', (data) => {
@@ -349,42 +356,29 @@
                     statusText.innerText = "Game Full!";
                 }
             });
-
-            conn.on('close', () => {
-                statusText.innerText = "Disconnected.";
-                document.body.style.background = "#333";
-            });
+            
+            conn.on('close', () => statusText.innerText = "Disconnected.");
+            conn.on('error', () => statusText.innerText = "Connection Error");
         });
 
-        // Input Handling
         const sendMove = (dir) => {
-            if (conn && conn.open) {
-                conn.send({ move: dir });
-            }
+            if (conn && conn.open) conn.send({ move: dir });
         };
 
-        const btnLeft = document.getElementById('btn-left');
-        const btnRight = document.getElementById('btn-right');
+        const setupBtn = (id, dir) => {
+            const btn = document.getElementById(id);
+            const start = (e) => { e.preventDefault(); sendMove(dir); btn.style.background='#999'; };
+            const end = (e) => { e.preventDefault(); sendMove(0); btn.style.background=''; };
+            
+            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchend', end);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+        };
 
-        const startLeft = (e) => { e.preventDefault(); sendMove(-1); btnLeft.style.background='#999'; };
-        const endLeft = (e) => { e.preventDefault(); sendMove(0); btnLeft.style.background=''; };
-        
-        const startRight = (e) => { e.preventDefault(); sendMove(1); btnRight.style.background='#999'; };
-        const endRight = (e) => { e.preventDefault(); sendMove(0); btnRight.style.background=''; };
-
-        // Touch events
-        btnLeft.addEventListener('touchstart', startLeft);
-        btnLeft.addEventListener('touchend', endLeft);
-        btnRight.addEventListener('touchstart', startRight);
-        btnRight.addEventListener('touchend', endRight);
-
-        // Mouse events (for testing on desktop)
-        btnLeft.addEventListener('mousedown', startLeft);
-        btnLeft.addEventListener('mouseup', endLeft);
-        btnRight.addEventListener('mousedown', startRight);
-        btnRight.addEventListener('mouseup', endRight);
+        setupBtn('btn-left', -1);
+        setupBtn('btn-right', 1);
     }
-
 </script>
 </body>
 </html>
