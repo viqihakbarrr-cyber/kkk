@@ -3,206 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cosmic Dodge: Dual Player</title>
+    <title>Colour Splash: Turf War</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; color: white; touch-action: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; touch-action: none; }
         
         /* HOST UI */
         #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
         
         #qr-panel { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            background: rgba(0,0,0,0.85); padding: 30px; border-radius: 15px; text-align: center; border: 2px solid #00ffcc;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); z-index: 100;
+            background: rgba(255,255,255,0.95); color: #333; padding: 30px; border-radius: 15px; text-align: center; border: 4px solid #333;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 100;
         }
         
         #qrcode { 
-            background: white; padding: 10px; border-radius: 5px; display: inline-block; margin: 15px 0;
+            background: white; padding: 10px; border-radius: 5px; display: inline-block; margin: 15px 0; border: 1px solid #ddd;
         }
 
         #host-id-display {
-            font-size: 24px; color: #ffeb3b; font-weight: bold; letter-spacing: 2px; margin: 10px 0; border: 1px dashed #666; padding: 5px;
+            font-size: 24px; color: #333; font-weight: bold; letter-spacing: 2px; margin: 10px 0; border: 2px dashed #999; padding: 5px;
         }
         
-        #game-info { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px #000; z-index: 5; }
-        .p1-score { color: #ff3333; }
-        .p2-score { color: #3388ff; }
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box;}
         
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+        .score-box { background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 24px; text-align: center; min-width: 100px; }
+        .score-p1 { color: #ff4444; border-bottom: 4px solid #ff4444; }
+        .score-p2 { color: #4488ff; border-bottom: 4px solid #4488ff; }
+        
+        #timer-box { font-size: 40px; font-weight: 900; color: white; text-shadow: 2px 2px 0 #000; background: #333; padding: 10px 30px; border-radius: 20px;}
+
+        /* Skill Labels Floating */
+        .skill-label {
+            position: absolute; color: white; font-weight: bold; font-size: 14px; 
+            text-shadow: 1px 1px 2px black; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;
+            transform: translate(-50%, -50%); display: none;
+        }
+
         #game-over { 
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 40px; color: red; text-align: center; background: rgba(0,0,0,0.95); padding: 40px; border: 1px solid red; z-index: 200;
+            width: 80%; max-width: 500px;
+            text-align: center; background: white; color: #333; padding: 40px; border-radius: 20px; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); z-index: 200;
         }
+        #winner-text { font-size: 50px; font-weight: 900; margin: 20px 0; }
 
         /* CLIENT UI */
         #client-ui { display: none; width: 100%; height: 100vh; flex-direction: column; align-items: center; justify-content: center; background: #222; }
         
         #manual-login {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 50;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eee; color: #333; z-index: 50;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
         
-        input { padding: 10px; font-size: 20px; text-align: center; width: 80%; margin-bottom: 20px; border-radius: 5px; border: none; }
-        button.join-btn { padding: 15px 30px; font-size: 20px; background: #00ffcc; border: none; border-radius: 5px; cursor: pointer; color: black; font-weight: bold; }
+        input { padding: 15px; font-size: 20px; text-align: center; width: 70%; margin-bottom: 20px; border-radius: 10px; border: 2px solid #ccc; }
+        button.join-btn { padding: 15px 40px; font-size: 20px; background: #333; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
 
         .control-area { display: none; width: 100%; height: 100%; }
-        .btn { flex: 1; border: none; font-size: 60px; font-weight: bold; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-        .btn-left { background: linear-gradient(to right, #b71c1c, #d32f2f); border-right: 2px solid #000; }
-        .btn-right { background: linear-gradient(to right, #0d47a1, #1976d2); }
-        .btn:active { opacity: 0.7; }
+        .btn { flex: 1; border: none; font-size: 40px; font-weight: bold; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center;}
+        .btn-left { background: #444; border-right: 1px solid #666; }
+        .btn-right { background: #444; }
+        .btn:active { background: #666; }
         
-        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px; z-index: 60; text-shadow: 1px 1px 2px black;}
+        #status-text { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; font-size: 18px; z-index: 60; color: white; font-weight: bold; text-shadow: 1px 1px 2px black;}
     </style>
 </head>
 <body>
 
     <div id="host-ui">
-        <div id="game-info">
-            WAVE: <span id="wave-disp">1</span> | 
-            P1: <span id="p1-lives" class="p1-score">ALIVE</span> | 
-            P2: <span id="p2-lives" class="p2-score">WAITING...</span>
+        <div id="game-ui">
+            <div class="hud-top">
+                <div class="score-box score-p1">P1<br><span id="score-p1-val">0%</span></div>
+                <div id="timer-box">60</div>
+                <div class="score-box score-p2">P2<br><span id="score-p2-val">0%</span></div>
+            </div>
         </div>
         
         <div id="qr-panel">
-            <h2 style="margin:0;">SCAN TO JOIN</h2>
+            <h2 style="margin:0; font-size: 28px;">COLOUR SPLASH</h2>
             <div id="qrcode"></div>
             <div>
-                <p>OR TYPE ID ON PHONE:</p>
+                <p style="margin: 5px 0;">HOST ID:</p>
                 <div id="host-id-display">Generating...</div>
             </div>
-            <p style="font-size: 14px; color: #aaa; margin-top: 10px;">Waiting for players...</p>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">Waiting for players to join...</p>
         </div>
 
         <div id="game-over">
-            GAME OVER<br>
-            <span id="final-score" style="font-size: 20px; color: white;"></span><br>
-            <button onclick="location.reload()" style="font-size: 20px; padding: 10px; margin-top: 20px; cursor: pointer;">RESTART</button>
+            <h1 style="margin:0; color:#888;">TIME'S UP!</h1>
+            <div id="winner-text">RED WINS</div>
+            <div style="font-size: 20px; margin-bottom: 20px;">
+                <span style="color:#ff4444">RED: <span id="final-p1"></span></span> vs 
+                <span style="color:#4488ff">BLUE: <span id="final-p2"></span></span>
+            </div>
+            <button onclick="location.reload()" style="font-size: 20px; padding: 15px 40px; background: #333; color: white; border: none; border-radius: 10px; cursor: pointer;">PLAY AGAIN</button>
         </div>
     </div>
 
     <div id="client-ui">
         <div id="manual-login">
-            <h2 style="color:#00ffcc">JOIN GAME</h2>
-            <p>Scan QR or Enter ID from TV:</p>
-            <input type="text" id="host-id-input" placeholder="e.g. bold-tiger-99">
+            <h2 style="color:#333; font-size: 30px;">JOIN GAME</h2>
+            <p>Scan QR or Enter ID:</p>
+            <input type="text" id="host-id-input" placeholder="e.g. funny-cat-55">
             <button class="join-btn" onclick="manualJoin()">JOIN</button>
-            <div id="client-status" style="margin-top: 20px; color: #888;"></div>
+            <div id="client-status" style="margin-top: 20px; color: #666;"></div>
         </div>
 
         <div class="control-area" id="game-controls">
-            <div id="status-text">CONNECTED</div>
-            <button class="btn btn-left" id="btn-left">LEFT</button>
-            <button class="btn btn-right" id="btn-right">RIGHT</button>
+            <div id="status-text">CONNECTING...</div>
+            <button class="btn btn-left" id="btn-left">⟲ TURN LEFT</button>
+            <button class="btn btn-right" id="btn-right">TURN RIGHT ⟳</button>
         </div>
     </div>
 
 <script>
-    // --- UTILS ---
-    const getParams = () => new URLSearchParams(window.location.search);
-    
     // --- CONFIGURATION ---
     const CONFIG = {
-        arenaWidth: 34,
-        playerSpeed: 0.35,
-        baseSpawnRate: 50,
-        colors: { p1: 0xff3333, p2: 0x3388ff, meteor: 0xffaa00 }
+        arenaSize: 60,         // Ukuran fisik arena
+        textureSize: 512,      // Resolusi tekstur cat (semakin besar semakin detail tapi berat)
+        gameDuration: 60,      // Detik
+        baseSpeed: 0.4,
+        turnSpeed: 0.08,
+        colors: { p1: '#ff4444', p2: '#4488ff', floor: '#ffffff' }
     };
 
-    // ==========================================
-    // LOGIC ROUTER
-    // ==========================================
-    const urlHostID = getParams().get('host');
+    const urlHostID = new URLSearchParams(window.location.search).get('host');
 
     window.addEventListener('load', () => {
-        if (urlHostID) {
-            // Jika ada parameter host di URL, langsung coba connect
-            initClient(urlHostID);
-        } else {
-            // Jika tidak ada parameter, cek apakah ini halaman manual login Client atau Host
-            // Default ke Host jika URL bersih
-            initHost();
-        }
+        if (urlHostID) initClient(urlHostID);
+        else initHost();
     });
 
     // ==========================================
-    // HOST LOGIC
+    // HOST LOGIC (THE GAME)
     // ==========================================
     function initHost() {
-        // Cek jika user tidak sengaja masuk mode host di HP kecil
-        if(window.innerWidth < 600 && !confirm("Layar kecil terdeteksi. Apakah ini TV/Host? Klik Cancel untuk menjadi Controller.")) {
+        if(window.innerWidth < 600 && !confirm("Host pada layar kecil? Klik Cancel untuk menjadi Controller.")) {
              document.getElementById('host-ui').style.display = 'none';
-             initClient(null); // Switch ke mode manual client
-             return;
+             initClient(null); return;
         }
 
         const hostDiv = document.getElementById('host-ui');
         hostDiv.style.display = 'block';
 
-        // Custom ID generation agar pendek dan mudah diketik (optional)
-        // Kita biarkan PeerJS generate default random string tapi kita ambil substring kalau mau
-        // Untuk kestabilan, biarkan PeerJS handle ID, tapi kita tampilkan dengan jelas.
         const peer = new Peer(); 
-        
-        const players = {
-            p1: { conn: null, x: -6, active: false, alive: true, obj: null },
-            p2: { conn: null, x: 6, active: false, alive: true, obj: null }
+        let players = {
+            p1: { conn: null, active: false, x: -10, z: 0, angle: 0, mesh: null, color: CONFIG.colors.p1, speedMult: 1, sizeMult: 1 },
+            p2: { conn: null, active: false, x: 10, z: 0, angle: Math.PI, mesh: null, color: CONFIG.colors.p2, speedMult: 1, sizeMult: 1 }
         };
 
+        // Network Handling
         peer.on('open', (id) => {
-            console.log('Host ID:', id);
             document.getElementById('host-id-display').innerText = id;
-            
-            // Buat URL lengkap
-            // HACK: Jika localhost, kita peringatkan user
-            let currentUrl = window.location.href.split('?')[0];
-            if(currentUrl.includes("file://")) {
-                alert("PERINGATAN: Anda membuka file secara lokal (file://). QR Scan tidak akan bekerja di HP. Silakan ketik ID secara manual di HP atau upload file ini ke hosting (Netlify/Vercel).");
-            }
-
-            const joinUrl = `${currentUrl}?host=${id}`;
-            
-            new QRCode(document.getElementById("qrcode"), {
-                text: joinUrl,
-                width: 180,
-                height: 180,
-                correctLevel : QRCode.CorrectLevel.L // Low correction agar QR tidak terlalu padat
-            });
+            const joinUrl = `${window.location.href.split('?')[0]}?host=${id}`;
+            new QRCode(document.getElementById("qrcode"), { text: joinUrl, width: 180, height: 180 });
         });
 
         peer.on('connection', (conn) => {
             conn.on('open', () => {
-                let assigned = false;
-                if (!players.p1.active) {
-                    players.p1.conn = conn;
-                    players.p1.active = true;
-                    document.getElementById('p1-lives').innerText = "READY";
-                    assigned = 'p1';
-                } else if (!players.p2.active) {
-                    players.p2.conn = conn;
-                    players.p2.active = true;
-                    document.getElementById('p2-lives').innerText = "READY";
-                    assigned = 'p2';
-                    
-                    // START GAME
-                    document.getElementById('qr-panel').style.display = 'none';
-                    startGameLoop();
-                }
-
+                let assigned = !players.p1.active ? 'p1' : (!players.p2.active ? 'p2' : null);
+                
                 if(assigned) {
+                    players[assigned].conn = conn;
+                    players[assigned].active = true;
                     conn.send({ type: 'init', player: assigned, color: assigned === 'p1' ? 'RED' : 'BLUE' });
+                    
                     conn.on('data', (data) => {
-                        if (data.move !== undefined && players[assigned].alive) {
-                            players[assigned].moveDir = data.move;
-                        }
+                        if (data.move !== undefined) players[assigned].moveInput = data.move;
                     });
-                    conn.on('close', () => {
-                        players[assigned].active = false;
-                        players[assigned].alive = false;
-                    });
+                    conn.on('close', () => players[assigned].active = false);
+
+                    if (players.p1.active && players.p2.active) {
+                        document.getElementById('qr-panel').style.display = 'none';
+                        startGame();
+                    }
                 } else {
                     conn.send({ type: 'full' });
                     setTimeout(() => conn.close(), 500);
@@ -210,141 +189,313 @@
             });
         });
 
-        // --- THREE JS RENDERER ---
+        // --- THREE JS SETUP ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+        scene.background = new THREE.Color(0xdddddd);
         
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 20, 25);
-        camera.lookAt(0, 0, -5);
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(0, 55, 40);
+        camera.lookAt(0, 0, 5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         hostDiv.insertBefore(renderer.domElement, hostDiv.firstChild);
 
-        // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(0, 50, 20);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(20, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40;
+        dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40;
         scene.add(dirLight);
 
-        // Arena
-        const gridHelper = new THREE.GridHelper(CONFIG.arenaWidth, 20, 0x00ffcc, 0x222222);
-        scene.add(gridHelper);
+        // --- ARENA & PAINTING SYSTEM ---
+        // 1. Canvas for Texture
+        const canvas = document.createElement('canvas');
+        canvas.width = CONFIG.textureSize;
+        canvas.height = CONFIG.textureSize;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = CONFIG.colors.floor;
+        ctx.fillRect(0,0, CONFIG.textureSize, CONFIG.textureSize);
         
-        // Players
-        function createPlayer(color, x) {
-            const geo = new THREE.ConeGeometry(1.5, 3, 4);
-            const mat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, flatShading: true });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, 1.5, 5);
-            mesh.rotation.y = Math.PI / 4; 
+        // 2. Texture Material
+        const floorTexture = new THREE.CanvasTexture(canvas);
+        floorTexture.minFilter = THREE.LinearFilter;
+        
+        // 3. Floor Mesh
+        const floorGeo = new THREE.PlaneGeometry(CONFIG.arenaSize, CONFIG.arenaSize);
+        const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // 4. Grid Pattern Overlay (Grid Helper)
+        const gridHelper = new THREE.GridHelper(CONFIG.arenaSize, 20, 0xaaaaaa, 0xdddddd);
+        gridHelper.position.y = 0.05; // Slightly above floor to prevent z-fighting
+        scene.add(gridHelper);
+
+        // 5. Walls
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+        function addWall(w, h, d, x, z) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+            mesh.position.set(x, h/2, z);
+            mesh.castShadow = true;
             scene.add(mesh);
-            return mesh;
+        }
+        const wallThick = 2;
+        const wallH = 4;
+        const dist = CONFIG.arenaSize/2 + wallThick/2;
+        addWall(CONFIG.arenaSize + wallThick*2, wallH, wallThick, 0, -dist); // Top
+        addWall(CONFIG.arenaSize + wallThick*2, wallH, wallThick, 0, dist);  // Bottom
+        addWall(wallThick, wallH, CONFIG.arenaSize, -dist, 0); // Left
+        addWall(wallThick, wallH, CONFIG.arenaSize, dist, 0);  // Right
+
+        // --- PLAYERS ---
+        function createPlayerMesh(color, x, z) {
+            const group = new THREE.Group();
+            
+            // Body
+            const geo = new THREE.CapsuleGeometry(1, 2, 4, 8);
+            const mat = new THREE.MeshStandardMaterial({ color: color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.y = 1;
+            mesh.castShadow = true;
+            
+            // Direction Arrow
+            const arrowGeo = new THREE.ConeGeometry(0.5, 1, 4);
+            const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+            arrow.rotation.x = Math.PI / 2;
+            arrow.position.set(0, 2, 1);
+            
+            group.add(mesh);
+            group.add(arrow);
+            group.position.set(x, 0, z);
+            scene.add(group);
+            return group;
         }
 
-        players.p1.obj = createPlayer(CONFIG.colors.p1, -6);
-        players.p2.obj = createPlayer(CONFIG.colors.p2, 6);
+        players.p1.mesh = createPlayerMesh(CONFIG.colors.p1, players.p1.x, players.p1.z);
+        players.p2.mesh = createPlayerMesh(CONFIG.colors.p2, players.p2.x, players.p2.z);
 
-        // Game Loop
-        let obstacles = [];
-        let frame = 0;
-        let wave = 1;
-        let gameRunning = false;
-        let isGameOver = false;
+        // --- SKILL SYSTEM ---
+        let skills = [];
+        const SKILL_TYPES = [
+            { id: 'BOMB', color: '#000000', text: "💣 BOMB" },
+            { id: 'SPEED', color: '#ffff00', text: "⚡ SPEED" },
+            { id: 'BIG', color: '#00ff00', text: "🍄 BIG" }
+        ];
 
-        function spawnObstacle() {
-            const size = Math.random() * 2 + 0.5;
-            const geo = new THREE.IcosahedronGeometry(size, 0);
-            const mat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.meteor, flatShading: true, roughness: 0.8 });
+        function spawnSkill() {
+            const type = SKILL_TYPES[Math.floor(Math.random() * SKILL_TYPES.length)];
+            const x = (Math.random() * (CONFIG.arenaSize - 10)) - (CONFIG.arenaSize/2 - 5);
+            const z = (Math.random() * (CONFIG.arenaSize - 10)) - (CONFIG.arenaSize/2 - 5);
+            
+            // 3D Visual
+            const geo = new THREE.SphereGeometry(1.5, 16, 16);
+            const mat = new THREE.MeshPhongMaterial({ 
+                color: type.color, transparent: true, opacity: 0.6, shininess: 100 
+            });
             const mesh = new THREE.Mesh(geo, mat);
-            
-            const xPos = (Math.random() * CONFIG.arenaWidth) - (CONFIG.arenaWidth / 2);
-            mesh.position.set(xPos, 20, -50);
-            
+            mesh.position.set(x, 1.5, z);
             scene.add(mesh);
-            obstacles.push({ mesh: mesh, speed: 0.3 + (wave * 0.08), vy: -0.2 });
+
+            // HTML Label
+            const label = document.createElement('div');
+            label.className = 'skill-label';
+            label.innerHTML = type.text;
+            document.body.appendChild(label);
+
+            skills.push({ mesh, label, type, x, z, active: true });
         }
 
-        function updatePhysics() {
-            if (!gameRunning || isGameOver) return;
+        // --- LOGIC FUNCTIONS ---
+        // Helper to convert World Pos (3D) to Canvas Pos (2D)
+        function worldToCanvas(x, z) {
+            const halfS = CONFIG.arenaSize / 2;
+            const cx = ((x + halfS) / CONFIG.arenaSize) * CONFIG.textureSize;
+            const cz = ((z + halfS) / CONFIG.arenaSize) * CONFIG.textureSize;
+            return { x: cx, y: cz };
+        }
 
-            frame++;
-            if (frame % 500 === 0) {
-                wave++;
-                document.getElementById('wave-disp').innerText = wave;
+        function paintCanvas(x, z, color, radiusWorld) {
+            const pos = worldToCanvas(x, z);
+            const radiusPx = (radiusWorld / CONFIG.arenaSize) * CONFIG.textureSize;
+            
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radiusPx, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            floorTexture.needsUpdate = true;
+        }
+
+        function calculateScore() {
+            // Expensive operation, run carefully
+            const imgData = ctx.getImageData(0, 0, CONFIG.textureSize, CONFIG.textureSize).data;
+            let p1Px = 0, p2Px = 0, total = 0;
+            
+            for(let i=0; i<imgData.length; i+=4) {
+                const r = imgData[i];
+                const g = imgData[i+1];
+                const b = imgData[i+2];
+                
+                // Simple color detection
+                if (r > 150 && b < 100) p1Px++; // Red dominant
+                else if (b > 150 && r < 100) p2Px++; // Blue dominant
+                
+                // Skip fully white pixels or blend
             }
+            // Approximation of total colored area vs map size
+            const totalPx = (CONFIG.textureSize * CONFIG.textureSize);
+            return { p1: Math.floor((p1Px/totalPx)*100), p2: Math.floor((p2Px/totalPx)*100) };
+        }
 
-            const spawnRate = Math.max(10, CONFIG.baseSpawnRate - (wave * 4));
-            if (frame % spawnRate === 0) spawnObstacle();
+        // --- GAME LOOP ---
+        let gameActive = false;
+        let timeLeft = CONFIG.gameDuration;
+        let frameCount = 0;
+        let nextSkillTime = 100; // Frames until next skill
+
+        function startGame() {
+            if(gameActive) return;
+            gameActive = true;
+            animate();
+            
+            // Timer Countdown
+            const timerInt = setInterval(() => {
+                if(!gameActive) return clearInterval(timerInt);
+                timeLeft--;
+                document.getElementById('timer-box').innerText = timeLeft;
+                
+                if(timeLeft % 2 === 0) { // Update score UI every 2s to save performance
+                    const scores = calculateScore();
+                    document.getElementById('score-p1-val').innerText = scores.p1 + '%';
+                    document.getElementById('score-p2-val').innerText = scores.p2 + '%';
+                }
+
+                if(timeLeft <= 0) {
+                    clearInterval(timerInt);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            const scores = calculateScore();
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-p1').innerText = scores.p1 + "%";
+            document.getElementById('final-p2').innerText = scores.p2 + "%";
+            
+            let wText = "DRAW";
+            if(scores.p1 > scores.p2) { wText = "RED WINS!"; document.getElementById('winner-text').style.color = '#ff4444'; }
+            else if(scores.p2 > scores.p1) { wText = "BLUE WINS!"; document.getElementById('winner-text').style.color = '#4488ff'; }
+            document.getElementById('winner-text').innerText = wText;
+        }
+
+        function update() {
+            frameCount++;
+            
+            // Spawn Skill
+            if (frameCount > nextSkillTime) {
+                spawnSkill();
+                nextSkillTime = frameCount + 300 + Math.random() * 200; // Random interval
+            }
 
             // Players
-            ['p1', 'p2'].forEach(key => {
-                const p = players[key];
-                if (p.alive && p.active) {
-                    // Movement
-                    if (p.moveDir) p.x += p.moveDir * CONFIG.playerSpeed;
-                    
-                    // Boundary
-                    const limit = CONFIG.arenaWidth / 2 - 1.5;
-                    p.x = Math.max(-limit, Math.min(limit, p.x));
-                    
-                    // Lerp visual
-                    p.obj.position.x += (p.x - p.obj.position.x) * 0.3;
-                    p.obj.rotation.z = -p.moveDir * 0.3;
-                } else if (!p.alive) {
-                    p.obj.visible = false;
+            ['p1', 'p2'].forEach(id => {
+                const p = players[id];
+                if (!p.active) return;
+
+                // Physics: Constant Forward, Rotate on Input
+                if (p.moveInput) {
+                    p.angle += p.moveInput * CONFIG.turnSpeed;
                 }
+                
+                p.mesh.rotation.y = -p.angle; // Visual rotation
+
+                // Calculate next position
+                const dx = Math.sin(p.angle) * CONFIG.baseSpeed * p.speedMult;
+                const dz = Math.cos(p.angle) * CONFIG.baseSpeed * p.speedMult;
+                
+                let nextX = p.x + dx;
+                let nextZ = p.z + dz;
+
+                // Wall Collision (Bounce)
+                const limit = CONFIG.arenaSize / 2 - 1;
+                if (nextX > limit || nextX < -limit) {
+                    nextX = Math.max(-limit, Math.min(limit, nextX));
+                    // Simple reflection roughly
+                     p.angle = -p.angle; 
+                }
+                if (nextZ > limit || nextZ < -limit) {
+                    nextZ = Math.max(-limit, Math.min(limit, nextZ));
+                    p.angle = Math.PI - p.angle;
+                }
+
+                p.x = nextX;
+                p.z = nextZ;
+                p.mesh.position.set(p.x, 0, p.z);
+
+                // PAINT FLOOR
+                // Base brush size = 3, Big size = 6
+                paintCanvas(p.x, p.z, p.color, 3 * p.sizeMult);
+
+                // CHECK SKILLS
+                skills.forEach(skill => {
+                    if (!skill.active) return;
+                    const dist = Math.hypot(p.x - skill.x, p.z - skill.z);
+                    if (dist < 2.5 * p.sizeMult) {
+                        // Activate Skill
+                        skill.active = false;
+                        scene.remove(skill.mesh);
+                        skill.label.style.display = 'none';
+                        
+                        // Effect
+                        if (skill.type.id === 'BOMB') {
+                            paintCanvas(p.x, p.z, p.color, 15); // Huge splash
+                        } else if (skill.type.id === 'SPEED') {
+                            p.speedMult = 2.0;
+                            setTimeout(() => p.speedMult = 1, 5000); // 5 sec
+                        } else if (skill.type.id === 'BIG') {
+                            p.sizeMult = 2.0;
+                            p.mesh.scale.set(2,2,2);
+                            setTimeout(() => { p.sizeMult = 1; p.mesh.scale.set(1,1,1); }, 8000);
+                        }
+                    }
+                });
             });
 
-            // Obstacles
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                const obs = obstacles[i];
-                obs.mesh.position.z += obs.speed;
-                obs.mesh.position.y += obs.vy;
-                obs.mesh.rotation.x += 0.05;
-                obs.mesh.rotation.y += 0.05;
-
-                // Collision
-                if (obs.mesh.position.y < 5 && obs.mesh.position.z > 0) {
-                     ['p1', 'p2'].forEach(key => {
-                        const p = players[key];
-                        if (p.alive && p.active) {
-                            if (p.obj.position.distanceTo(obs.mesh.position) < 3.0) {
-                                p.alive = false;
-                                document.getElementById(`${key}-lives`).innerText = "DEAD";
-                            }
-                        }
-                    });
+            // Update Labels Position
+            skills = skills.filter(s => s.active); // Cleanup
+            skills.forEach(s => {
+                // Project 3D pos to 2D screen
+                const vec = new THREE.Vector3(s.x, 3, s.z);
+                vec.project(camera);
+                const x = (vec.x * .5 + .5) * window.innerWidth;
+                const y = (-(vec.y * .5) + .5) * window.innerHeight;
+                
+                if (Math.abs(vec.z) < 1) {
+                    s.label.style.display = 'block';
+                    s.label.style.left = x + 'px';
+                    s.label.style.top = y + 'px';
+                } else {
+                    s.label.style.display = 'none';
                 }
-
-                if (obs.mesh.position.z > 15 || obs.mesh.position.y < -5) {
-                    scene.remove(obs.mesh);
-                    obstacles.splice(i, 1);
-                }
-            }
-
-            if (players.p1.active && players.p2.active && !players.p1.alive && !players.p2.alive) {
-                isGameOver = true;
-                document.getElementById('game-over').style.display = 'block';
-                document.getElementById('final-score').innerText = `SCORE: ${wave * 100 + frame}`;
-            }
+            });
         }
 
         function animate() {
+            if(!gameActive) return;
             requestAnimationFrame(animate);
-            updatePhysics();
+            update();
             renderer.render(scene, camera);
         }
 
-        function startGameLoop() {
-            if(!gameRunning) {
-                gameRunning = true;
-                animate();
-            }
-        }
-        
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -353,10 +504,8 @@
     }
 
     // ==========================================
-    // CLIENT LOGIC
+    // CLIENT LOGIC (CONTROLLER)
     // ==========================================
-    
-    // Fungsi dipanggil tombol Manual Join
     window.manualJoin = function() {
         const id = document.getElementById('host-id-input').value.trim();
         if(id) initClient(id);
@@ -367,7 +516,7 @@
         document.getElementById('client-ui').style.display = 'flex';
         
         const statusDiv = document.getElementById('client-status');
-        statusDiv.innerText = "Connecting to " + targetId + "...";
+        statusDiv.innerText = "Connecting...";
 
         const peer = new Peer();
         let conn = null;
@@ -376,67 +525,56 @@
             conn = peer.connect(targetId);
 
             conn.on('open', () => {
-                // Koneksi sukses, sembunyikan form login, tampilkan kontrol
                 document.getElementById('manual-login').style.display = 'none';
                 document.getElementById('game-controls').style.display = 'flex';
-                document.getElementById('status-text').innerText = "WAITING FOR P2...";
+                document.getElementById('status-text').innerText = "WAITING FOR OPPONENT...";
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'init') {
                     const isP1 = data.color === 'RED';
-                    document.body.style.background = isP1 ? '#b71c1c' : '#0d47a1';
+                    const colorHex = isP1 ? '#ff4444' : '#4488ff';
+                    document.body.style.background = colorHex;
                     
-                    // Update tampilan tombol agar sesuai player
-                    if(isP1) {
-                        document.querySelector('.btn-left').style.background = 'linear-gradient(to right, #b71c1c, #d32f2f)';
-                    } else {
-                        document.querySelector('.btn-left').style.background = 'linear-gradient(to right, #0d47a1, #1976d2)';
-                    }
+                    // Button Colors
+                    const btns = document.querySelectorAll('.btn');
+                    btns.forEach(b => b.style.backgroundColor = isP1 ? '#b71c1c' : '#0d47a1');
 
-                    document.getElementById('status-text').innerText = `YOU ARE ${data.color}`;
+                    document.getElementById('status-text').innerText = `YOU ARE TEAM ${data.color}`;
                 } else if (data.type === 'full') {
-                    alert("Game is full!");
-                    location.reload();
+                    alert("Game Full!"); location.reload();
                 }
             });
 
-            conn.on('close', () => {
-                alert("Host disconnected");
-                location.reload();
-            });
-            
-            // Error handling koneksi
-            setTimeout(() => {
-                if(!conn.open) {
-                    statusDiv.innerText = "Connection timed out. Check ID.";
-                }
-            }, 5000);
+            conn.on('close', () => { alert("Host Disconnected"); location.reload(); });
         });
+
+        // Loop untuk kirim input (agar smooth)
+        let currentDir = 0;
         
-        peer.on('error', (err) => {
-            statusDiv.innerText = "Error: " + err.type;
+        // Input Handling
+        const setDir = (d) => currentDir = d;
+        const btns = [
+            { id: 'btn-left', dir: 1 }, // Note: 1 adds to angle (Left turn in math depends on cam, let's assume + is left rotation visually)
+            { id: 'btn-right', dir: -1 }
+        ];
+
+        btns.forEach(b => {
+            const el = document.getElementById(b.id);
+            const start = (e) => { e.preventDefault(); setDir(b.dir); el.style.opacity = 0.5; };
+            const end = (e) => { e.preventDefault(); setDir(0); el.style.opacity = 1; };
+            el.addEventListener('touchstart', start, {passive: false});
+            el.addEventListener('touchend', end, {passive: false});
+            el.addEventListener('mousedown', start);
+            el.addEventListener('mouseup', end);
         });
 
-        // Controls
-        const sendMove = (dir) => {
-            if (conn && conn.open) conn.send({ move: dir });
-        };
-
-        const setupBtn = (id, dir) => {
-            const btn = document.getElementById(id);
-            const start = (e) => { e.preventDefault(); sendMove(dir); btn.style.opacity = '0.5'; };
-            const end = (e) => { e.preventDefault(); sendMove(0); btn.style.opacity = '1'; };
-            
-            // Support Mobile Touch & Mouse
-            btn.addEventListener('touchstart', start, {passive: false});
-            btn.addEventListener('touchend', end, {passive: false});
-            btn.addEventListener('mousedown', start);
-            btn.addEventListener('mouseup', end);
-        };
-
-        setupBtn('btn-left', -1);
-        setupBtn('btn-right', 1);
+        // Send data loop (20ms interval is smoother than on keypress)
+        setInterval(() => {
+            if (conn && conn.open && currentDir !== 0) {
+                conn.send({ move: currentDir });
+            }
+        }, 30);
     }
 </script>
 </body>
