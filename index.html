@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Colour Splash: Analog Edition</title>
+    <title>Colour Splash: Ultimate</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -22,18 +22,18 @@
             text-align: center; border: 4px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); z-index: 100;
         }
         
-        #qrcode { background: white; padding: 10px; margin: 15px auto; width: fit-content; border: 1px solid #ccc; }
-        #host-id-display { font-size: 24px; font-weight: bold; border: 2px dashed #999; padding: 5px; margin: 10px 0; background: #eee; }
-
-        /* HUD */
         #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;}
         .hud-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
         .score-box { background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 24px; text-align: center; min-width: 100px; color: white; }
         .score-p1 { border-bottom: 5px solid #ff4444; }
         .score-p2 { border-bottom: 5px solid #4488ff; }
-        #timer-box { font-size: 40px; font-weight: 900; background: #333; padding: 5px 30px; border-radius: 20px; border: 2px solid white; }
+        #timer-box { font-size: 50px; font-weight: 900; background: #333; padding: 5px 40px; border-radius: 20px; border: 3px solid white; transition: color 0.2s; }
 
         #game-over { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 40px; border-radius: 20px; text-align: center; z-index: 200; box-shadow: 0 0 100px black; }
+        
+        #chaos-alert { display: none; position: absolute; top: 20%; width: 100%; text-align: center; font-size: 60px; color: yellow; font-weight: 900; text-shadow: 0 0 20px red; animation: pulse 0.5s infinite; z-index: 90; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         /* --- CLIENT UI --- */
         #client-ui { display: none; width: 100%; height: 100vh; background: #222; overflow: hidden; }
@@ -45,19 +45,18 @@
         input { padding: 15px; font-size: 18px; text-align: center; width: 70%; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc; }
         button.join-btn { padding: 15px 40px; font-size: 18px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; }
         
-        /* JOYSTICK AREA */
-        #zone_joystick {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #333 1%, #111 100%);
-            display: none; /* Hidden until connected */
-        }
+        #zone_joystick { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #333 1%, #111 100%); display: none; }
         
-        #client-overlay {
-            position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none;
-            color: white; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 20px; z-index: 60;
+        #client-overlay { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; color: white; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 20px; z-index: 60; }
+
+        /* FROZEN EFFECT UI */
+        #frozen-ui {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 100, 255, 0.6); z-index: 200;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
         }
-        
-        .debug-btn { margin-top: 10px; padding: 5px 10px; background: #ffaaaa; border: 1px solid red; cursor: pointer; font-size: 12px;}
+        #frozen-text { font-size: 40px; color: white; font-weight: 900; animation: shake 0.1s infinite; }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 100% { transform: translate(-1px, -2px) rotate(-1deg); } }
     </style>
 </head>
 <body>
@@ -66,448 +65,524 @@
         <div id="game-ui">
             <div class="hud-top">
                 <div class="score-box score-p1">P1<br><span id="score-p1-val">0%</span></div>
-                <div id="timer-box">60</div>
+                <div id="timer-box">180</div>
                 <div class="score-box score-p2">P2<br><span id="score-p2-val">0%</span></div>
             </div>
+            <div id="chaos-alert">⚠ CHAOS MODE ⚠<br><span style="font-size:30px">SKILLS SPAWN 3x FASTER!</span></div>
         </div>
         
         <div id="qr-panel">
             <h2 style="margin:0;">COLOUR SPLASH</h2>
-            <div id="qrcode"></div>
-            <div>
-                <p style="margin:5px;">ID:</p>
-                <div id="host-id-display">Generating...</div>
-            </div>
+            <div id="qrcode" style="margin: 15px auto;"></div>
+            <div id="host-id-display" style="font-size: 20px; font-weight: bold; background: #eee; padding: 5px;">...</div>
             <p id="waiting-text" style="color: #666; margin-top: 10px;">Waiting for players...</p>
-            
-            <button class="debug-btn" onclick="startGame()">⚠️ FORCE START (DEBUG)</button>
+            <button onclick="startGame()" style="margin-top:10px; padding:5px 10px;">FORCE START</button>
         </div>
 
         <div id="game-over">
             <h1 style="margin:0;">GAME OVER</h1>
             <div id="winner-text" style="font-size: 40px; font-weight: bold; margin: 20px 0;">-</div>
-            <button onclick="location.reload()" style="padding: 10px 30px; font-size: 18px; background: #333; color: white; cursor: pointer;">RESTART</button>
+            <button onclick="resetGame()" style="padding: 15px 40px; font-size: 20px; background: #333; color: white; cursor: pointer; border-radius: 10px; border: none;">PLAY AGAIN (SAME PLAYERS)</button>
         </div>
     </div>
 
     <div id="client-ui">
         <div id="manual-login">
             <h2>JOIN GAME</h2>
-            <input type="text" id="host-id-input" placeholder="Enter Host ID">
+            <input type="text" id="host-id-input" placeholder="Host ID">
             <button class="join-btn" onclick="manualJoin()">CONNECT</button>
-            <div id="client-status" style="margin-top: 15px; color: #666;"></div>
         </div>
-
         <div id="zone_joystick"></div>
-        <div id="client-overlay">CONNECTING...</div>
+        <div id="client-overlay">Connecting...</div>
+        
+        <div id="frozen-ui">
+            <div style="font-size: 80px;">🧊</div>
+            <div id="frozen-text">FROZEN!</div>
+            <div style="margin-top: 20px; font-size: 20px; font-weight: bold;">SHAKE YOUR PHONE!</div>
+        </div>
     </div>
 
 <script>
-    // --- CONFIG ---
+    // --- CONFIGURATION ---
     const CONFIG = {
-        arenaSize: 70,
+        arenaSize: 80,
         textureSize: 512,
-        duration: 60,
-        speed: 0.6,
-        colors: { p1: '#ff4444', p2: '#4488ff', floor: '#ffffff' }
+        duration: 180,        // 3 Menit
+        baseSpeed: 0.8,       // Requirement 4: Lebih cepat (Default 0.4 -> 0.8)
+        colors: { p1: '#ff3333', p2: '#3388ff', floor: '#ffffff' }
     };
 
-    // --- ROUTER ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlHostID = urlParams.get('host');
-
-    window.addEventListener('load', () => {
-        if (urlHostID) initClient(urlHostID);
-        else initHost();
-    });
+    const urlHostID = new URLSearchParams(window.location.search).get('host');
+    window.addEventListener('load', () => urlHostID ? initClient(urlHostID) : initHost());
 
     // ==========================================
-    // HOST SYSTEM
+    // HOST LOGIC
     // ==========================================
-    // Membuat variabel global untuk StartGame agar bisa diakses tombol Force Start
-    window.startGame = null; 
-
     function initHost() {
-        if(window.innerWidth < 600 && !confirm("Layar kecil? Klik Cancel untuk mode Controller.")) {
-             document.getElementById('host-ui').style.display = 'none';
-             initClient(null); return;
-        }
-
+        if(window.innerWidth < 600 && !confirm("Host di layar kecil?")) { document.getElementById('host-ui').style.display='none'; initClient(null); return; }
+        
         document.getElementById('host-ui').style.display = 'block';
-
         const peer = new Peer(); 
         
-        // Player States
+        // Data Structures
         const players = {
-            p1: { active: false, x: -15, z: 0, vx: 0, vz: 0, mesh: null, color: CONFIG.colors.p1, size: 1, speedBuff: 1 },
-            p2: { active: false, x: 15, z: 0, vx: 0, vz: 0, mesh: null, color: CONFIG.colors.p2, size: 1, speedBuff: 1 }
+            p1: { id:'p1', active: false, x: -20, z: 0, prevX: -20, prevZ:0, mesh: null, color: CONFIG.colors.p1, size: 1, speedMult: 1, frozen: 0 },
+            p2: { id:'p2', active: false, x: 20, z: 0, prevX: 20, prevZ:0, mesh: null, color: CONFIG.colors.p2, size: 1, speedMult: 1, frozen: 0 }
         };
+        let minions = []; // Array untuk skill anak buah
+        let skills = [];
 
         // Network
         peer.on('open', (id) => {
             document.getElementById('host-id-display').innerText = id;
-            const link = window.location.href.split('?')[0] + '?host=' + id;
-            new QRCode(document.getElementById("qrcode"), { text: link, width: 150, height: 150 });
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + '?host=' + id, width: 150, height: 150 });
         });
 
         peer.on('connection', (conn) => {
             conn.on('open', () => {
                 let pid = !players.p1.active ? 'p1' : (!players.p2.active ? 'p2' : null);
-                
                 if(pid) {
                     players[pid].active = true;
-                    conn.send({ type: 'init', color: pid === 'p1' ? 'RED' : 'BLUE' });
+                    players[pid].conn = conn;
+                    conn.send({ type: 'init', color: pid==='p1'?'RED':'BLUE' });
                     document.getElementById('waiting-text').innerText = `${pid.toUpperCase()} JOINED!`;
                     
-                    // Terima Data Analog: { x, y } (Vector normalized)
                     conn.on('data', (data) => {
-                        if(data.x !== undefined && data.y !== undefined) {
-                            // Map joystick vector to velocity
-                            // Joystick Y is Up(-)/Down(+), 3D Z is Back(-)/Forward(+)
-                            players[pid].vx = data.x;
-                            players[pid].vz = data.y; 
+                        if(data.x !== undefined) {
+                            // Movement Input
+                            players[pid].inputX = data.x;
+                            players[pid].inputZ = data.y;
+                        } 
+                        else if(data.type === 'SHAKE') {
+                            // Requirement 6: Shake reduces freeze
+                            if(players[pid].frozen > 0) players[pid].frozen -= 0.5; // Kurangi 0.5s per shake event
                         }
                     });
-
+                    
                     conn.on('close', () => players[pid].active = false);
-
-                    // Auto start jika 2 player
-                    if(players.p1.active && players.p2.active) window.startGame();
-                } else {
-                    conn.send({ type: 'full' });
+                    if(players.p1.active && players.p2.active) startGame();
                 }
             });
         });
 
-        // --- 3D SCENE ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xe0e0e0);
+        // --- THREE.JS ---
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 500);
+        camera.position.set(0, 90, 60); camera.lookAt(0,0,0);
         
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
-        camera.position.set(0, 80, 60); // Kamera lebih tinggi untuk view luas
-        camera.lookAt(0, 0, 0);
-
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.getElementById('host-ui').prepend(renderer.domElement);
+        
+        // Lighting
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.8));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+        dl.position.set(20, 50, 20); dl.castShadow = true;
+        dl.shadow.camera.top = 50; dl.shadow.camera.bottom = -50; dl.shadow.camera.left = -50; dl.shadow.camera.right = 50;
+        dl.shadow.mapSize.set(1024, 1024);
+        scene.add(dl);
 
-        // Lights
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
-        scene.add(hemiLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        dirLight.position.set(20, 50, 20);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 1024;
-        dirLight.shadow.mapSize.height = 1024;
-        dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50;
-        dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
-        scene.add(dirLight);
-
-        // --- PAINT SYSTEM ---
+        // Arena
         const canvas = document.createElement('canvas');
         canvas.width = CONFIG.textureSize; canvas.height = CONFIG.textureSize;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,CONFIG.textureSize,CONFIG.textureSize);
-        
         const floorTex = new THREE.CanvasTexture(canvas);
-        const floorGeo = new THREE.PlaneGeometry(CONFIG.arenaSize, CONFIG.arenaSize);
-        const floorMat = new THREE.MeshStandardMaterial({ map: floorTex });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI/2;
-        floor.receiveShadow = true;
-        scene.add(floor);
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.arenaSize, CONFIG.arenaSize), new THREE.MeshStandardMaterial({ map: floorTex }));
+        floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+        
+        // Walls & Grid
+        scene.add(new THREE.GridHelper(CONFIG.arenaSize, 10, 0x999999, 0xcccccc));
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const addWall = (w,d,x,z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,5,d), wMat); m.position.set(x,2.5,z); m.castShadow=true; scene.add(m); };
+        const lim = CONFIG.arenaSize/2 + 1;
+        addWall(CONFIG.arenaSize+2, 2, 0, -lim); addWall(CONFIG.arenaSize+2, 2, 0, lim);
+        addWall(2, CONFIG.arenaSize+2, -lim, 0); addWall(2, CONFIG.arenaSize+2, lim, 0);
 
-        // Grid
-        const grid = new THREE.GridHelper(CONFIG.arenaSize, 14, 0x888888, 0xcccccc);
-        grid.position.y = 0.1;
-        scene.add(grid);
-
-        // Walls
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const createWall = (w,d,x,z) => {
-            const m = new THREE.Mesh(new THREE.BoxGeometry(w, 4, d), wallMat);
-            m.position.set(x, 2, z); m.castShadow = true; scene.add(m);
-        };
-        const offset = CONFIG.arenaSize/2 + 1;
-        createWall(CONFIG.arenaSize+2, 2, 0, -offset); // Top
-        createWall(CONFIG.arenaSize+2, 2, 0, offset);  // Bottom
-        createWall(2, CONFIG.arenaSize+2, -offset, 0); // Left
-        createWall(2, CONFIG.arenaSize+2, offset, 0);  // Right
-
-        // Players Mesh
-        function createPlayer(color, x) {
+        // Player Models
+        function createPlayerMesh(color) {
             const g = new THREE.Group();
-            const body = new THREE.Mesh(
-                new THREE.SphereGeometry(2, 16, 16),
-                new THREE.MeshStandardMaterial({ color: color })
-            );
-            body.position.y = 2; body.castShadow = true;
-            g.add(body);
+            const b = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshStandardMaterial({ color }));
+            b.position.y = 2; b.castShadow = true; g.add(b);
             
-            // Pointer ring
-            const ring = new THREE.Mesh(
-                new THREE.RingGeometry(2.5, 3, 32),
-                new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
-            );
-            ring.rotation.x = -Math.PI/2; ring.position.y = 0.2;
-            g.add(ring);
+            // Ice Block (Visual Freeze)
+            const ice = new THREE.Mesh(new THREE.BoxGeometry(5,5,5), new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.0 }));
+            ice.name = 'ice'; ice.position.y = 2;
+            g.add(ice);
             
-            g.position.set(x, 0, 0);
             scene.add(g);
             return g;
         }
+        players.p1.mesh = createPlayerMesh(players.p1.color);
+        players.p2.mesh = createPlayerMesh(players.p2.color);
 
-        players.p1.mesh = createPlayer(CONFIG.colors.p1, players.p1.x);
-        players.p2.mesh = createPlayer(CONFIG.colors.p2, players.p2.x);
+        // --- GAMEPLAY FUNCTIONS ---
+        // Helper: Convert World to Canvas
+        const toCv = (v) => ((v + CONFIG.arenaSize/2)/CONFIG.arenaSize) * CONFIG.textureSize;
 
-        // --- SKILL SYSTEM ---
-        let skills = [];
-        const SKILL_DEF = [
-            { type: 'BOMB', color: 'black', label: '💣' },
-            { type: 'SPEED', color: 'yellow', label: '⚡' },
-            { type: 'BIG', color: '#00ff00', label: '🍄' }
-        ];
-
-        function spawnSkill() {
-            const def = SKILL_DEF[Math.floor(Math.random() * SKILL_DEF.length)];
-            const x = (Math.random() - 0.5) * (CONFIG.arenaSize - 10);
-            const z = (Math.random() - 0.5) * (CONFIG.arenaSize - 10);
+        // Requirement 2: Interpolated Painting (Fix bintik-bintik saat cepat)
+        function paintLine(x1, z1, x2, z2, color, sizeWorld) {
+            const cx1 = toCv(x1), cz1 = toCv(z1);
+            const cx2 = toCv(x2), cz2 = toCv(z2);
+            const r = (sizeWorld/CONFIG.arenaSize) * CONFIG.textureSize * 2.5; // base brush size
             
-            const mesh = new THREE.Mesh(
-                new THREE.SphereGeometry(1.5),
-                new THREE.MeshPhongMaterial({ color: def.color, transparent: true, opacity: 0.7 })
-            );
-            mesh.position.set(x, 2, z);
-            
-            // Simple text label using DOM
-            const el = document.createElement('div');
-            el.innerText = def.label;
-            el.style.cssText = "position:absolute; font-size:20px; color:white; font-weight:bold; text-shadow:0 0 5px black; display:none;";
-            document.body.appendChild(el);
-
-            scene.add(mesh);
-            skills.push({ mesh, el, def, x, z, active: true });
-        }
-
-        // --- GAME LOOP ---
-        let isRunning = false;
-        let timeLeft = CONFIG.duration;
-        let frame = 0;
-
-        // Painting Logic
-        function paint(x, z, color, size) {
-            const cx = ((x + CONFIG.arenaSize/2) / CONFIG.arenaSize) * CONFIG.textureSize;
-            const cz = ((z + CONFIG.arenaSize/2) / CONFIG.arenaSize) * CONFIG.textureSize;
-            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = r * 2;
+            ctx.strokeStyle = color;
             ctx.beginPath();
-            ctx.arc(cx, cz, (size * 5), 0, Math.PI*2);
+            ctx.moveTo(cx1, cz1);
+            ctx.lineTo(cx2, cz2);
+            ctx.stroke();
+            
+            // Fill circles at ends to be sure
             ctx.fillStyle = color;
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(cx1, cz1, r, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx2, cz2, r, 0, Math.PI*2); ctx.fill();
+            
             floorTex.needsUpdate = true;
         }
 
-        // Score Calc
-        function updateScore() {
-            // Sample pixel (low res check for performance)
-            const data = ctx.getImageData(0,0, CONFIG.textureSize, CONFIG.textureSize).data;
-            let p1 = 0, p2 = 0, total = 0;
-            for(let i=0; i<data.length; i+=16) { // Check every 4th pixel
-                if(data[i] > 150 && data[i+2] < 100) p1++;
-                if(data[i+2] > 150 && data[i] < 100) p2++;
-                total++;
-            }
-            document.getElementById('score-p1-val').innerText = Math.floor((p1/total)*100) + '%';
-            document.getElementById('score-p2-val').innerText = Math.floor((p2/total)*100) + '%';
-            return { p1, p2 };
+        const SKILLS_LIST = [
+            { id: 'BOMB', color: 'black', text: '💣', weight: 2 },
+            { id: 'SPEED', color: 'yellow', text: '⚡', weight: 2 },
+            { id: 'BIG', color: '#00ff00', text: '🍄', weight: 2 },
+            { id: 'FREEZE', color: '#00ffff', text: '❄️', weight: 1.5 }, // New
+            { id: 'MINION', color: '#ff00ff', text: '🤖', weight: 1.5 }  // New
+        ];
+
+        function spawnSkill() {
+            const type = SKILLS_LIST[Math.floor(Math.random()*SKILLS_LIST.length)];
+            const range = CONFIG.arenaSize/2 - 5;
+            const x = (Math.random()*2-1)*range;
+            const z = (Math.random()*2-1)*range;
+            
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(1.5), new THREE.MeshPhongMaterial({ color: type.color, transparent:true, opacity:0.8 }));
+            mesh.position.set(x, 2, z);
+            
+            const el = document.createElement('div');
+            el.innerHTML = type.text + "<br><span style='font-size:12px'>" + type.id + "</span>";
+            el.style.cssText = "position:absolute; color:white; font-weight:bold; text-shadow:0 0 4px black; text-align:center; transform:translate(-50%,-50%); display:none";
+            document.body.appendChild(el);
+
+            scene.add(mesh);
+            skills.push({ mesh, el, type, x, z, active: true });
         }
+
+        // Minion Logic
+        function spawnMinion(owner) {
+            const m = {
+                ownerColor: owner.color,
+                x: owner.x, z: owner.z,
+                vx: (Math.random()-0.5), vz: (Math.random()-0.5),
+                life: 300, // 5 seconds (60fps)
+                mesh: new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshStandardMaterial({color: owner.color}))
+            };
+            m.mesh.position.set(m.x, 1, m.z);
+            scene.add(m.mesh);
+            minions.push(m);
+        }
+
+        let isRunning = false;
+        let timeLeft = CONFIG.duration;
+        let frame = 0;
+        let timerInt = null;
 
         window.startGame = function() {
             if(isRunning) return;
+            resetGameState(); // Reset variables
             isRunning = true;
             document.getElementById('qr-panel').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
             
-            // Timer
-            const tInt = setInterval(() => {
+            // Timer Loop
+            timerInt = setInterval(() => {
                 timeLeft--;
-                document.getElementById('timer-box').innerText = timeLeft;
+                const tb = document.getElementById('timer-box');
+                tb.innerText = timeLeft;
+                
+                // Requirement 3: Warning at 60s
+                if(timeLeft === 60) {
+                    tb.style.color = 'red';
+                    document.getElementById('chaos-alert').style.display = 'block';
+                    setTimeout(() => document.getElementById('chaos-alert').style.display = 'none', 3000);
+                }
+                
                 if(timeLeft % 2 === 0) updateScore();
+                
                 if(timeLeft <= 0) {
-                    clearInterval(tInt);
-                    isRunning = false;
-                    const final = updateScore();
-                    let winner = "DRAW";
-                    if(final.p1 > final.p2) winner = "RED WINS!";
-                    if(final.p2 > final.p1) winner = "BLUE WINS!";
-                    
-                    document.getElementById('winner-text').innerText = winner;
-                    document.getElementById('winner-text').style.color = final.p1 > final.p2 ? CONFIG.colors.p1 : CONFIG.colors.p2;
-                    document.getElementById('game-over').style.display = 'block';
+                    endGame();
                 }
             }, 1000);
-
+            
             animate();
         };
+
+        // Requirement 1: Reset Logic without reload
+        window.resetGame = function() {
+            // Send unfreeze to all clients just in case
+            ['p1','p2'].forEach(id => {
+                if(players[id].conn) players[id].conn.send({ type: 'UNFREEZE' });
+            });
+            startGame(); // Just start again, startGame calls resetGameState
+        };
+
+        function resetGameState() {
+            clearInterval(timerInt);
+            timeLeft = CONFIG.duration;
+            frame = 0;
+            document.getElementById('timer-box').innerText = timeLeft;
+            document.getElementById('timer-box').style.color = 'white';
+            
+            // Clear Canvas
+            ctx.fillStyle = CONFIG.colors.floor;
+            ctx.fillRect(0,0, CONFIG.textureSize, CONFIG.textureSize);
+            floorTex.needsUpdate = true;
+            updateScore(); // Reset score UI
+
+            // Reset Players
+            ['p1', 'p2'].forEach(id => {
+                const p = players[id];
+                p.x = (id==='p1' ? -20 : 20); p.z = 0;
+                p.prevX = p.x; p.prevZ = p.z;
+                p.speedMult = 1; p.size = 1; p.frozen = 0;
+                p.mesh.position.set(p.x, 0, p.z);
+                p.mesh.scale.set(1,1,1);
+                p.mesh.getObjectByName('ice').material.opacity = 0;
+            });
+
+            // Clear Objects
+            skills.forEach(s => { scene.remove(s.mesh); s.el.remove(); });
+            skills = [];
+            minions.forEach(m => scene.remove(m.mesh));
+            minions = [];
+        }
+
+        function endGame() {
+            isRunning = false;
+            clearInterval(timerInt);
+            const scores = updateScore();
+            let msg = "DRAW";
+            if(scores.p1 > scores.p2) msg = "RED WINS!";
+            else if(scores.p2 > scores.p1) msg = "BLUE WINS!";
+            
+            document.getElementById('winner-text').innerText = msg;
+            document.getElementById('winner-text').style.color = scores.p1>scores.p2 ? CONFIG.colors.p1 : (scores.p2>scores.p1 ? CONFIG.colors.p2 : 'black');
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function updateScore() {
+            // Optimize: hanya cek 1 dari 16 pixel
+            const d = ctx.getImageData(0,0, CONFIG.textureSize, CONFIG.textureSize).data;
+            let c1=0, c2=0, tot=0;
+            for(let i=0; i<d.length; i+=16) {
+                if(d[i]>150 && d[i+2]<100) c1++;
+                else if(d[i+2]>150 && d[i]<100) c2++;
+                tot++;
+            }
+            const s1 = Math.floor(c1/tot*100), s2 = Math.floor(c2/tot*100);
+            document.getElementById('score-p1-val').innerText = s1+'%';
+            document.getElementById('score-p2-val').innerText = s2+'%';
+            return {p1:s1, p2:s2};
+        }
 
         function animate() {
             if(!isRunning) return;
             requestAnimationFrame(animate);
             frame++;
+            
+            // Skill Spawn Rate (Requirement 3: 3x faster in last 60s)
+            let spawnRate = (timeLeft <= 60) ? 60 : 180; // 1 sec vs 3 sec (approx)
+            if(frame % spawnRate === 0) spawnSkill();
 
-            if(frame % 200 === 0) spawnSkill();
-
-            // Loop Players
+            // --- PLAYERS UPDATE ---
             ['p1', 'p2'].forEach(id => {
                 const p = players[id];
-                // Support Force Start logic (player active OR host testing P1)
-                const isForceActive = (id === 'p1' && !p.active); 
-                if (!p.active && !isForceActive) return;
-
-                // Move Physics (Direct Control)
-                const speed = CONFIG.speed * p.speedBuff;
-                let nx = p.x + (p.vx * speed);
-                let nz = p.z + (p.vz * speed);
-
-                // Collision Wall
-                const limit = CONFIG.arenaSize/2 - 2;
-                if(nx > limit || nx < -limit) nx = p.x;
-                if(nz > limit || nz < -limit) nz = p.z;
+                const opponent = players[id === 'p1' ? 'p2' : 'p1'];
                 
+                if(!p.active && id !== 'p1') return; // Allow p1 solo debug
+
+                // Freeze Logic
+                if(p.frozen > 0) {
+                    p.frozen -= 0.016; // decrement per frame (approx 1/60s)
+                    p.mesh.getObjectByName('ice').material.opacity = 0.6;
+                    if(p.conn) p.conn.send({ type: 'FREEZE_STATE', val: true });
+                    
+                    if(p.frozen <= 0) {
+                         p.frozen = 0;
+                         p.mesh.getObjectByName('ice').material.opacity = 0;
+                         if(p.conn) p.conn.send({ type: 'UNFREEZE' });
+                    }
+                    return; // SKIP MOVEMENT & PAINTING
+                }
+
+                // Movement
+                const baseSpd = CONFIG.baseSpeed * p.speedMult; 
+                let vx = (p.inputX || 0) * baseSpd;
+                let vz = (p.inputZ || 0) * baseSpd;
+                
+                let nx = p.x + vx; let nz = p.z + vz;
+                const lim = CONFIG.arenaSize/2 - 2;
+                if(nx > lim || nx < -lim) nx = p.x;
+                if(nz > lim || nz < -lim) nz = p.z;
+                
+                p.prevX = p.x; p.prevZ = p.z; // Store for interpolation
                 p.x = nx; p.z = nz;
                 p.mesh.position.set(p.x, 0, p.z);
-                
-                // Visual Scale
-                const targetScale = p.size;
-                p.mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
 
-                // Paint
-                paint(p.x, p.z, p.color, p.size);
+                // PAINT (Interpolated Line)
+                paintLine(p.prevX, p.prevZ, p.x, p.z, p.color, p.size);
 
-                // Skill Collision
+                // Check Skills
                 skills.forEach(s => {
                     if(!s.active) return;
-                    const d = Math.hypot(p.x - s.x, p.z - s.z);
-                    if(d < 3 * p.size) {
-                        s.active = false;
-                        scene.remove(s.mesh);
-                        s.el.remove();
+                    if(p.mesh.position.distanceTo(s.mesh.position) < 3 * p.size) {
+                        s.active = false; scene.remove(s.mesh); s.el.style.display = 'none';
                         
-                        if(s.def.type === 'BOMB') {
-                            paint(p.x, p.z, p.color, 15);
-                        } else if(s.def.type === 'SPEED') {
-                            p.speedBuff = 2;
-                            setTimeout(()=> p.speedBuff = 1, 5000);
-                        } else if(s.def.type === 'BIG') {
-                            p.size = 2.5;
-                            setTimeout(()=> p.size = 1, 8000);
+                        // Apply Effects
+                        if(s.type.id === 'BOMB') {
+                            paintLine(p.x, p.z, p.x, p.z, p.color, 25); // Requirement 5: Bigger Bomb
+                        } else if(s.type.id === 'SPEED') {
+                            p.speedMult = 3; // Requirement 2: 3x Speed
+                            setTimeout(() => p.speedMult = 1, 5000);
+                        } else if(s.type.id === 'BIG') {
+                            p.size = 2.5; p.mesh.scale.set(2.5,2.5,2.5);
+                            setTimeout(() => { p.size=1; p.mesh.scale.set(1,1,1); }, 8000);
+                        } else if(s.type.id === 'FREEZE') {
+                            // Requirement 6: Freeze Opponent
+                            opponent.frozen = 5; // 5 seconds
+                            if(opponent.conn) opponent.conn.send({ type: 'FREEZE_MSG' });
+                        } else if(s.type.id === 'MINION') {
+                            spawnMinion(p);
                         }
                     }
                 });
             });
 
-            // Update Labels
+            // --- MINIONS UPDATE ---
+            for(let i = minions.length-1; i>=0; i--) {
+                const m = minions[i];
+                m.life--;
+                
+                // Random walk logic
+                if(m.life % 20 === 0) {
+                    m.vx = (Math.random()-0.5)*2; m.vz = (Math.random()-0.5)*2;
+                }
+                
+                // Move very fast (Speed 1.2)
+                let nx = m.x + m.vx * 1.2; let nz = m.z + m.vz * 1.2;
+                const lim = CONFIG.arenaSize/2 - 1;
+                if(nx > lim || nx < -lim) { nx = m.x; m.vx *= -1; }
+                if(nz > lim || nz < -lim) { nz = m.z; m.vz *= -1; }
+                
+                // Paint line for minion too
+                paintLine(m.x, m.z, nx, nz, m.ownerColor, 1);
+                m.x = nx; m.z = nz; m.mesh.position.set(m.x, 1, m.z);
+
+                if(m.life <= 0) {
+                    // Explode
+                    paintLine(m.x, m.z, m.x, m.z, m.ownerColor, 8);
+                    scene.remove(m.mesh);
+                    minions.splice(i, 1);
+                }
+            }
+
+            // UI Label Update
             skills.forEach(s => {
                 if(s.active) {
-                    const vec = new THREE.Vector3(s.x, 3, s.z).project(camera);
-                    const x = (vec.x * .5 + .5) * window.innerWidth;
-                    const y = (-(vec.y * .5) + .5) * window.innerHeight;
-                    s.el.style.display = 'block';
-                    s.el.style.left = x + 'px';
-                    s.el.style.top = y + 'px';
+                    const v = s.mesh.position.clone().project(camera);
+                    if(v.z < 1) {
+                        s.el.style.display = 'block';
+                        s.el.style.left = ((v.x+1)/2 * window.innerWidth) + 'px';
+                        s.el.style.top = (-(v.y-1)/2 * window.innerHeight) + 'px';
+                    } else s.el.style.display = 'none';
                 }
             });
 
             renderer.render(scene, camera);
         }
-        
-        // Resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     }
 
     // ==========================================
-    // CLIENT SYSTEM (ANALOG)
+    // CLIENT LOGIC
     // ==========================================
     window.manualJoin = function() {
         const id = document.getElementById('host-id-input').value.trim();
         if(id) initClient(id);
-    }
+    };
 
     function initClient(hostId) {
         document.getElementById('host-ui').style.display = 'none';
         document.getElementById('client-ui').style.display = 'block';
-        
         const overlay = document.getElementById('client-overlay');
-        overlay.innerText = "CONNECTING TO " + hostId + "...";
-
+        
         const peer = new Peer();
         let conn = null;
+        let shakeLastX=0, shakeLastY=0, shakeLastZ=0;
+        let lastShakeTime = 0;
 
         peer.on('open', () => {
             conn = peer.connect(hostId);
-            
             conn.on('open', () => {
                 document.getElementById('manual-login').style.display = 'none';
                 document.getElementById('zone_joystick').style.display = 'block';
-                overlay.innerText = "WAITING FOR START...";
-                
-                // --- NIPPLE.JS SETUP ---
-                const manager = nipplejs.create({
-                    zone: document.getElementById('zone_joystick'),
-                    mode: 'static',
-                    position: { left: '50%', top: '50%' },
-                    color: 'white',
-                    size: 150
-                });
+                overlay.innerText = "WAITING START...";
 
-                // Send Data Loop
-                let moveData = { x: 0, y: 0 };
+                // Joystick
+                const manager = nipplejs.create({ zone: document.getElementById('zone_joystick'), mode: 'static', position: {left:'50%', top:'50%'}, color:'white' });
+                let move = {x:0, y:0};
+                manager.on('move', (e,d) => { if(d.vector) { move.x=d.vector.x; move.y=-d.vector.y; } });
+                manager.on('end', () => { move.x=0; move.y=0; });
                 
-                manager.on('move', (evt, data) => {
-                    // Convert angle/force to Vector XY
-                    // Nipple output: vector {x, y} normalized
-                    if(data.vector) {
-                        // Invert Y because screen Y is down, but 3D Z forward is usually negative/positive logic depending on camera
-                        // Here: Up on screen (Y neg) -> Move Forward (Z neg)
-                        moveData.x = data.vector.x; 
-                        moveData.y = -data.vector.y; 
+                // Send Loop
+                setInterval(() => { if(conn.open) conn.send(move); }, 30);
+            });
+
+            conn.on('data', (d) => {
+                if(d.type === 'init') {
+                    overlay.innerText = `YOU ARE ${d.color}`;
+                    document.getElementById('zone_joystick').style.background = (d.color==='RED' ? '#500' : '#005');
+                }
+                else if(d.type === 'FREEZE_MSG') {
+                    // Start shaking listener
+                    if(window.DeviceMotionEvent) {
+                        window.addEventListener('devicemotion', handleShake, false);
                     }
-                });
-
-                manager.on('end', () => {
-                    moveData = { x: 0, y: 0 };
-                });
-
-                // Throttle sending to 30ms to save bandwidth
-                setInterval(() => {
-                    if(conn.open) conn.send(moveData);
-                }, 30);
-            });
-
-            conn.on('data', (data) => {
-                if(data.type === 'init') {
-                    overlay.innerText = `YOU ARE ${data.color}`;
-                    document.getElementById('zone_joystick').style.background = 
-                        data.color === 'RED' 
-                        ? 'radial-gradient(circle, #800 1%, #200 100%)' 
-                        : 'radial-gradient(circle, #008 1%, #002 100%)';
+                    document.getElementById('frozen-ui').style.display = 'flex';
+                    // Haptic feedback
+                    if(navigator.vibrate) navigator.vibrate([500, 200, 500]); 
                 }
-                else if(data.type === 'full') {
-                    alert("Room Full"); location.reload();
+                else if(d.type === 'UNFREEZE') {
+                    window.removeEventListener('devicemotion', handleShake);
+                    document.getElementById('frozen-ui').style.display = 'none';
                 }
             });
-            
-            conn.on('close', () => { alert("Host Closed"); location.reload(); });
-            
-            // Timeout check
-            setTimeout(() => {
-                if(!conn.open) overlay.innerText = "CONNECTION FAILED. TRY RELOAD.";
-            }, 8000);
         });
+
+        // Shake Logic
+        function handleShake(e) {
+            const acc = e.accelerationIncludingGravity;
+            if(!acc) return;
+            
+            const currTime = Date.now();
+            if ((currTime - lastShakeTime) > 100) {
+                const diffTime = currTime - lastShakeTime;
+                lastShakeTime = currTime;
+                
+                const speed = Math.abs(acc.x + acc.y + acc.z - shakeLastX - shakeLastY - shakeLastZ) / diffTime * 10000;
+                
+                if (speed > 800) { // Threshold shake
+                    if(conn && conn.open) conn.send({ type: 'SHAKE' });
+                    // Visual feedback in client
+                    document.getElementById('frozen-text').style.color = Math.random()>0.5 ? 'red' : 'white';
+                }
+                
+                shakeLastX = acc.x; shakeLastY = acc.y; shakeLastZ = acc.z;
+            }
+        }
     }
+    
+    window.addEventListener('resize', () => window.location.reload()); // Simple resize handle
 </script>
 </body>
 </html>
