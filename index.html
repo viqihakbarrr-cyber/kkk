@@ -19,95 +19,98 @@
         #qr-panel { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             background: rgba(255,255,255,0.95); color: #333; padding: 30px; border-radius: 15px; 
-            text-align: center; border: 4px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); z-index: 100;
+            text-align: center; border: 4px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); z-index: 100; min-width: 300px;
         }
-        
-        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;}
-        
-        /* NEW SCORE BAR (TUG OF WAR) */
-        .hud-top { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        #score-bar-container { 
-            width: 60%; height: 30px; background: #333; border: 3px solid white; border-radius: 15px; 
-            overflow: hidden; display: flex; margin-bottom: 10px; box-shadow: 0 5px 15px black;
-        }
-        #score-p1-bar { height: 100%; background: #ff4444; width: 50%; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-start; padding-left: 10px; font-weight: bold; font-size: 14px; white-space: nowrap;}
-        #score-p2-bar { height: 100%; background: #4488ff; width: 50%; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-weight: bold; font-size: 14px; white-space: nowrap;}
 
-        #timer-box { font-size: 40px; font-weight: 900; background: rgba(0,0,0,0.5); padding: 5px 20px; border-radius: 20px; text-shadow: 2px 2px 0 #000; }
+        .player-status { margin: 10px 0; padding: 10px; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .status-wait { background: #eee; color: #888; }
+        .status-ready { background: #4caf50; color: white; animation: pop 0.3s; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box;}
+        
+        /* TUG OF WAR SCORE BAR */
+        #score-container {
+            width: 80%; margin: 0 auto; height: 30px; background: #333; border: 3px solid white; border-radius: 15px;
+            overflow: hidden; display: flex; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        #bar-p1 { height: 100%; background: #ff4444; width: 50%; transition: width 0.5s ease-out; }
+        #bar-p2 { height: 100%; background: #4488ff; flex-grow: 1; }
+        #timer-float {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-weight: 900; font-size: 20px; color: white; text-shadow: 0 0 4px black; z-index: 5;
+        }
 
         #game-over { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 40px; border-radius: 20px; text-align: center; z-index: 200; box-shadow: 0 0 100px black; }
         
-        #chaos-alert { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 60px; color: yellow; font-weight: 900; text-shadow: 0 0 20px red; animation: pulse 0.5s infinite; z-index: 90; }
+        #chaos-alert { display: none; position: absolute; top: 20%; width: 100%; text-align: center; font-size: 60px; color: yellow; font-weight: 900; text-shadow: 0 0 20px red; animation: pulse 0.5s infinite; z-index: 90; }
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        /* Player Labels (Host Side) */
-        .player-label { position: absolute; color: white; font-weight: bold; font-size: 14px; text-shadow: 0 0 3px black; transform: translate(-50%, -100%); pointer-events: none; text-align: center; }
+        /* Floating Name Labels */
+        .name-label { position: absolute; color: white; font-weight: bold; font-size: 16px; text-shadow: 0 0 4px black; text-align: center; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; }
 
         /* --- CLIENT UI --- */
         #client-ui { display: none; width: 100%; height: 100vh; background: #222; overflow: hidden; }
         
-        /* Login Screen */
-        #manual-login {
+        #login-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eee; color: #333; z-index: 50;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
         }
-        input { padding: 15px; font-size: 18px; text-align: center; width: 70%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
-        button.join-btn { padding: 15px 40px; font-size: 18px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         
-        /* Landscape Controller Layout */
-        #controller-container {
-            display: none; width: 100%; height: 100%; display: flex;
-        }
-        #left-zone {
-            width: 50%; height: 100%; position: relative; border-right: 1px solid #444;
-            display: flex; justify-content: center; align-items: center;
-        }
-        #right-zone {
-            width: 50%; height: 100%; position: relative; background: radial-gradient(circle at center, #333 0%, #111 70%);
-        }
+        /* Lobby UI inside Client */
+        #lobby-ui { display: none; width: 100%; text-align: center; }
+        
+        input { padding: 15px; font-size: 18px; text-align: center; width: 80%; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc; }
+        button.btn-main { padding: 15px 40px; font-size: 18px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 80%; margin-top: 10px; }
+        button.btn-ready { background: #4caf50; }
+        button.btn-disabled { background: #999; cursor: not-allowed; }
 
-        /* Freeze Tap Button */
+        #zone_joystick { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
+        
+        #client-overlay { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; color: white; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 20px; z-index: 60; }
+
+        /* TAP TAP UI */
+        #tap-ui {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 100, 255, 0.8); z-index: 200;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        }
         #tap-btn {
-            display: none; width: 120px; height: 120px; border-radius: 50%;
-            background: #00ffff; border: 5px solid white; color: #0055aa;
-            font-weight: 900; font-size: 24px; cursor: pointer;
-            box-shadow: 0 0 20px #00ffff; animation: pulse 0.2s infinite;
-            justify-content: center; align-items: center; display: flex;
+            width: 200px; height: 200px; border-radius: 50%; background: #fff; color: #00f;
+            font-size: 40px; font-weight: 900; border: 10px solid #00f;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: pointer;
         }
-        #tap-btn:active { transform: scale(0.9); background: white; }
-
-        #client-overlay { position: absolute; top: 10px; width: 100%; text-align: center; pointer-events: none; color: white; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 16px; z-index: 60; }
-        
-        /* Frozen Overlay Text */
-        #frozen-msg { 
-            display: none; position: absolute; top: 20%; left: 0; width: 50%; text-align: center; 
-            color: #00ffff; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px blue; pointer-events: none;
-        }
+        #tap-btn:active { transform: scale(0.95); background: #ddd; }
     </style>
 </head>
 <body>
 
     <div id="host-ui">
         <div id="game-ui">
-            <div class="hud-top">
-                <div id="timer-box">180</div>
-                <div id="score-bar-container">
-                    <div id="score-p1-bar">P1 0%</div>
-                    <div id="score-p2-bar">0% P2</div>
-                </div>
+            <div id="score-container">
+                <div id="bar-p1"></div>
+                <div id="bar-p2"></div>
+                <div id="timer-float">180</div>
             </div>
             <div id="chaos-alert">⚠ CHAOS MODE ⚠<br><span style="font-size:30px">SKILLS SPAWN 3x FASTER!</span></div>
         </div>
         
-        <div id="labels-container"></div>
-
         <div id="qr-panel">
-            <h2 style="margin:0;">COLOUR SPLASH: JUICE</h2>
+            <h2 style="margin:0;">COLOUR SPLASH</h2>
             <div id="qrcode" style="margin: 15px auto;"></div>
-            <div id="host-id-display" style="font-size: 20px; font-weight: bold; background: #eee; padding: 5px;">...</div>
-            <p id="waiting-text" style="color: #666; margin-top: 10px;">Waiting for players...</p>
-            <button onclick="startGame()" style="margin-top:10px; padding:5px 10px;">FORCE START</button>
+            <div id="host-id-display" style="font-size: 14px; background: #eee; padding: 5px; margin-bottom:15px; font-family:monospace;">...</div>
+            
+            <div id="p1-status" class="player-status status-wait">
+                <span>P1 (RED)</span> <span id="p1-name">WAITING...</span>
+            </div>
+            <div id="p2-status" class="player-status status-wait">
+                <span>P2 (BLUE)</span> <span id="p2-name">WAITING...</span>
+            </div>
+
+            <p id="lobby-msg" style="color: #666; font-size: 12px; margin-top: 10px;">Waiting for players to scan & READY...</p>
+            <button onclick="startGame()" id="btn-force-start" style="margin-top:10px; padding:5px 10px; display:none;">FORCE START</button>
         </div>
 
         <div id="game-over">
@@ -118,22 +121,28 @@
     </div>
 
     <div id="client-ui">
-        <div id="manual-login">
-            <h2>JOIN GAME</h2>
-            <input type="text" id="player-name-input" placeholder="Your Name (Max 10)" maxlength="10">
-            <input type="text" id="host-id-input" placeholder="Host ID">
-            <button class="join-btn" onclick="manualJoin()">CONNECT</button>
-        </div>
-        
-        <div id="controller-container" style="display: none;">
-            <div id="left-zone">
-                <div id="frozen-msg">FROZEN! RAPID TAP!</div>
-                <div id="tap-btn" style="display:none;" ontouchstart="sendTap(event)" onmousedown="sendTap(event)">TAP!</div>
+        <div id="login-screen">
+            <div id="conn-step">
+                <h2>JOIN GAME</h2>
+                <input type="text" id="host-id-input" placeholder="Host ID (from QR)">
+                <button class="btn-main" onclick="manualJoin()">CONNECT</button>
             </div>
-            <div id="right-zone"></div>
+
+            <div id="lobby-ui">
+                <h2>WHO ARE YOU?</h2>
+                <input type="text" id="player-name" placeholder="Short Name (Max 10)" maxlength="10">
+                <button class="btn-main btn-ready" onclick="clientReady()">READY!</button>
+                <p id="lobby-status" style="margin-top:15px; color:#666;">Connected.</p>
+            </div>
         </div>
 
-        <div id="client-overlay">Connecting...</div>
+        <div id="zone_joystick"></div> <div id="client-overlay"></div>
+        
+        <div id="tap-ui">
+            <div style="font-size: 30px; color:white; font-weight:bold; margin-bottom:20px;">FROZEN!</div>
+            <div id="tap-btn" ontouchstart="handleTap(event)" onclick="handleTap(event)">TAP!</div>
+            <div style="margin-top: 20px; font-size: 18px; color:white;">TAP FAST TO BREAK ICE!</div>
+        </div>
     </div>
 
 <script>
@@ -153,18 +162,19 @@
     // HOST LOGIC
     // ==========================================
     function initHost() {
-        if(window.innerWidth < 600 && !confirm("Host di layar kecil?")) { document.getElementById('host-ui').style.display='none'; initClient(null); return; }
+        if(window.innerWidth < 600 && !confirm("Start Host on small screen?")) { document.getElementById('host-ui').style.display='none'; initClient(null); return; }
         
         document.getElementById('host-ui').style.display = 'block';
         const peer = new Peer(); 
         
+        // Data Structures
         const players = {
-            p1: { id:'p1', name:'Red', active: false, x: -20, z: 0, prevX: -20, prevZ:0, mesh: null, color: CONFIG.colors.p1, size: 1, speedMult: 1, frozen: 0, label: null },
-            p2: { id:'p2', name:'Blue', active: false, x: 20, z: 0, prevX: 20, prevZ:0, mesh: null, color: CONFIG.colors.p2, size: 1, speedMult: 1, frozen: 0, label: null }
+            p1: { id:'p1', active: false, ready: false, name: '', x: -20, z: 0, prevX: -20, prevZ:0, mesh: null, color: CONFIG.colors.p1, size: 1, targetSize: 1, speedMult: 1, frozen: 0 },
+            p2: { id:'p2', active: false, ready: false, name: '', x: 20, z: 0, prevX: 20, prevZ:0, mesh: null, color: CONFIG.colors.p2, size: 1, targetSize: 1, speedMult: 1, frozen: 0 }
         };
-        let minions = []; 
         let skills = [];
-        let particles = []; // Array for visual effects
+        let particles = [];
+        let nameLabels = { p1: null, p2: null };
 
         // Network
         peer.on('open', (id) => {
@@ -176,61 +186,78 @@
             conn.on('open', () => {
                 let pid = !players.p1.active ? 'p1' : (!players.p2.active ? 'p2' : null);
                 if(pid) {
-                    players[pid].active = true;
-                    players[pid].conn = conn;
+                    const p = players[pid];
+                    p.active = true;
+                    p.conn = conn;
                     
+                    conn.send({ type: 'init', color: pid==='p1'?'RED':'BLUE' });
+                    updateLobbyUI();
+
                     conn.on('data', (data) => {
-                        if(data.type === 'LOGIN') {
-                            players[pid].name = data.name || (pid==='p1'?'Red':'Blue');
-                            createPlayerLabel(pid);
-                            conn.send({ type: 'init', color: pid==='p1'?'RED':'BLUE' });
-                            document.getElementById('waiting-text').innerText = `${players[pid].name} JOINED!`;
-                            if(players.p1.active && players.p2.active) startGame();
+                        if(data.type === 'READY') {
+                            p.name = data.name.substring(0, 10) || pid;
+                            p.ready = true;
+                            updateLobbyUI();
+                            // Auto start if both ready
+                            if(players.p1.ready && players.p2.ready) setTimeout(startGame, 1000);
                         }
                         else if(data.x !== undefined) {
-                            players[pid].inputX = data.x;
-                            players[pid].inputZ = data.y;
+                            p.inputX = data.x; p.inputZ = data.y;
                         } 
-                        else if(data.type === 'TAP') {
-                            // Requirement: Rapid Tap to unfreeze
-                            if(players[pid].frozen > 0) {
-                                players[pid].frozen -= 0.5; 
-                                spawnParticle(players[pid].x, 2, players[pid].z, '#00ffff', 3); // Visual feedback tap
-                            }
+                        else if(data.type === 'TAP_UNFREEZE') {
+                            // Tap reduces freeze by 0.3s
+                            if(p.frozen > 0) p.frozen -= 0.3;
                         }
                     });
                     
-                    conn.on('close', () => { 
-                        players[pid].active = false; 
-                        if(players[pid].label) players[pid].label.remove();
+                    conn.on('close', () => {
+                        p.active = false; p.ready = false; 
+                        updateLobbyUI();
                     });
                 }
             });
         });
 
+        function updateLobbyUI() {
+            const setUI = (pid, elId, nameId) => {
+                const p = players[pid];
+                const el = document.getElementById(elId);
+                const nm = document.getElementById(nameId);
+                if(p.active) {
+                    nm.innerText = p.ready ? (p.name + " (READY)") : "CHOOSING NAME...";
+                    el.className = p.ready ? "player-status status-ready" : "player-status status-wait";
+                } else {
+                    nm.innerText = "WAITING...";
+                    el.className = "player-status status-wait";
+                }
+            };
+            setUI('p1', 'p1-status', 'p1-name');
+            setUI('p2', 'p2-status', 'p2-name');
+            
+            if(players.p1.ready && players.p2.ready) document.getElementById('lobby-msg').innerText = "BOTH READY! STARTING...";
+        }
+
         // --- THREE.JS SETUP ---
-        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x222222); // Darker bg for glow
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
+        // Camera setup
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 500);
-        
-        // Camera Holder for Shake Effect
-        const cameraHolder = new THREE.Object3D();
-        cameraHolder.add(camera);
-        scene.add(cameraHolder);
-        camera.position.set(0, 90, 60); camera.lookAt(0,0,0);
+        const baseCamPos = new THREE.Vector3(0, 90, 60);
+        camera.position.copy(baseCamPos); camera.lookAt(0,0,0);
         
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.getElementById('host-ui').prepend(renderer.domElement);
         
-        // Lighting (Ambient + Directional + Player Glows)
+        // Lighting
         scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
         const dl = new THREE.DirectionalLight(0xffffff, 0.5);
         dl.position.set(20, 50, 20); dl.castShadow = true;
         dl.shadow.mapSize.set(1024, 1024);
+        dl.shadow.camera.top = 50; dl.shadow.camera.bottom = -50; dl.shadow.camera.left = -50; dl.shadow.camera.right = 50;
         scene.add(dl);
 
-        // Arena
+        // Arena Floor
         const canvas = document.createElement('canvas');
         canvas.width = CONFIG.textureSize; canvas.height = CONFIG.textureSize;
         const ctx = canvas.getContext('2d');
@@ -238,56 +265,26 @@
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.arenaSize, CONFIG.arenaSize), new THREE.MeshStandardMaterial({ map: floorTex }));
         floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
         
-        // Walls
-        scene.add(new THREE.GridHelper(CONFIG.arenaSize, 10, 0x555555, 0x333333));
-        const wMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        // Walls & Grid
+        scene.add(new THREE.GridHelper(CONFIG.arenaSize, 10, 0x999999, 0xcccccc));
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
         const addWall = (w,d,x,z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,5,d), wMat); m.position.set(x,2.5,z); m.castShadow=true; scene.add(m); };
         const lim = CONFIG.arenaSize/2 + 1;
         addWall(CONFIG.arenaSize+2, 2, 0, -lim); addWall(CONFIG.arenaSize+2, 2, 0, lim);
         addWall(2, CONFIG.arenaSize+2, -lim, 0); addWall(2, CONFIG.arenaSize+2, lim, 0);
 
-        // Helper: Create Labels
-        function createPlayerLabel(pid) {
-            if(players[pid].label) players[pid].label.remove();
-            const div = document.createElement('div');
-            div.className = 'player-label';
-            div.innerText = players[pid].name;
-            div.style.color = players[pid].color;
-            document.getElementById('labels-container').appendChild(div);
-            players[pid].label = div;
-        }
-
-        // Helper: Particles (Simple Mesh based)
-        const partGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        function spawnParticle(x, y, z, color, count=5, speed=0.5) {
-            for(let i=0; i<count; i++) {
-                const mat = new THREE.MeshBasicMaterial({ color: color });
-                const m = new THREE.Mesh(partGeo, mat);
-                m.position.set(x, y, z);
-                m.vx = (Math.random()-0.5) * speed;
-                m.vy = (Math.random()) * speed;
-                m.vz = (Math.random()-0.5) * speed;
-                m.life = 1.0; // 1 second
-                scene.add(m);
-                particles.push(m);
-            }
-        }
-
-        // Helper: Camera Shake
-        let shakeIntensity = 0;
-        function addShake(amount) { shakeIntensity = amount; }
-
+        // Player Models & Juice
         function createPlayerMesh(color) {
             const g = new THREE.Group();
             const b = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
             b.position.y = 2; b.castShadow = true; g.add(b);
             
             // Dynamic Light
-            const pl = new THREE.PointLight(color, 1, 30);
-            pl.position.y = 5;
-            g.add(pl);
+            const light = new THREE.PointLight(color, 1, 30);
+            light.position.y = 5; 
+            g.add(light);
 
-            // Ice Block
+            // Ice Block (Visual Freeze)
             const ice = new THREE.Mesh(new THREE.BoxGeometry(5,5,5), new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.0 }));
             ice.name = 'ice'; ice.position.y = 2;
             g.add(ice);
@@ -298,30 +295,59 @@
         players.p1.mesh = createPlayerMesh(players.p1.color);
         players.p2.mesh = createPlayerMesh(players.p2.color);
 
-        // --- GAMEPLAY ---
-        const toCv = (v) => ((v + CONFIG.arenaSize/2)/CONFIG.arenaSize) * CONFIG.textureSize;
+        // Floating Labels
+        function createLabel(id) {
+            const div = document.createElement('div');
+            div.className = 'name-label';
+            document.body.appendChild(div);
+            return div;
+        }
+        nameLabels.p1 = createLabel('p1');
+        nameLabels.p2 = createLabel('p2');
 
+        // --- PARTICLE SYSTEM ---
+        function spawnParticles(x, z, color, count, type = 'splatter') {
+            const geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            
+            for(let i=0; i<count; i++) {
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(x, type==='up' ? 2 : 1, z);
+                
+                // Velocity
+                const v = new THREE.Vector3(
+                    (Math.random()-0.5) * (type==='explode'?20:5),
+                    (Math.random()) * (type==='up'?20:10),
+                    (Math.random()-0.5) * (type==='explode'?20:5)
+                );
+                
+                scene.add(mesh);
+                particles.push({ mesh, v, life: 1.0, gravity: type==='up' ? 0.5 : 1.0 });
+            }
+        }
+
+        // --- PAINTING ---
+        const toCv = (v) => ((v + CONFIG.arenaSize/2)/CONFIG.arenaSize) * CONFIG.textureSize;
+        
         function paintLine(x1, z1, x2, z2, color, sizeWorld) {
             const cx1 = toCv(x1), cz1 = toCv(z1);
             const cx2 = toCv(x2), cz2 = toCv(z2);
             const r = (sizeWorld/CONFIG.arenaSize) * CONFIG.textureSize * 2.5; 
             
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = r * 2;
-            ctx.strokeStyle = color; ctx.fillStyle = color;
-            
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = r * 2; ctx.strokeStyle = color;
             ctx.beginPath(); ctx.moveTo(cx1, cz1); ctx.lineTo(cx2, cz2); ctx.stroke();
+            ctx.fillStyle = color;
             ctx.beginPath(); ctx.arc(cx1, cz1, r, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(cx2, cz2, r, 0, Math.PI*2); ctx.fill();
-            
             floorTex.needsUpdate = true;
         }
 
+        // --- SKILLS ---
         const SKILLS_LIST = [
-            { id: 'BOMB', color: 'black', text: '💣', weight: 2 },
-            { id: 'SPEED', color: 'yellow', text: '⚡', weight: 2 },
-            { id: 'BIG', color: '#00ff00', text: '🍄', weight: 2 },
-            { id: 'FREEZE', color: '#00ffff', text: '❄️', weight: 1.5 },
-            { id: 'MINION', color: '#ff00ff', text: '🤖', weight: 1.5 }
+            { id: 'BOMB', color: 'black', text: '💣' },
+            { id: 'SPEED', color: 'yellow', text: '⚡' }, // With After-Image
+            { id: 'BIG', color: '#00ff00', text: '🍄' }, // Shrinks over time
+            { id: 'FREEZE', color: '#00ffff', text: '❄️' } // Tap Tap
         ];
 
         function spawnSkill() {
@@ -330,57 +356,42 @@
             const x = (Math.random()*2-1)*range;
             const z = (Math.random()*2-1)*range;
             
-            // Effect Visual
-            spawnParticle(x, 2, z, 'white', 10);
-
-            const mesh = new THREE.Mesh(new THREE.SphereGeometry(1.5), new THREE.MeshPhongMaterial({ color: type.color, transparent:true, opacity:0.8, emissive: type.color, emissiveIntensity: 0.5 }));
+            // Skill visuals: Sparkling box
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshPhongMaterial({ color: type.color, emissive: type.color, emissiveIntensity: 0.5 }));
             mesh.position.set(x, 2, z);
             
+            // DOM Label
             const el = document.createElement('div');
-            el.innerHTML = type.text + "<br><span style='font-size:12px'>" + type.id + "</span>";
-            el.style.cssText = "position:absolute; color:white; font-weight:bold; text-shadow:0 0 4px black; text-align:center; transform:translate(-50%,-50%); display:none";
+            el.innerHTML = type.text;
+            el.style.cssText = "position:absolute; font-size:24px; text-shadow:0 0 5px white; transform:translate(-50%,-50%); display:none";
             document.body.appendChild(el);
 
             scene.add(mesh);
-            skills.push({ mesh, el, type, x, z, active: true });
+            skills.push({ mesh, el, type, x, z, active: true, rot: Math.random() });
         }
 
-        function spawnMinion(owner) {
-            const m = {
-                ownerColor: owner.color,
-                x: owner.x, z: owner.z,
-                vx: (Math.random()-0.5), vz: (Math.random()-0.5),
-                life: 300, 
-                mesh: new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshStandardMaterial({color: owner.color}))
-            };
-            m.mesh.position.set(m.x, 1, m.z);
-            scene.add(m.mesh);
-            minions.push(m);
-        }
-
+        // --- GAME LOOP ---
         let isRunning = false;
         let timeLeft = CONFIG.duration;
         let frame = 0;
         let timerInt = null;
+        let shakeIntensity = 0;
 
         window.startGame = function() {
             if(isRunning) return;
-            resetGameState(); 
+            resetGameState();
             isRunning = true;
             document.getElementById('qr-panel').style.display = 'none';
             document.getElementById('game-over').style.display = 'none';
             
             timerInt = setInterval(() => {
                 timeLeft--;
-                const tb = document.getElementById('timer-box');
-                tb.innerText = timeLeft;
+                document.getElementById('timer-float').innerText = timeLeft;
                 
                 if(timeLeft === 60) {
-                    tb.style.color = 'red';
                     document.getElementById('chaos-alert').style.display = 'block';
                     setTimeout(() => document.getElementById('chaos-alert').style.display = 'none', 3000);
                 }
-                if(timeLeft % 2 === 0) updateScore();
                 if(timeLeft <= 0) endGame();
             }, 1000);
             
@@ -398,63 +409,71 @@
             clearInterval(timerInt);
             timeLeft = CONFIG.duration;
             frame = 0;
-            document.getElementById('timer-box').innerText = timeLeft;
-            document.getElementById('timer-box').style.color = 'white';
+            document.getElementById('timer-float').innerText = timeLeft;
             
+            // Clear Canvas
             ctx.fillStyle = CONFIG.colors.floor;
             ctx.fillRect(0,0, CONFIG.textureSize, CONFIG.textureSize);
             floorTex.needsUpdate = true;
-            updateScore(); 
+            updateScoreBar(50); // Center bar
 
+            // Reset Players
             ['p1', 'p2'].forEach(id => {
                 const p = players[id];
                 p.x = (id==='p1' ? -20 : 20); p.z = 0;
                 p.prevX = p.x; p.prevZ = p.z;
-                p.speedMult = 1; p.size = 1; p.frozen = 0;
+                p.speedMult = 1; p.size = 1; p.targetSize = 1; p.frozen = 0;
                 p.mesh.position.set(p.x, 0, p.z);
                 p.mesh.scale.set(1,1,1);
                 p.mesh.getObjectByName('ice').material.opacity = 0;
+                
+                // Show names
+                nameLabels[id].innerText = p.name || id.toUpperCase();
+                nameLabels[id].style.display = 'block';
             });
 
+            // Clear Objects
             skills.forEach(s => { scene.remove(s.mesh); s.el.remove(); });
             skills = [];
-            minions.forEach(m => scene.remove(m.mesh));
-            minions = [];
-            particles.forEach(p => scene.remove(p));
+            particles.forEach(p => scene.remove(p.mesh));
             particles = [];
         }
 
         function endGame() {
             isRunning = false;
             clearInterval(timerInt);
-            const scores = updateScore();
+            const scores = updateScoreBar(null, true); // Get final score
             let msg = "DRAW";
-            if(scores.p1 > scores.p2) msg = `${players.p1.name.toUpperCase()} WINS!`;
-            else if(scores.p2 > scores.p1) msg = `${players.p2.name.toUpperCase()} WINS!`;
+            if(scores.p1 > scores.p2) msg = (players.p1.name || "RED") + " WINS!";
+            else if(scores.p2 > scores.p1) msg = (players.p2.name || "BLUE") + " WINS!";
             
             document.getElementById('winner-text').innerText = msg;
             document.getElementById('winner-text').style.color = scores.p1>scores.p2 ? CONFIG.colors.p1 : (scores.p2>scores.p1 ? CONFIG.colors.p2 : 'black');
             document.getElementById('game-over').style.display = 'block';
         }
 
-        function updateScore() {
+        function updateScoreBar(forceVal, returnVals) {
+            // Sample canvas
             const d = ctx.getImageData(0,0, CONFIG.textureSize, CONFIG.textureSize).data;
             let c1=0, c2=0, tot=0;
-            for(let i=0; i<d.length; i+=32) { // Optimized sampling
+            for(let i=0; i<d.length; i+=64) { // Optimization skip
                 if(d[i]>150 && d[i+2]<100) c1++;
                 else if(d[i+2]>150 && d[i]<100) c2++;
                 tot++;
             }
-            const s1 = Math.floor(c1/tot*100), s2 = Math.floor(c2/tot*100);
+            const s1 = (c1/tot)*100; 
+            const s2 = (c2/tot)*100;
+            const totalPainted = s1 + s2;
             
-            // Visual Score Bar
-            document.getElementById('score-p1-bar').style.width = s1 + '%';
-            document.getElementById('score-p1-bar').innerText = players.p1.name + ' ' + s1 + '%';
+            // Tug of War Logic: width of P1 bar relative to total width
+            // If total painted is low, it stays near 50, but as map fills, it shifts
+            // Simplified: Just use P1 vs (P1+P2) ratio for the bar split
+            let p1Ratio = 50;
+            if(c1+c2 > 0) p1Ratio = (c1 / (c1+c2)) * 100;
             
-            document.getElementById('score-p2-bar').style.width = s2 + '%';
-            document.getElementById('score-p2-bar').innerText = s2 + '% ' + players.p2.name;
+            document.getElementById('bar-p1').style.width = p1Ratio + '%';
             
-            return {p1:s1, p2:s2};
+            if(returnVals) return {p1:c1, p2:c2};
         }
 
         function animate() {
@@ -462,55 +481,61 @@
             requestAnimationFrame(animate);
             frame++;
             
-            // Camera Shake Update
-            if(shakeIntensity > 0) {
-                cameraHolder.position.set( (Math.random()-0.5)*shakeIntensity, (Math.random()-0.5)*shakeIntensity, (Math.random()-0.5)*shakeIntensity );
-                shakeIntensity *= 0.9;
-                if(shakeIntensity < 0.1) { shakeIntensity = 0; cameraHolder.position.set(0,0,0); }
-            }
-
             let spawnRate = (timeLeft <= 60) ? 60 : 180;
             if(frame % spawnRate === 0) spawnSkill();
+            if(frame % 10 === 0) updateScoreBar();
 
-            // Check Collision P1 vs P2
-            if(players.p1.mesh.position.distanceTo(players.p2.mesh.position) < 4) {
-                spawnParticle((players.p1.x+players.p2.x)/2, 2, (players.p1.z+players.p2.z)/2, 'orange', 10, 1);
-                addShake(1);
+            // Camera Shake Decay
+            if(shakeIntensity > 0) {
+                camera.position.x = baseCamPos.x + (Math.random()-0.5)*shakeIntensity;
+                camera.position.z = baseCamPos.z + (Math.random()-0.5)*shakeIntensity;
+                shakeIntensity *= 0.9;
+                if(shakeIntensity < 0.1) {
+                    shakeIntensity = 0;
+                    camera.position.copy(baseCamPos);
+                }
             }
 
+            // Players
             ['p1', 'p2'].forEach(id => {
                 const p = players[id];
                 const opponent = players[id === 'p1' ? 'p2' : 'p1'];
                 
-                if(!p.active && id !== 'p1') return; 
-
-                // Label Follow
-                if(p.label) {
-                    const v = p.mesh.position.clone(); v.y += 5;
+                // Update Name Label Position
+                if(p.mesh) {
+                    const v = p.mesh.position.clone();
+                    v.y += 4; // Above head
                     v.project(camera);
-                    p.label.style.left = ((v.x+1)/2 * window.innerWidth) + 'px';
-                    p.label.style.top = (-(v.y-1)/2 * window.innerHeight) + 'px';
+                    const lx = (v.x * .5 + .5) * window.innerWidth;
+                    const ly = (-(v.y * .5) + .5) * window.innerHeight;
+                    nameLabels[id].style.left = lx + 'px';
+                    nameLabels[id].style.top = ly + 'px';
                 }
 
-                // Freeze Logic
+                if(!p.active) return;
+
+                // Freeze
                 if(p.frozen > 0) {
                     p.frozen -= 0.016; 
                     p.mesh.getObjectByName('ice').material.opacity = 0.6;
+                    // Jiggle mesh while frozen
+                    p.mesh.rotation.z = Math.sin(frame*0.5) * 0.1;
+                    
                     if(p.conn) p.conn.send({ type: 'FREEZE_STATE', val: true });
                     
                     if(p.frozen <= 0) {
                          p.frozen = 0;
                          p.mesh.getObjectByName('ice').material.opacity = 0;
-                         spawnParticle(p.x, 2, p.z, 'cyan', 20, 1); // Ice break effect
+                         p.mesh.rotation.z = 0;
                          if(p.conn) p.conn.send({ type: 'UNFREEZE' });
                     }
                     return; 
                 }
 
-                // Smooth Big Shrink Logic
-                if(p.targetSize === 1 && p.size > 1) {
-                    p.size -= 0.02; // Shrink speed
-                    if(p.size < 1) p.size = 1;
+                // Smooth Size Transition (For BIG skill wearing off)
+                if(p.size > p.targetSize) {
+                    p.size -= 0.01;
+                    if(p.size < p.targetSize) p.size = p.targetSize;
                     p.mesh.scale.set(p.size, p.size, p.size);
                 }
 
@@ -519,54 +544,61 @@
                 let vx = (p.inputX || 0) * baseSpd;
                 let vz = (p.inputZ || 0) * baseSpd;
                 
+                // Juice: Tilt mesh towards movement
+                p.mesh.rotation.x = vz * 0.2;
+                p.mesh.rotation.z = -vx * 0.2;
+
                 let nx = p.x + vx; let nz = p.z + vz;
                 const lim = CONFIG.arenaSize/2 - 2;
                 if(nx > lim || nx < -lim) nx = p.x;
                 if(nz > lim || nz < -lim) nz = p.z;
                 
-                p.prevX = p.x; p.prevZ = p.z; 
+                p.prevX = p.x; p.prevZ = p.z;
                 p.x = nx; p.z = nz;
                 p.mesh.position.set(p.x, 0, p.z);
 
-                // PAINT
+                // Juice: Splatter particles when moving
+                if(Math.abs(vx)+Math.abs(vz) > 0.1 && frame % 5 === 0) {
+                    spawnParticles(p.x, p.z, p.color, 2, 'splatter');
+                }
+
+                // Paint
                 paintLine(p.prevX, p.prevZ, p.x, p.z, p.color, p.size);
-                
-                // PARTICLE TRAIL (Juice)
-                if(frame % 5 === 0 && (vx!=0 || vz!=0)) {
-                    spawnParticle(p.x, 0.5, p.z, p.color, 1, 0.2);
-                }
 
-                // AFTER IMAGE SKILL (New Speed Mechanic)
+                // Skill: Speed After-Image (Paint blob behind)
                 if(p.speedMult > 1 && frame % 10 === 0) {
-                     // Paint 2 units behind
-                     paintLine(p.x - vx*10, p.z - vz*10, p.x - vx*10, p.z - vz*10, p.color, 1.5);
+                   paintLine(p.x - vx*5, p.z - vz*5, p.x - vx*5, p.z - vz*5, p.color, p.size);
                 }
 
-                // Check Skills
+                // Collision with Opponent (Juice: Explosion)
+                if(p.mesh.position.distanceTo(opponent.mesh.position) < (2*p.size + 2*opponent.size) && opponent.active) {
+                    spawnParticles((p.x+opponent.x)/2, (p.z+opponent.z)/2, 'white', 10, 'explode');
+                    // Push back slightly? (Simplified: just visual)
+                }
+
+                // Skill Check
                 skills.forEach(s => {
                     if(!s.active) return;
+                    s.mesh.rotation.y += 0.05; // Spin skill
+                    
                     if(p.mesh.position.distanceTo(s.mesh.position) < 3 * p.size) {
                         s.active = false; scene.remove(s.mesh); s.el.style.display = 'none';
-                        spawnParticle(s.x, 2, s.z, 'gold', 20, 1); // Pickup Effect
-                        
-                        // Apply Effects
+                        spawnParticles(s.x, s.z, 'white', 20, 'up'); // Juice: Sparkle
+
                         if(s.type.id === 'BOMB') {
-                            paintLine(p.x, p.z, p.x, p.z, p.color, 25); 
-                            addShake(2);
-                            spawnParticle(p.x, 1, p.z, p.color, 30, 2);
+                            paintLine(p.x, p.z, p.x, p.z, p.color, 25);
+                            shakeIntensity = 2; // Camera Shake!
+                            spawnParticles(p.x, p.z, p.color, 30, 'explode');
                         } else if(s.type.id === 'SPEED') {
                             p.speedMult = 3; 
                             setTimeout(() => p.speedMult = 1, 5000);
                         } else if(s.type.id === 'BIG') {
-                            p.size = 2.5; p.mesh.scale.set(2.5,2.5,2.5);
-                            p.targetSize = 2.5; // logic flag
-                            addShake(0.5);
-                            setTimeout(() => { p.targetSize = 1; }, 8000); // Start shrinking later
+                            p.size = 2.5; p.targetSize = 1; // It will shrink automatically in update loop
+                            p.mesh.scale.set(2.5,2.5,2.5);
+                            shakeIntensity = 1;
                         } else if(s.type.id === 'FREEZE') {
-                            opponent.frozen = 5; 
+                            opponent.frozen = 4; // 4s default
                             if(opponent.conn) opponent.conn.send({ type: 'FREEZE_MSG' });
-                        } else if(s.type.id === 'MINION') {
-                            spawnMinion(p);
                         }
                     }
                 });
@@ -575,33 +607,21 @@
             // Particles Update
             for(let i=particles.length-1; i>=0; i--) {
                 const pt = particles[i];
-                pt.position.x += pt.vx; pt.position.y += pt.vy; pt.position.z += pt.vz;
-                pt.vy -= 0.02; // gravity
-                pt.life -= 0.02;
-                pt.scale.setScalar(pt.life);
-                if(pt.position.y < 0) { pt.position.y = 0; pt.vy *= -0.5; } // bounce
-                if(pt.life <= 0) { scene.remove(pt); particles.splice(i,1); }
-            }
+                pt.life -= 0.03;
+                pt.v.y -= pt.gravity; // Gravity
+                pt.mesh.position.add(pt.v);
+                pt.mesh.rotation.x += 0.1;
+                pt.mesh.scale.setScalar(pt.life);
+                
+                if(pt.mesh.position.y < 0) pt.life = 0; // Hit floor
 
-            // Minions Update
-            for(let i = minions.length-1; i>=0; i--) {
-                const m = minions[i];
-                m.life--;
-                if(m.life % 20 === 0) { m.vx = (Math.random()-0.5)*2; m.vz = (Math.random()-0.5)*2; }
-                let nx = m.x + m.vx * 1.2; let nz = m.z + m.vz * 1.2;
-                const lim = CONFIG.arenaSize/2 - 1;
-                if(nx > lim || nx < -lim) { nx = m.x; m.vx *= -1; }
-                if(nz > lim || nz < -lim) { nz = m.z; m.vz *= -1; }
-                paintLine(m.x, m.z, nx, nz, m.ownerColor, 1);
-                m.x = nx; m.z = nz; m.mesh.position.set(m.x, 1, m.z);
-                if(m.life <= 0) {
-                    paintLine(m.x, m.z, m.x, m.z, m.ownerColor, 8);
-                    spawnParticle(m.x, 1, m.z, m.ownerColor, 10, 1);
-                    scene.remove(m.mesh); minions.splice(i, 1);
+                if(pt.life <= 0) {
+                    scene.remove(pt.mesh);
+                    particles.splice(i, 1);
                 }
             }
 
-            // Skill UI Update
+            // Update 3D labels for skills
             skills.forEach(s => {
                 if(s.active) {
                     const v = s.mesh.position.clone().project(camera);
@@ -610,8 +630,6 @@
                         s.el.style.left = ((v.x+1)/2 * window.innerWidth) + 'px';
                         s.el.style.top = (-(v.y-1)/2 * window.innerHeight) + 'px';
                     } else s.el.style.display = 'none';
-                    s.mesh.rotation.y += 0.05; // Spin skill
-                    s.mesh.position.y = 2 + Math.sin(frame*0.1)*0.5; // Float skill
                 }
             });
 
@@ -624,77 +642,92 @@
     // ==========================================
     window.manualJoin = function() {
         const id = document.getElementById('host-id-input').value.trim();
-        const name = document.getElementById('player-name-input').value.trim();
-        if(id) initClient(id, name);
+        if(id) initClient(id);
     };
-    
-    // Tap Event Logic
-    window.sendTap = function(e) {
-        if(e) e.preventDefault(); // prevent zoom
-        const btn = document.getElementById('tap-btn');
-        btn.style.transform = "scale(0.9)";
-        setTimeout(()=>btn.style.transform = "scale(1)", 50);
-        
-        // Trigger vibration
-        if(navigator.vibrate) navigator.vibrate(50);
-        
-        if(window.clientConn && window.clientConn.open) {
-            window.clientConn.send({ type: 'TAP' });
-        }
-    }
 
-    function initClient(hostId, playerName) {
+    let clientConn = null;
+    let myName = "";
+
+    function initClient(hostId) {
         document.getElementById('host-ui').style.display = 'none';
         document.getElementById('client-ui').style.display = 'block';
-        const overlay = document.getElementById('client-overlay');
         
         const peer = new Peer();
-        
-        peer.on('open', () => {
-            const conn = peer.connect(hostId);
-            window.clientConn = conn;
-            
-            conn.on('open', () => {
-                // Send Login Name
-                conn.send({ type: 'LOGIN', name: playerName || 'Player' });
-                
-                document.getElementById('manual-login').style.display = 'none';
-                document.getElementById('controller-container').style.display = 'flex';
-                overlay.innerText = "WAITING START...";
+        const overlay = document.getElementById('client-overlay');
 
-                // Joystick (Right Zone)
-                const manager = nipplejs.create({ 
-                    zone: document.getElementById('right-zone'), 
-                    mode: 'static', 
-                    position: {left:'50%', top:'50%'}, 
-                    color:'white',
-                    size: 150
-                });
-                
-                let move = {x:0, y:0};
-                manager.on('move', (e,d) => { if(d.vector) { move.x=d.vector.x; move.y=-d.vector.y; } });
-                manager.on('end', () => { move.x=0; move.y=0; });
-                
-                // Send Loop
-                setInterval(() => { if(conn.open) conn.send(move); }, 30);
+        peer.on('open', () => {
+            clientConn = peer.connect(hostId);
+            clientConn.on('open', () => {
+                // Connected, show Name Input
+                document.getElementById('conn-step').style.display = 'none';
+                document.getElementById('lobby-ui').style.display = 'block';
             });
 
-            conn.on('data', (d) => {
+            clientConn.on('data', (d) => {
                 if(d.type === 'init') {
+                    // Just set color theme
+                    const isRed = d.color === 'RED';
+                    document.body.style.backgroundColor = isRed ? '#500' : '#005';
                     overlay.innerText = `YOU ARE ${d.color}`;
-                    document.getElementById('right-zone').style.background = (d.color==='RED' ? 'radial-gradient(circle at center, #500 0%, #200 70%)' : 'radial-gradient(circle at center, #005 0%, #002 70%)');
+                    document.getElementById('tap-btn').style.color = isRed ? 'red' : 'blue';
+                    document.getElementById('tap-btn').style.borderColor = isRed ? 'red' : 'blue';
                 }
                 else if(d.type === 'FREEZE_MSG') {
-                    document.getElementById('frozen-msg').style.display = 'block';
-                    document.getElementById('tap-btn').style.display = 'flex';
-                    if(navigator.vibrate) navigator.vibrate([500, 200, 500]); 
+                    document.getElementById('zone_joystick').style.display = 'none'; // Hide stick
+                    document.getElementById('tap-ui').style.display = 'flex'; // Show tap
+                    if(navigator.vibrate) navigator.vibrate(500); 
                 }
                 else if(d.type === 'UNFREEZE') {
-                    document.getElementById('frozen-msg').style.display = 'none';
-                    document.getElementById('tap-btn').style.display = 'none';
+                    document.getElementById('tap-ui').style.display = 'none';
+                    document.getElementById('zone_joystick').style.display = 'block';
                 }
             });
         });
+    }
+
+    window.clientReady = function() {
+        const nameIn = document.getElementById('player-name').value.trim();
+        if(!nameIn) { alert("Enter a name!"); return; }
+        
+        myName = nameIn;
+        if(clientConn) {
+            clientConn.send({ type: 'READY', name: myName });
+            document.getElementById('login-screen').style.display = 'none'; // Hide lobby
+            document.getElementById('zone_joystick').style.display = 'block'; // Ready for game
+            
+            initJoystick();
+        }
+    }
+
+    // Dynamic Joystick (Hidden until touch)
+    function initJoystick() {
+        // Nipple.js in Dynamic Mode handles the "Hide if not touched, Show at touch pos" logic automatically
+        const manager = nipplejs.create({ 
+            zone: document.getElementById('zone_joystick'), 
+            mode: 'dynamic', 
+            color: 'white',
+            size: 120
+        });
+        
+        let move = {x:0, y:0};
+        manager.on('move', (e,d) => { 
+            if(d.vector) { move.x=d.vector.x; move.y=-d.vector.y; } 
+        });
+        manager.on('end', () => { move.x=0; move.y=0; });
+        
+        // Loop send input
+        setInterval(() => { if(clientConn && clientConn.open) clientConn.send(move); }, 30);
+    }
+
+    window.handleTap = function(e) {
+        e.preventDefault(); // Stop zoom
+        // Visual feedback
+        const btn = document.getElementById('tap-btn');
+        btn.style.transform = "scale(0.9)";
+        setTimeout(() => btn.style.transform = "scale(1)", 50);
+        
+        // Send unlock attempt
+        if(clientConn && clientConn.open) clientConn.send({ type: 'TAP_UNFREEZE' });
     }
     
     window.addEventListener('resize', () => window.location.reload());
