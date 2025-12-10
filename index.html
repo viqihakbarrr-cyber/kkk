@@ -3,49 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Colour Splash: Ultimate FX</title>
+    <title>Colour Splash: Ultimate v2</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #111; color: white; touch-action: none; user-select: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; touch-action: none; user-select: none; }
         
         /* --- HOST UI --- */
         #host-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
         
         #qr-panel { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            background: rgba(255,255,255,0.95); color: #333; padding: 30px; border-radius: 15px; 
+            background: rgba(255,255,255,0.95); color: #333; padding: 25px; border-radius: 15px; 
             text-align: center; border: 4px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); z-index: 100;
         }
         
-        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box;}
-        
-        /* NEW SCORE BAR (TUG OF WAR STYLE) */
-        .hud-top { width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
-        #score-bar-container {
-            width: 60%; height: 30px; background: #333; border: 3px solid white; border-radius: 15px; overflow: hidden; display: flex;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5); position: relative;
-        }
-        #bar-p1 { height: 100%; background: #ff3333; width: 50%; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-start; padding-left: 10px; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px black; }
-        #bar-p2 { height: 100%; background: #3388ff; width: 50%; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px black; }
-        
-        #timer-box { font-size: 40px; font-weight: 900; color: white; margin-top: 10px; text-shadow: 0 0 10px black; }
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;}
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+        .score-box { background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px; font-weight: bold; font-size: 24px; text-align: center; min-width: 100px; color: white; }
+        .score-p1 { border-bottom: 5px solid #ff4444; }
+        .score-p2 { border-bottom: 5px solid #4488ff; }
+        #timer-box { font-size: 50px; font-weight: 900; background: #333; padding: 5px 40px; border-radius: 20px; border: 3px solid white; transition: color 0.2s; }
 
         #game-over { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; color: black; padding: 40px; border-radius: 20px; text-align: center; z-index: 200; box-shadow: 0 0 100px black; }
         
-        #chaos-alert { display: none; position: absolute; top: 30%; width: 100%; text-align: center; font-size: 50px; color: yellow; font-weight: 900; text-shadow: 0 0 20px red; animation: pulse 0.5s infinite; z-index: 90; }
-        
-        .skill-notif { position: absolute; color: white; font-weight: bold; text-shadow: 0 0 5px black; text-align: center; pointer-events: none; }
+        #chaos-alert { display: none; position: absolute; top: 20%; width: 100%; text-align: center; font-size: 60px; color: yellow; font-weight: 900; text-shadow: 0 0 20px red; animation: pulse 0.5s infinite; z-index: 90; }
+
+        .settings-box { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ccc; }
+        select { padding: 5px; font-size: 16px; border-radius: 5px; }
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         /* --- CLIENT UI --- */
-        #client-ui { display: none; width: 100%; height: 100vh; background: #151515; overflow: hidden; }
+        #client-ui { display: none; width: 100%; height: 100vh; background: #222; overflow: hidden; }
         
         #manual-login {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eee; color: #333; z-index: 50;
@@ -54,23 +48,27 @@
         input { padding: 15px; font-size: 18px; text-align: center; width: 70%; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc; }
         button.join-btn { padding: 15px 40px; font-size: 18px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; }
         
-        #zone_joystick { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
+        /* Joystick Zone: Transparent & Fullscreen for Dynamic mode */
+        #zone_joystick { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: none; }
         
         #client-overlay { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; color: white; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 20px; z-index: 60; }
 
-        /* TAP TAP UI (Replaces Frozen UI) */
-        #tap-ui {
+        /* FROZEN / TAP UI */
+        #frozen-ui {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 200, 255, 0.7); z-index: 200;
+            background: rgba(0, 150, 255, 0.8); z-index: 200;
             flex-direction: column; justify-content: center; align-items: center; text-align: center;
+            backdrop-filter: blur(5px);
         }
-        #tap-btn {
-            width: 200px; height: 200px; background: #ff4444; border: 5px solid white; border-radius: 50%;
-            color: white; font-size: 40px; font-weight: 900; box-shadow: 0 10px 0 #990000;
-            active { transform: translateY(5px); box-shadow: 0 5px 0 #990000; }
+        #ice-overlay { font-size: 100px; animation: wobble 0.5s infinite; pointer-events: none; }
+        .tap-btn { 
+            margin-top: 20px; padding: 20px 40px; font-size: 30px; font-weight: bold; 
+            background: white; color: #0099ff; border: 5px solid #0055aa; border-radius: 50px;
+            cursor: pointer; active: scale(0.9); box-shadow: 0 10px 0 #0055aa;
         }
-        .frozen-icon { font-size: 60px; margin-bottom: 20px; animation: shake 0.2s infinite; }
-        @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } }
+        .tap-btn:active { transform: translateY(5px); box-shadow: 0 5px 0 #0055aa; }
+
+        @keyframes wobble { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } 100% { transform: rotate(0deg); } }
     </style>
 </head>
 <body>
@@ -78,19 +76,26 @@
     <div id="host-ui">
         <div id="game-ui">
             <div class="hud-top">
-                <div id="score-bar-container">
-                    <div id="bar-p1">P1 0%</div>
-                    <div id="bar-p2">0% P2</div>
-                </div>
+                <div class="score-box score-p1">P1<br><span id="score-p1-val">0%</span></div>
                 <div id="timer-box">180</div>
+                <div class="score-box score-p2">P2<br><span id="score-p2-val">0%</span></div>
             </div>
-            <div id="chaos-alert">⚠ CHAOS MODE ⚠</div>
+            <div id="chaos-alert">⚠ CHAOS MODE ⚠<br><span style="font-size:30px">SKILLS SPAWN 3x FASTER!</span></div>
         </div>
         
         <div id="qr-panel">
-            <h2 style="margin:0;">COLOUR SPLASH: ULTIMATE</h2>
+            <h2 style="margin:0;">COLOUR SPLASH V2</h2>
             <div id="qrcode" style="margin: 15px auto;"></div>
             <div id="host-id-display" style="font-size: 20px; font-weight: bold; background: #eee; padding: 5px;">...</div>
+            
+            <div class="settings-box">
+                <label>Graphics: </label>
+                <select id="gfx-select" onchange="updateGraphics()">
+                    <option value="low">Low (Fast)</option>
+                    <option value="high">High (Glow + Particles)</option>
+                </select>
+            </div>
+
             <p id="waiting-text" style="color: #666; margin-top: 10px;">Waiting for players...</p>
             <button onclick="startGame()" style="margin-top:10px; padding:5px 10px;">FORCE START</button>
         </div>
@@ -109,51 +114,61 @@
             <button class="join-btn" onclick="manualJoin()">CONNECT</button>
         </div>
         
-        <div id="zone_joystick"></div> <div id="client-overlay">Connecting...</div>
+        <div id="zone_joystick"></div>
+        <div id="client-overlay">Connecting...</div>
         
-        <div id="tap-ui">
-            <div class="frozen-icon">🧊</div>
-            <div style="font-size: 24px; font-weight: bold; color:white; margin-bottom: 20px;">YOU ARE FROZEN!</div>
-            <button id="tap-btn">TAP!</button>
+        <div id="frozen-ui">
+            <div id="ice-overlay">🧊</div>
+            <div style="font-size: 30px; color: white; font-weight: 900; margin-bottom: 20px;">YOU ARE FROZEN!</div>
+            <button class="tap-btn" onclick="handleTap()">TAP TO BREAK! (<span id="tap-count">5</span>)</button>
         </div>
     </div>
 
 <script>
     // --- CONFIGURATION ---
     const CONFIG = {
-        arenaWidth: 120,      // WIDER ARENA (Left/Right)
-        arenaDepth: 80,       // Standard Depth
-        textureSize: 1024,    // Higher Res for cleaner lines
-        duration: 180,
-        baseSpeed: 0.9,
+        arenaWidth: 120,      // Arena lebih lebar (Wide)
+        arenaDepth: 80,       // Kedalaman tetap
+        textureSize: 512,
+        duration: 180,        
+        baseSpeed: 0.8,       
         colors: { p1: '#ff3333', p2: '#3388ff', floor: '#ffffff' }
     };
 
+    let GRAPHICS_MODE = 'low'; // low | high
+
     const urlHostID = new URLSearchParams(window.location.search).get('host');
     window.addEventListener('load', () => urlHostID ? initClient(urlHostID) : initHost());
+
+    function updateGraphics() {
+        GRAPHICS_MODE = document.getElementById('gfx-select').value;
+    }
 
     // ==========================================
     // HOST LOGIC
     // ==========================================
     function initHost() {
+        if(window.innerWidth < 600 && !confirm("Host di layar kecil?")) { document.getElementById('host-ui').style.display='none'; initClient(null); return; }
+        
         document.getElementById('host-ui').style.display = 'block';
         const peer = new Peer(); 
         
+        // Data Structures
         const players = {
-            p1: { id:'p1', active: false, x: -30, z: 0, prevX: -30, prevZ:0, mesh: null, color: CONFIG.colors.p1, size: 1, speedMult: 1, frozen: 0, traitorTo: null },
-            p2: { id:'p2', active: false, x: 30, z: 0, prevX: 30, prevZ:0, mesh: null, color: CONFIG.colors.p2, size: 1, speedMult: 1, frozen: 0, traitorTo: null }
+            p1: { id:'p1', active: false, x: -30, z: 0, prevX: -30, prevZ:0, mesh: null, color: CONFIG.colors.p1, size: 1, speedMult: 1, frozen: false, paintingColor: null, light: null },
+            p2: { id:'p2', active: false, x: 30, z: 0, prevX: 30, prevZ:0, mesh: null, color: CONFIG.colors.p2, size: 1, speedMult: 1, frozen: false, paintingColor: null, light: null }
         };
-        let minions = [];
+        
+        let minions = []; 
         let skills = [];
-        let particles = []; // Particle System
+        let particles = [];
+        let rockets = []; // New Rocket Array
+        let cameraShakeIntensity = 0;
 
-        // Camera Shake Variables
-        let shakeIntensity = 0;
-        const baseCamPos = new THREE.Vector3(0, 110, 60);
-
+        // Network
         peer.on('open', (id) => {
             document.getElementById('host-id-display').innerText = id;
-            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + '?host=' + id, width: 150, height: 150 });
+            new QRCode(document.getElementById("qrcode"), { text: window.location.href.split('?')[0] + '?host=' + id, width: 128, height: 128 });
         });
 
         peer.on('connection', (conn) => {
@@ -170,9 +185,11 @@
                             players[pid].inputX = data.x;
                             players[pid].inputZ = data.y;
                         } 
-                        else if(data.type === 'TAP') {
-                            // Skill Mod: Rapid Tap reduces freeze
-                            if(players[pid].frozen > 0) players[pid].frozen -= 0.5; 
+                        else if(data.type === 'UNFREEZE_REQ') {
+                            // Requirement: Tap to unfreeze
+                            players[pid].frozen = false;
+                            players[pid].mesh.getObjectByName('ice').visible = false;
+                            conn.send({ type: 'UNFREEZE_ACK' });
                         }
                     });
                     
@@ -183,9 +200,10 @@
         });
 
         // --- THREE.JS SETUP ---
-        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x222222);
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 500);
-        camera.position.copy(baseCamPos); camera.lookAt(0,0,0);
+        camera.position.set(0, 100, 70); camera.lookAt(0,0,0);
+        const baseCamPos = camera.position.clone();
         
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -193,85 +211,68 @@
         document.getElementById('host-ui').prepend(renderer.domElement);
         
         // Lighting
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
-        const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-        dl.position.set(20, 80, 20); dl.castShadow = true;
-        dl.shadow.camera.top = 80; dl.shadow.camera.bottom = -80; dl.shadow.camera.left = -80; dl.shadow.camera.right = 80;
-        dl.shadow.mapSize.set(2048, 2048);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.8));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+        dl.position.set(20, 50, 20); dl.castShadow = true;
+        dl.shadow.camera.top = 60; dl.shadow.camera.bottom = -60; dl.shadow.camera.left = -60; dl.shadow.camera.right = 60;
+        dl.shadow.mapSize.set(1024, 1024);
         scene.add(dl);
 
-        // Canvas Texture (The Paint Floor)
+        // Arena (Resized to Wide)
         const canvas = document.createElement('canvas');
-        canvas.width = CONFIG.textureSize; canvas.height = CONFIG.textureSize; // Aspect Ratio mapped later
+        canvas.width = CONFIG.textureSize; canvas.height = CONFIG.textureSize;
         const ctx = canvas.getContext('2d');
         const floorTex = new THREE.CanvasTexture(canvas);
-        
-        // Arena Geometry (RECTANGLE)
-        const floor = new THREE.Mesh(
-            new THREE.PlaneGeometry(CONFIG.arenaWidth, CONFIG.arenaDepth), 
-            new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8 })
-        );
+        const floorGeo = new THREE.PlaneGeometry(CONFIG.arenaWidth, CONFIG.arenaDepth);
+        const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ map: floorTex }));
         floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
         
         // Walls
-        const wMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
-        const addWall = (w,d,x,z) => { 
-            const m = new THREE.Mesh(new THREE.BoxGeometry(w,6,d), wMat); 
-            m.position.set(x,3,z); m.castShadow=true; scene.add(m); 
-        };
-        const limX = CONFIG.arenaWidth/2 + 1;
-        const limZ = CONFIG.arenaDepth/2 + 1;
+        scene.add(new THREE.GridHelper(Math.max(CONFIG.arenaWidth, CONFIG.arenaDepth), 10, 0x999999, 0xcccccc));
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const addWall = (w,d,x,z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,5,d), wMat); m.position.set(x,2.5,z); m.castShadow=true; scene.add(m); };
         
-        // Top/Bottom Walls
-        addWall(CONFIG.arenaWidth+2, 2, 0, -limZ); 
-        addWall(CONFIG.arenaWidth+2, 2, 0, limZ);
-        // Left/Right Walls
-        addWall(2, CONFIG.arenaDepth+2, -limX, 0); 
-        addWall(2, CONFIG.arenaDepth+2, limX, 0);
+        addWall(CONFIG.arenaWidth+2, 2, 0, -(CONFIG.arenaDepth/2)-1); // Top
+        addWall(CONFIG.arenaWidth+2, 2, 0, (CONFIG.arenaDepth/2)+1);  // Bottom
+        addWall(2, CONFIG.arenaDepth+2, -(CONFIG.arenaWidth/2)-1, 0); // Left
+        addWall(2, CONFIG.arenaDepth+2, (CONFIG.arenaWidth/2)+1, 0);  // Right
 
-        // Player Models with Lights
+        // Player Models
         function createPlayerMesh(color) {
             const g = new THREE.Group();
-            
-            // Body
-            const mat = new THREE.MeshPhongMaterial({ color, shininess: 100 });
-            const b = new THREE.Mesh(new THREE.SphereGeometry(2, 24, 24), mat);
-            b.position.y = 2; b.castShadow = true; 
-            g.add(b);
-            
-            // Dynamic Light (Juice)
-            const pl = new THREE.PointLight(color, 2, 20);
-            pl.position.y = 4;
-            g.add(pl);
+            const b = new THREE.Mesh(new THREE.SphereGeometry(2, 24, 24), new THREE.MeshStandardMaterial({ color, roughness: 0.2, metalness: 0.3 }));
+            b.position.y = 2; b.castShadow = true; g.add(b);
             
             // Ice Block
-            const ice = new THREE.Mesh(new THREE.BoxGeometry(5,5,5), new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.0, opacity:0 }));
-            ice.name = 'ice'; ice.position.y = 2;
+            const ice = new THREE.Mesh(new THREE.BoxGeometry(5,5,5), new THREE.MeshStandardMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 }));
+            ice.name = 'ice'; ice.position.y = 2; ice.visible = false;
             g.add(ice);
+
+            // Dynamic Light (PointLight) - Initially hidden, enabled in High graphics
+            const pl = new THREE.PointLight(color, 0, 30);
+            pl.position.y = 5;
+            g.add(pl);
             
             scene.add(g);
-            return g;
+            return { group: g, light: pl };
         }
-        players.p1.mesh = createPlayerMesh(players.p1.color);
-        players.p2.mesh = createPlayerMesh(players.p2.color);
+        
+        const meshP1 = createPlayerMesh(players.p1.color); players.p1.mesh = meshP1.group; players.p1.light = meshP1.light;
+        const meshP2 = createPlayerMesh(players.p2.color); players.p2.mesh = meshP2.group; players.p2.light = meshP2.light;
 
-        // --- HELPERS ---
-        // Mapping World Coords (Rect) to Canvas Coords (Square texture)
-        // X map: [-60, 60] -> [0, 1024]
-        // Z map: [-40, 40] -> [0, 1024]
-        const mapX = (x) => ((x + CONFIG.arenaWidth/2)/CONFIG.arenaWidth) * CONFIG.textureSize;
-        const mapZ = (z) => ((z + CONFIG.arenaDepth/2)/CONFIG.arenaDepth) * CONFIG.textureSize;
+        // --- GAMEPLAY FUNCTIONS ---
+        // Helper: Convert World X,Z to Canvas X,Y (Handling Rectangle Arena)
+        function toCvX(x) { return ((x + CONFIG.arenaWidth/2)/CONFIG.arenaWidth) * CONFIG.textureSize; }
+        function toCvY(z) { return ((z + CONFIG.arenaDepth/2)/CONFIG.arenaDepth) * CONFIG.textureSize; }
 
         function paintLine(x1, z1, x2, z2, color, sizeWorld) {
-            const cx1 = mapX(x1), cz1 = mapZ(z1);
-            const cx2 = mapX(x2), cz2 = mapZ(z2);
-            // Brush size relative to texture
+            const cx1 = toCvX(x1), cz1 = toCvY(z1);
+            const cx2 = toCvX(x2), cz2 = toCvY(z2);
+            // Adjust brush size relative to arena width approx
             const r = (sizeWorld/CONFIG.arenaWidth) * CONFIG.textureSize * 2.5; 
             
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.lineWidth = r * 2;
-            ctx.strokeStyle = color;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineWidth = r * 2; ctx.strokeStyle = color;
             ctx.beginPath(); ctx.moveTo(cx1, cz1); ctx.lineTo(cx2, cz2); ctx.stroke();
             ctx.fillStyle = color;
             ctx.beginPath(); ctx.arc(cx1, cz1, r, 0, Math.PI*2); ctx.fill();
@@ -279,73 +280,87 @@
             floorTex.needsUpdate = true;
         }
 
-        // --- PARTICLE SYSTEM (JUICE) ---
-        function spawnParticle(x, z, color, count=5, speed=1, scale=1) {
+        function createParticle(x, z, color, count=5) {
+            if(GRAPHICS_MODE === 'low') return;
             for(let i=0; i<count; i++) {
-                const geo = new THREE.BoxGeometry(0.4*scale, 0.4*scale, 0.4*scale);
+                const geo = new THREE.BoxGeometry(0.5,0.5,0.5);
                 const mat = new THREE.MeshBasicMaterial({ color: color });
                 const m = new THREE.Mesh(geo, mat);
                 m.position.set(x, 2, z);
-                
-                // Velocity randomizer
-                const vx = (Math.random()-0.5)*speed;
-                const vy = (Math.random())*speed;
-                const vz = (Math.random()-0.5)*speed;
-                
+                m.rotation.set(Math.random(), Math.random(), Math.random());
                 scene.add(m);
-                particles.push({ mesh: m, vx, vy, vz, life: 1.0 });
+                particles.push({ 
+                    mesh: m, 
+                    vx: (Math.random()-0.5)*1.5, 
+                    vy: Math.random()*1.5, 
+                    vz: (Math.random()-0.5)*1.5, 
+                    life: 30 
+                });
             }
         }
 
-        function spawnExplosion(x, z, color1, color2) {
-            spawnParticle(x, z, color1, 20, 2, 2);
-            spawnParticle(x, z, color2, 20, 2, 2);
-            shakeIntensity = 3; // Trigger shake
-        }
-
-        const SKILLS_LIST = [
-            { id: 'BOMB', color: '#000000', text: '💣', weight: 2 },
-            { id: 'SPEED', color: '#ffff00', text: '⚡', weight: 2 },
-            { id: 'BIG', color: '#00ff00', text: '🍄', weight: 2 },
-            { id: 'FREEZE', color: '#00ffff', text: '❄️', weight: 1.5 },
-            { id: 'MINION', color: '#ff00ff', text: '🤖', weight: 1.5 },
-            { id: 'TRAITOR', color: '#ffffff', text: '🎭', weight: 1.0 } // NEW
+        // Weighted Probability for Skills
+        const SKILL_TIERS = [
+            { type: 'SPEED', weight: 4 },  // Tier 1: Sering
+            { type: 'BIG', weight: 4 },
+            { type: 'MINION', weight: 4 },
+            { type: 'COLOR', weight: 3 },  // Tier 2: Sedang
+            { type: 'FREEZE', weight: 3 },
+            { type: 'ROCKET', weight: 2 }, // Tier 3: Jarang
+            { type: 'BOMB', weight: 1 }    // Tier 4: Langka
         ];
 
+        const SKILL_DATA = {
+            'SPEED': { color: 'yellow', text: '⚡' },
+            'BIG': { color: '#00ff00', text: '🍄' },
+            'MINION': { color: '#ff00ff', text: '🤖' },
+            'COLOR': { color: '#aa00ff', text: '🎨' }, // Color Manipulation
+            'FREEZE': { color: '#00ffff', text: '❄️' },
+            'ROCKET': { color: '#ff8800', text: '🚀' },
+            'BOMB': { color: 'black', text: '💣' }
+        };
+
         function spawnSkill() {
-            const type = SKILLS_LIST[Math.floor(Math.random()*SKILLS_LIST.length)];
+            // Weighted Random
+            let totalWeight = 0;
+            SKILL_TIERS.forEach(t => totalWeight += t.weight);
+            let r = Math.random() * totalWeight;
+            let selectedType = 'SPEED';
+            for(let t of SKILL_TIERS) {
+                if(r < t.weight) { selectedType = t.type; break; }
+                r -= t.weight;
+            }
+
             const rangeX = CONFIG.arenaWidth/2 - 5;
             const rangeZ = CONFIG.arenaDepth/2 - 5;
             const x = (Math.random()*2-1)*rangeX;
             const z = (Math.random()*2-1)*rangeZ;
             
-            // Visual Pillar
-            const geo = new THREE.CylinderGeometry(0.5, 0.5, 10, 8);
-            const mat = new THREE.MeshBasicMaterial({ color: type.color, transparent: true, opacity: 0.5 });
-            const pillar = new THREE.Mesh(geo, mat);
-            pillar.position.set(x, 5, z);
-            
-            // Icon Mesh
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshPhongMaterial({ color: type.color }));
+            const info = SKILL_DATA[selectedType];
+            const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.5), new THREE.MeshPhongMaterial({ color: info.color, shininess: 100 }));
             mesh.position.set(x, 2, z);
             
-            // DOM Label
+            // Floating Label
             const el = document.createElement('div');
-            el.className = 'skill-notif';
-            el.innerHTML = type.text + "<br><span style='font-size:12px'>" + type.id + "</span>";
-            el.style.display = 'none';
+            el.innerHTML = info.text;
+            el.style.cssText = "position:absolute; color:white; font-size: 24px; font-weight:bold; text-shadow:0 0 5px black; transform:translate(-50%,-50%); display:none";
             document.body.appendChild(el);
 
-            scene.add(mesh); scene.add(pillar);
-            skills.push({ mesh, pillar, el, type, x, z, active: true, rot:0 });
+            scene.add(mesh);
+            
+            // Particle effect on spawn
+            createParticle(x, z, 'white', 10);
+            
+            skills.push({ mesh, el, id: selectedType, x, z, active: true, rotSpeed: Math.random()*0.1 });
         }
 
+        // Minion Logic
         function spawnMinion(owner) {
             const m = {
                 ownerColor: owner.color,
                 x: owner.x, z: owner.z,
                 vx: (Math.random()-0.5), vz: (Math.random()-0.5),
-                life: 300, 
+                life: 300,
                 mesh: new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshStandardMaterial({color: owner.color}))
             };
             m.mesh.position.set(m.x, 1, m.z);
@@ -353,26 +368,45 @@
             minions.push(m);
         }
 
+        // Rocket Logic
+        function spawnRockets(owner, target) {
+            for(let i=0; i<3; i++) {
+                setTimeout(() => {
+                    const r = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2, 8), new THREE.MeshStandardMaterial({color: 'orange'}));
+                    r.rotation.x = Math.PI/2; // Point forward
+                    r.position.set(owner.x, 3, owner.z + (i-1)); // Spread spawn
+                    scene.add(r);
+                    rockets.push({ mesh: r, target: target, life: 200, speed: 0.6 + (i*0.1) });
+                }, i * 300);
+            }
+        }
+
+        function triggerCameraShake(intensity) {
+            if(GRAPHICS_MODE === 'high') cameraShakeIntensity = intensity;
+        }
+
         let isRunning = false;
         let timeLeft = CONFIG.duration;
+        let frame = 0;
         let timerInt = null;
 
         window.startGame = function() {
             if(isRunning) return;
-            resetGameState();
+            resetGameState(); 
             isRunning = true;
             document.getElementById('qr-panel').style.display = 'none';
             document.getElementById('game-over').style.display = 'none';
             
             timerInt = setInterval(() => {
                 timeLeft--;
-                document.getElementById('timer-box').innerText = timeLeft;
+                const tb = document.getElementById('timer-box');
+                tb.innerText = timeLeft;
                 
                 if(timeLeft === 60) {
+                    tb.style.color = 'red';
                     document.getElementById('chaos-alert').style.display = 'block';
                     setTimeout(() => document.getElementById('chaos-alert').style.display = 'none', 3000);
                 }
-                
                 if(timeLeft % 2 === 0) updateScore();
                 if(timeLeft <= 0) endGame();
             }, 1000);
@@ -381,16 +415,19 @@
         };
 
         window.resetGame = function() {
+            // Unfreeze clients
             ['p1','p2'].forEach(id => {
-                if(players[id].conn) players[id].conn.send({ type: 'UNFREEZE' });
+                if(players[id].conn) players[id].conn.send({ type: 'UNFREEZE_ACK' });
             });
-            startGame(); 
+            startGame();
         };
 
         function resetGameState() {
             clearInterval(timerInt);
             timeLeft = CONFIG.duration;
+            frame = 0;
             document.getElementById('timer-box').innerText = timeLeft;
+            document.getElementById('timer-box').style.color = 'white';
             
             ctx.fillStyle = CONFIG.colors.floor;
             ctx.fillRect(0,0, CONFIG.textureSize, CONFIG.textureSize);
@@ -401,18 +438,17 @@
                 const p = players[id];
                 p.x = (id==='p1' ? -30 : 30); p.z = 0;
                 p.prevX = p.x; p.prevZ = p.z;
-                p.speedMult = 1; p.size = 1; p.frozen = 0; p.traitorTo = null;
+                p.speedMult = 1; p.size = 1; p.frozen = false; p.paintingColor = null;
                 p.mesh.position.set(p.x, 0, p.z);
                 p.mesh.scale.set(1,1,1);
-                p.mesh.getObjectByName('ice').material.opacity = 0;
+                p.mesh.getObjectByName('ice').visible = false;
+                p.slowEffect = 0;
             });
 
-            skills.forEach(s => { scene.remove(s.mesh); scene.remove(s.pillar); s.el.remove(); });
-            skills = [];
-            minions.forEach(m => scene.remove(m.mesh));
-            minions = [];
-            particles.forEach(p => scene.remove(p.mesh));
-            particles = [];
+            skills.forEach(s => { scene.remove(s.mesh); s.el.remove(); }); skills = [];
+            minions.forEach(m => scene.remove(m.mesh)); minions = [];
+            particles.forEach(p => scene.remove(p.mesh)); particles = [];
+            rockets.forEach(r => scene.remove(r.mesh)); rockets = [];
         }
 
         function endGame() {
@@ -429,196 +465,204 @@
         }
 
         function updateScore() {
-            // Sampling 16px stride for performance
             const d = ctx.getImageData(0,0, CONFIG.textureSize, CONFIG.textureSize).data;
             let c1=0, c2=0, tot=0;
-            for(let i=0; i<d.length; i+=16) {
+            for(let i=0; i<d.length; i+=32) { // Sampling optimization
                 if(d[i]>150 && d[i+2]<100) c1++;
                 else if(d[i+2]>150 && d[i]<100) c2++;
                 tot++;
             }
             const s1 = Math.floor(c1/tot*100), s2 = Math.floor(c2/tot*100);
-            
-            // Update Bar Widths
-            document.getElementById('bar-p1').style.width = (s1 > 5 ? s1 : 5) + '%';
-            document.getElementById('bar-p1').innerText = `P1 ${s1}%`;
-            document.getElementById('bar-p2').style.width = (s2 > 5 ? s2 : 5) + '%';
-            document.getElementById('bar-p2').innerText = `${s2}% P2`;
-            
+            document.getElementById('score-p1-val').innerText = s1+'%';
+            document.getElementById('score-p2-val').innerText = s2+'%';
             return {p1:s1, p2:s2};
         }
 
-        let frame = 0;
         function animate() {
             if(!isRunning) return;
             requestAnimationFrame(animate);
-            TWEEN.update(); // Update Tween animations
             frame++;
             
-            // Shake Camera Logic
-            if(shakeIntensity > 0) {
-                shakeIntensity -= 0.1;
-                camera.position.x = baseCamPos.x + (Math.random()-0.5)*shakeIntensity;
-                camera.position.z = baseCamPos.z + (Math.random()-0.5)*shakeIntensity;
-                if(shakeIntensity<0) { shakeIntensity=0; camera.position.copy(baseCamPos); }
-            }
-
-            let spawnRate = (timeLeft <= 60) ? 60 : 180; 
+            // Skill Spawn Rate
+            let spawnRate = (timeLeft <= 60) ? 60 : 180;
             if(frame % spawnRate === 0) spawnSkill();
+
+            // Camera Shake Update
+            if(cameraShakeIntensity > 0) {
+                camera.position.x = baseCamPos.x + (Math.random()-0.5) * cameraShakeIntensity;
+                camera.position.y = baseCamPos.y + (Math.random()-0.5) * cameraShakeIntensity;
+                camera.position.z = baseCamPos.z + (Math.random()-0.5) * cameraShakeIntensity;
+                cameraShakeIntensity *= 0.9;
+                if(cameraShakeIntensity < 0.5) { cameraShakeIntensity = 0; camera.position.copy(baseCamPos); }
+            }
 
             // --- PLAYERS UPDATE ---
             ['p1', 'p2'].forEach(id => {
                 const p = players[id];
                 const opponent = players[id === 'p1' ? 'p2' : 'p1'];
                 
+                // Graphics: Toggle Light
+                p.light.intensity = (GRAPHICS_MODE === 'high') ? 1.5 : 0;
+
                 if(!p.active && id !== 'p1') return;
 
-                if(p.frozen > 0) {
-                    p.frozen -= 0.016; 
-                    p.mesh.getObjectByName('ice').material.opacity = 0.7;
-                    if(p.conn) p.conn.send({ type: 'FREEZE_STATE', val: true });
-                    
-                    if(p.frozen <= 0) {
-                         p.frozen = 0;
-                         p.mesh.getObjectByName('ice').material.opacity = 0;
-                         if(p.conn) p.conn.send({ type: 'UNFREEZE' });
-                    }
+                // Freeze check
+                if(p.frozen) {
+                    p.mesh.getObjectByName('ice').visible = true;
+                    // Dont move
                     return; 
                 }
 
-                // Physics
-                const baseSpd = CONFIG.baseSpeed * p.speedMult; 
-                let vx = (p.inputX || 0) * baseSpd;
-                let vz = (p.inputZ || 0) * baseSpd;
+                // Movement
+                let spd = CONFIG.baseSpeed * p.speedMult;
+                if(p.slowEffect > 0) { spd *= 0.5; p.slowEffect--; } // Rocket Slow
+
+                let vx = (p.inputX || 0) * spd;
+                let vz = (p.inputZ || 0) * spd;
                 
                 let nx = p.x + vx; let nz = p.z + vz;
-                const limX = CONFIG.arenaWidth/2 - 2;
-                const limZ = CONFIG.arenaDepth/2 - 2;
+                const limitX = CONFIG.arenaWidth/2 - 2;
+                const limitZ = CONFIG.arenaDepth/2 - 2;
                 
-                if(nx > limX || nx < -limX) nx = p.x;
-                if(nz > limZ || nz < -limZ) nz = p.z;
-
-                // Collision Detection with Opponent
-                if(players.p1.active && players.p2.active) {
-                    const dist = Math.hypot(players.p1.x - players.p2.x, players.p1.z - players.p2.z);
-                    if(dist < (players.p1.size + players.p2.size)*2) {
-                        spawnExplosion((players.p1.x+players.p2.x)/2, (players.p1.z+players.p2.z)/2, players.p1.color, players.p2.color);
-                        // Simple bounce back
-                        if(id === 'p1') { nx -= vx*5; nz -= vz*5; }
-                    }
-                }
+                if(nx > limitX || nx < -limitX) nx = p.x;
+                if(nz > limitZ || nz < -limitZ) nz = p.z;
                 
                 p.prevX = p.x; p.prevZ = p.z;
                 p.x = nx; p.z = nz;
                 p.mesh.position.set(p.x, 0, p.z);
                 
-                // JUICE: Move Particles
-                if((Math.abs(vx)>0 || Math.abs(vz)>0) && frame%5===0) {
-                    spawnParticle(p.x, p.z, p.color, 1, 0.5, 0.5);
+                // Color Manipulation Logic: if paintingColor is set, use it. Else use own color.
+                const inkColor = p.paintingColor ? p.paintingColor : p.color;
+
+                // PAINT
+                paintLine(p.prevX, p.prevZ, p.x, p.z, inkColor, p.size);
+                
+                // JUICE: Speed Trail (After-Image)
+                if(p.speedMult > 1 && frame % 10 === 0) {
+                     paintLine(p.x - vx*5, p.z - vz*5, p.x, p.z, inkColor, p.size * 0.5);
+                     createParticle(p.x, p.z, inkColor, 1);
                 }
 
-                // DETERMINE PAINT COLOR (Traitor Logic)
-                const paintColor = p.traitorTo ? p.traitorTo : p.color;
-
-                // Paint
-                paintLine(p.prevX, p.prevZ, p.x, p.z, paintColor, p.size);
-
-                // SKILL MOD: After-Image (Speed)
-                if(p.speedMult > 1 && frame % 10 === 0) {
-                    // Paint a blob behind
-                    paintLine(p.prevX - vx*10, p.prevZ - vz*10, p.prevX - vx*10, p.prevZ - vz*10, paintColor, p.size);
+                // JUICE: Normal Trail Particle
+                if((Math.abs(vx)>0.1 || Math.abs(vz)>0.1) && frame % 15 === 0) {
+                    createParticle(p.x, p.z, inkColor, 2);
                 }
 
                 // Check Skills
                 skills.forEach(s => {
                     if(!s.active) return;
-                    s.mesh.rotation.y += 0.05; s.mesh.rotation.x += 0.05; // Spin skill
-                    if(p.mesh.position.distanceTo(s.mesh.position) < 3 * p.size) {
-                        s.active = false; scene.remove(s.mesh); scene.remove(s.pillar); s.el.style.display = 'none';
-                        
-                        // Particle Pickup Effect
-                        spawnParticle(s.x, s.z, '#ffffff', 10, 2);
+                    s.mesh.rotation.y += 0.05;
+                    s.mesh.rotation.x += 0.02;
 
-                        if(s.type.id === 'BOMB') {
-                            paintLine(p.x, p.z, p.x, p.z, paintColor, 30);
-                            spawnExplosion(p.x, p.z, 'orange', 'red');
-                        } else if(s.type.id === 'SPEED') {
+                    if(p.mesh.position.distanceTo(s.mesh.position) < 3 * p.size) {
+                        s.active = false; scene.remove(s.mesh); s.el.style.display = 'none';
+                        
+                        // Particle Burst on Pickup
+                        createParticle(s.x, s.z, SKILL_DATA[s.id].color, 20);
+
+                        // Apply Effects
+                        if(s.id === 'BOMB') {
+                            paintLine(p.x, p.z, p.x, p.z, p.color, 30);
+                            triggerCameraShake(2);
+                            createParticle(p.x, p.z, 'black', 30);
+                        } 
+                        else if(s.id === 'SPEED') {
                             p.speedMult = 3; 
                             setTimeout(() => p.speedMult = 1, 5000);
-                        } else if(s.type.id === 'BIG') {
-                            p.size = 3; 
-                            p.mesh.scale.set(3,3,3);
-                            shakeIntensity = 2;
-                            // Tween scale back
-                            new TWEEN.Tween(p.mesh.scale).to({x:1, y:1, z:1}, 8000).easing(TWEEN.Easing.Quadratic.In).start()
-                            .onUpdate(() => { p.size = p.mesh.scale.x; });
-                        } else if(s.type.id === 'FREEZE') {
-                            opponent.frozen = 5; 
-                            if(opponent.conn) opponent.conn.send({ type: 'FREEZE_MSG' });
-                        } else if(s.type.id === 'MINION') {
+                        } 
+                        else if(s.id === 'BIG') {
+                            p.size = 2.5; p.mesh.scale.set(2.5,2.5,2.5);
+                            triggerCameraShake(0.5);
+                            // Gradual Shrink Logic handled by Timeout for simplicity
+                            setTimeout(() => { p.size=1; p.mesh.scale.set(1,1,1); }, 8000);
+                        } 
+                        else if(s.id === 'FREEZE') {
+                            // Modified: Tap to break
+                            opponent.frozen = true;
+                            if(opponent.conn) opponent.conn.send({ type: 'FREEZE_TASK' });
+                        } 
+                        else if(s.id === 'MINION') {
                             spawnMinion(p);
-                        } else if(s.type.id === 'TRAITOR') {
-                            // Logic: Opponent becomes Traitor (paints my color)
-                            opponent.traitorTo = p.color;
-                            opponent.mesh.children[1].color = new THREE.Color(p.color); // Change light color
-                            
-                            // Visual Alert
-                            const alert = document.getElementById('chaos-alert');
-                            alert.innerHTML = "🎭 COLOR SWAP! 🎭"; alert.style.display='block';
-                            setTimeout(() => { alert.style.display='none'; alert.innerText="⚠ CHAOS MODE ⚠"; }, 2000);
-
-                            setTimeout(() => { 
-                                opponent.traitorTo = null; 
-                                opponent.mesh.children[1].color = new THREE.Color(opponent.color);
-                            }, 5000);
+                        }
+                        else if(s.id === 'COLOR') {
+                            // Color Manipulation: Enemy paints MY color
+                            opponent.paintingColor = p.color;
+                            setTimeout(() => opponent.paintingColor = null, 5000);
+                        }
+                        else if(s.id === 'ROCKET') {
+                            spawnRockets(p, opponent);
                         }
                     }
                 });
             });
 
-            // --- MINIONS ---
+            // --- MINIONS UPDATE ---
             for(let i = minions.length-1; i>=0; i--) {
                 const m = minions[i];
                 m.life--;
+                
+                // Random walk
                 if(m.life % 20 === 0) { m.vx = (Math.random()-0.5)*2; m.vz = (Math.random()-0.5)*2; }
+                
                 let nx = m.x + m.vx * 1.2; let nz = m.z + m.vz * 1.2;
-                if(nx > CONFIG.arenaWidth/2 || nx < -CONFIG.arenaWidth/2) { nx = m.x; m.vx *= -1; }
-                if(nz > CONFIG.arenaDepth/2 || nz < -CONFIG.arenaDepth/2) { nz = m.z; m.vz *= -1; }
+                if(nx > CONFIG.arenaWidth/2-1 || nx < -CONFIG.arenaWidth/2+1) { nx = m.x; m.vx *= -1; }
+                if(nz > CONFIG.arenaDepth/2-1 || nz < -CONFIG.arenaDepth/2+1) { nz = m.z; m.vz *= -1; }
                 
                 paintLine(m.x, m.z, nx, nz, m.ownerColor, 1);
                 m.x = nx; m.z = nz; m.mesh.position.set(m.x, 1, m.z);
-                
-                // Minion Particles
-                if(frame%10===0) spawnParticle(m.x, m.z, m.ownerColor, 1, 0.2, 0.3);
 
                 if(m.life <= 0) {
                     paintLine(m.x, m.z, m.x, m.z, m.ownerColor, 8);
-                    spawnExplosion(m.x, m.z, m.ownerColor, 'white');
+                    createParticle(m.x, m.z, m.ownerColor, 10);
                     scene.remove(m.mesh);
                     minions.splice(i, 1);
                 }
             }
-            
-            // --- PARTICLES ---
+
+            // --- ROCKETS UPDATE ---
+            for(let i = rockets.length-1; i>=0; i--) {
+                const r = rockets[i];
+                r.life--;
+                
+                // Homing Logic
+                const dx = r.target.x - r.mesh.position.x;
+                const dz = r.target.z - r.mesh.position.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                
+                if(dist < 2) { // Hit
+                    r.target.slowEffect = 120; // 2 seconds (60fps)
+                    createParticle(r.mesh.position.x, r.mesh.position.z, 'orange', 15);
+                    paintLine(r.mesh.position.x, r.mesh.position.z, r.mesh.position.x, r.mesh.position.z, 'black', 5); // Scorch mark
+                    triggerCameraShake(1);
+                    scene.remove(r.mesh); rockets.splice(i,1);
+                    continue;
+                }
+                
+                const vx = (dx/dist) * r.speed;
+                const vz = (dz/dist) * r.speed;
+                r.mesh.position.x += vx;
+                r.mesh.position.z += vz;
+                r.mesh.lookAt(r.target.x, 3, r.target.z);
+
+                if(r.life <= 0) { scene.remove(r.mesh); rockets.splice(i,1); }
+            }
+
+            // --- PARTICLES UPDATE ---
             for(let i=particles.length-1; i>=0; i--) {
-                const pt = particles[i];
-                pt.life -= 0.02;
-                pt.mesh.position.x += pt.vx;
-                pt.mesh.position.y += pt.vy;
-                pt.mesh.position.z += pt.vz;
-                pt.mesh.rotation.x += 0.1;
-                pt.vy -= 0.05; // Gravity
+                const p = particles[i];
+                p.life--;
+                p.mesh.position.add(new THREE.Vector3(p.vx, p.vy, p.vz));
+                p.vy -= 0.1; // Gravity
+                p.mesh.rotation.x += 0.1;
+                p.mesh.scale.multiplyScalar(0.9); // Shrink
                 
-                if(pt.mesh.position.y < 0) pt.mesh.position.y = 0; // Floor collider
-                pt.mesh.scale.setScalar(pt.life);
-                
-                if(pt.life <= 0) {
-                    scene.remove(pt.mesh);
+                if(p.mesh.position.y < 0 || p.life <= 0) {
+                    scene.remove(p.mesh);
                     particles.splice(i, 1);
                 }
             }
 
-            // Update Labels
+            // UI Label Position Sync
             skills.forEach(s => {
                 if(s.active) {
                     const v = s.mesh.position.clone().project(camera);
@@ -642,66 +686,76 @@
         if(id) initClient(id);
     };
 
+    let clientConn = null;
+    let tapsNeeded = 5;
+
     function initClient(hostId) {
         document.getElementById('host-ui').style.display = 'none';
         document.getElementById('client-ui').style.display = 'block';
         const overlay = document.getElementById('client-overlay');
         
         const peer = new Peer();
-        let conn = null;
 
         peer.on('open', () => {
-            conn = peer.connect(hostId);
-            conn.on('open', () => {
+            clientConn = peer.connect(hostId);
+            clientConn.on('open', () => {
                 document.getElementById('manual-login').style.display = 'none';
-                overlay.innerText = "TOUCH TO MOVE";
+                document.getElementById('zone_joystick').style.display = 'block';
+                overlay.innerText = "WAITING START...";
 
-                // DYNAMIC JOYSTICK (Requires NippleJS)
-                // Mode 'dynamic' hides it until touched
+                // Dynamic Joystick
                 const manager = nipplejs.create({ 
                     zone: document.getElementById('zone_joystick'), 
-                    mode: 'dynamic', 
-                    color: 'white',
-                    size: 150
+                    mode: 'dynamic', // Shows on touch
+                    color: 'white' 
                 });
                 
                 let move = {x:0, y:0};
-                manager.on('move', (e,d) => { if(d.vector) { move.x=d.vector.x; move.y=-d.vector.y; } });
+                manager.on('move', (e,d) => { 
+                    if(d.vector) { move.x=d.vector.x; move.y=-d.vector.y; } 
+                });
                 manager.on('end', () => { move.x=0; move.y=0; });
                 
-                setInterval(() => { if(conn.open) conn.send(move); }, 30);
+                // Send Loop
+                setInterval(() => { if(clientConn.open) clientConn.send(move); }, 30);
             });
 
-            conn.on('data', (d) => {
+            clientConn.on('data', (d) => {
                 if(d.type === 'init') {
                     overlay.innerText = `YOU ARE ${d.color}`;
+                    // Set color theme
+                    const c = d.color==='RED' ? '#ff3333' : '#3388ff';
+                    document.documentElement.style.setProperty('--main-color', c);
                 }
-                else if(d.type === 'FREEZE_MSG') {
-                    document.getElementById('tap-ui').style.display = 'flex';
-                    if(navigator.vibrate) navigator.vibrate([500]); 
+                else if(d.type === 'FREEZE_TASK') {
+                    // Show Tap UI
+                    document.getElementById('frozen-ui').style.display = 'flex';
+                    tapsNeeded = 5;
+                    document.getElementById('tap-count').innerText = tapsNeeded;
+                    if(navigator.vibrate) navigator.vibrate([500]);
                 }
-                else if(d.type === 'UNFREEZE') {
-                    document.getElementById('tap-ui').style.display = 'none';
+                else if(d.type === 'UNFREEZE_ACK') {
+                    document.getElementById('frozen-ui').style.display = 'none';
                 }
-            });
-            
-            // TAP BUTTON
-            document.getElementById('tap-btn').addEventListener('touchstart', (e) => {
-                e.preventDefault(); // prevent zoom
-                if(conn && conn.open) conn.send({ type: 'TAP' });
-                if(navigator.vibrate) navigator.vibrate(50);
-                
-                // Visual pop
-                const btn = document.getElementById('tap-btn');
-                btn.style.transform = "scale(0.9)";
-                setTimeout(() => btn.style.transform = "scale(1)", 50);
-            });
-             document.getElementById('tap-btn').addEventListener('click', (e) => {
-                 // Fallback for click
-                if(conn && conn.open) conn.send({ type: 'TAP' });
             });
         });
     }
+
+    // Client Tap Logic
+    window.handleTap = function() {
+        tapsNeeded--;
+        document.getElementById('tap-count').innerText = tapsNeeded;
+        if(navigator.vibrate) navigator.vibrate(50);
+        
+        // Visual shake on tap button
+        const btn = document.querySelector('.tap-btn');
+        btn.style.transform = `translateX(${Math.random()*10-5}px)`;
+        setTimeout(() => btn.style.transform = 'none', 50);
+
+        if(tapsNeeded <= 0) {
+            if(clientConn) clientConn.send({ type: 'UNFREEZE_REQ' });
+        }
+    };
     
     window.addEventListener('resize', () => window.location.reload());
 </script>
