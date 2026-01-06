@@ -3,52 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RIFT: Multiplayer</title>
+    <title>NEON RIFT: Online Battle</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
         body {
-            margin: 0; overflow: hidden; background-color: #050505;
-            font-family: 'Orbitron', sans-serif; touch-action: none; user-select: none;
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Orbitron', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        #gameCanvas { display: block; width: 100%; height: 100vh; background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%); }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+        }
 
-        /* UI Overlays */
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(0, 0, 0, 0.9); z-index: 200; backdrop-filter: blur(8px);
+        /* UI Layers */
+        #ui-layer, #start-screen, #mode-screen, #online-screen, #loading-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        /* Start Screen & Modals */
+        #start-screen, #mode-screen, #online-screen {
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
         }
 
         .modal-box {
-            background: #fff; padding: 30px; border-radius: 15px; text-align: center;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3); border: 4px solid #333;
-            max-width: 85%; min-width: 300px;
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+            border: 4px solid #333;
+            max-width: 90%;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        h1 { margin: 0 0 15px 0; color: #000; font-size: 24px; }
-        p { color: #666; font-size: 14px; }
-
-        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-
-        button {
-            padding: 12px 25px; border: none; border-radius: 50px; font-family: 'Orbitron';
-            font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px;
+        h1 { margin: 0 0 10px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
+        h2 { margin: 0; color: #333; font-size: 18px; }
+        
+        .checkbox-container {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #333;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            cursor: pointer;
         }
 
-        .btn-main { background: #000; color: #fff; }
-        .btn-active { background: linear-gradient(45deg, #0088FF, #00CC44); color: #fff; }
-        .btn-active:disabled { opacity: 0.5; cursor: not-allowed; }
+        input[type="checkbox"] {
+            transform: scale(1.5);
+            cursor: pointer;
+            accent-color: #000;
+        }
 
-        input[type="text"] {
-            padding: 10px; border: 2px solid #ddd; border-radius: 8px;
-            font-family: 'Orbitron'; text-align: center; font-size: 20px; width: 80%; margin-bottom: 10px;
+        /* Inputs for Room Code */
+        input[type="number"] {
+            padding: 15px;
+            font-size: 24px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            border: 2px solid #000;
+            border-radius: 10px;
+            outline: none;
+            width: 80%;
+            margin: 0 auto;
+        }
+
+        /* Buttons */
+        button.main-btn {
+            padding: 15px 30px;
+            background: #000;
+            border: none; color: white;
+            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
+            cursor: pointer; border-radius: 50px;
+            transition: all 0.2s;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button.main-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.main-btn:not(:disabled):hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,255,255,0.5);
+        }
+
+        button.main-btn:not(:disabled):active { transform: scale(0.95); }
+
+        button.secondary-btn {
+            background: #444;
+            margin-top: 10px;
+        }
+
+        button.online-btn {
+            background: linear-gradient(45deg, #0088FF, #0055aa);
+        }
+
+        /* Game Over Screen */
+        #game-over {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px; border-radius: 20px;
+            text-align: center; border: 3px solid #333;
+            pointer-events: auto;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
+            z-index: 100;
+        }
+
+        /* Loading Layer */
+        #loading-layer {
+            background: rgba(0,0,0,0.8);
+            z-index: 300;
+            display: none;
+            pointer-events: auto;
+        }
+        .loader {
+            border: 5px solid #333;
+            border-top: 5px solid #00FFFF;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .room-code-display {
+            font-size: 36px;
+            font-weight: bold;
+            color: #0088FF;
+            letter-spacing: 5px;
+            margin: 10px 0;
+            background: #eee;
+            padding: 10px;
+            border-radius: 10px;
         }
 
         .hidden { display: none !important; }
-        .status-msg { margin-top: 10px; font-size: 12px; color: #ff0055; font-weight: bold; }
 
     </style>
 </head>
@@ -56,234 +168,137 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <div id="screen-fs" class="overlay">
+    <div id="loading-layer">
+        <div class="loader"></div>
+        <p style="color:white; margin-top:20px; font-size:18px;" id="loading-text">Connecting...</p>
+    </div>
+
+    <div id="start-screen">
         <div class="modal-box">
             <h1>NEON RIFT</h1>
-            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; margin: 20px 0;">
-                <input type="checkbox" id="fs-check" style="transform:scale(1.5)" onchange="updateFsBtn()">
+            <p style="color:#666; font-size:14px;">White Edition</p>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
                 Go Fullscreen [✓]
             </label>
-            <button id="btn-fs-next" class="btn-main" disabled onclick="goFullscreen()">NEXT</button>
+
+            <button id="fs-btn" class="main-btn" disabled onclick="enterFullscreenSequence()">ENTER</button>
         </div>
     </div>
 
-    <div id="screen-mode" class="overlay hidden">
+    <div id="mode-screen" class="hidden">
         <div class="modal-box">
-            <h1>PILIH MODE</h1>
-            <div class="btn-group">
-                <button class="btn-active" onclick="showOnlineMenu()">PLAY ONLINE</button>
-                <button class="btn-main" onclick="startOfflineGame()">PLAY OFFLINE (VS AI)</button>
-            </div>
+            <h1>SELECT MODE</h1>
+            <button class="main-btn online-btn" onclick="showOnlineMenu()">PLAY ONLINE</button>
+            <button class="main-btn" onclick="startOfflineGame()">PLAY OFFLINE</button>
         </div>
     </div>
 
-    <div id="screen-online" class="overlay hidden">
-        <div class="modal-box">
-            <h1>ONLINE PLAY</h1>
-            <div class="btn-group">
-                <button class="btn-active" onclick="createRoom()">CREATE ROOM</button>
-                <button class="btn-main" onclick="showJoinMenu()">JOIN ROOM</button>
-                <button style="background:none; color:#999; font-size:12px;" onclick="backToMode()">KEMBALI</button>
-            </div>
+    <div id="online-screen" class="hidden">
+        <div id="online-main" class="modal-box">
+            <h1>MULTIPLAYER</h1>
+            <button class="main-btn" onclick="createRoom()">CREATE ROOM</button>
+            <button class="main-btn" onclick="showJoinInput()">JOIN ROOM</button>
+            <button class="main-btn secondary-btn" onclick="backToMode()">BACK</button>
+        </div>
+
+        <div id="online-create" class="modal-box hidden">
+            <h2>ROOM CODE</h2>
+            <div id="host-room-code" class="room-code-display">----</div>
+            <p style="font-size:12px; color:#666;">Waiting for player to join...</p>
+            <div class="loader" style="width:30px; height:30px; margin:10px auto; border-width:3px;"></div>
+            <button class="main-btn secondary-btn" onclick="cancelOnline()">CANCEL</button>
+        </div>
+
+        <div id="online-join" class="modal-box hidden">
+            <h2>ENTER CODE</h2>
+            <input type="number" id="join-code-input" placeholder="1234" maxlength="4" oninput="if(this.value.length>4) this.value=this.value.slice(0,4)">
+            <br>
+            <button class="main-btn online-btn" onclick="joinRoom()">JOIN</button>
+            <button class="main-btn secondary-btn" onclick="cancelOnline()">CANCEL</button>
         </div>
     </div>
 
-    <div id="screen-host" class="overlay hidden">
-        <div class="modal-box">
-            <h1>WAITING PLAYER...</h1>
-            <p>Berikan kode ini ke temanmu:</p>
-            <div id="room-id-display" style="font-size: 40px; font-weight: bold; margin: 20px 0; letter-spacing: 5px; color: #0088FF;">----</div>
-            <p id="connection-status">Inisialisasi Peer...</p>
-        </div>
-    </div>
-
-    <div id="screen-join" class="overlay hidden">
-        <div class="modal-box">
-            <h1>JOIN ROOM</h1>
-            <p>Masukkan 4 Digit Kode Host:</p>
-            <input type="text" id="join-id-input" maxlength="4" placeholder="0000">
-            <div class="btn-group">
-                <button class="btn-active" onclick="joinRoom()">CONNECT</button>
-                <button class="btn-main" onclick="showOnlineMenu()">BACK</button>
-            </div>
-            <div id="join-error" class="status-msg"></div>
-        </div>
-    </div>
-
-    <div id="ui-layer" class="overlay hidden" style="background:rgba(0,0,0,0.7)">
-        <div class="modal-box">
+    <div id="ui-layer">
+        <div id="game-over">
             <h1 id="winner-text">MENANG!</h1>
-            <button class="btn-active" onclick="location.reload()">MAIN LAGI</button>
+            <button class="main-btn" onclick="handleRestart()">RESTART</button>
+            <button class="main-btn secondary-btn" onclick="location.reload()">MAIN MENU</button>
         </div>
     </div>
 
 <script>
-// --- KONFIGURASI GAME ---
+// --- KONFIGURASI UTAMA ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let width, height;
 let particles = [];
 let floatingTexts = [];
 
+// Game Constants
 const SUITS = ['fire', 'water', 'leaf'];
-const COLORS = { fire: '#FF2222', water: '#0088FF', leaf: '#00CC44', cardBg: '#FFFFFF', cardBack: '#1a1a1a', cardBackOutline: '#00FFFF' };
+const COLORS = {
+    fire: '#FF2222',
+    water: '#0088FF',
+    leaf: '#00CC44',
+    cardBg: '#FFFFFF',
+    cardBack: '#1a1a1a',
+    cardBackOutline: '#00FFFF'
+};
 const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
-
-// Multiplayer States
-let peer = null;
-let conn = null;
-let isHost = false;
-let myRole = 'player'; // 'player' atau 'ai' (dalam offline)
-let isOnline = false;
 
 // Game State
 let deck = [];
 let discardPile = [];
 let playerHand = [];
-let opponentHandCount = 0; // Hanya hitung jumlah untuk kartu lawan
-let aiHand = []; // Digunakan jika offline
-let turn = 'host'; // Host selalu jalan duluan
-let gameState = 'MENU';
+let aiHand = []; // Di Online mode, ini adalah tangan lawan (Remote Player)
+let turn = 'player';
+let gameState = 'MENU'; // MENU, DEALING, PLAYING, GAMEOVER
+let isOnline = false;
+let isHost = false;
+let conn = null;
+let peer = null;
 
-// --- PEER JS LOGIC ---
-
-function initPeer(customID) {
-    peer = new Peer(customID, { debug: 1 });
-
-    peer.on('open', id => {
-        if(isHost) {
-            document.getElementById('room-id-display').innerText = id;
-            document.getElementById('connection-status').innerText = "Menunggu lawan bergabung...";
-        }
-    });
-
-    peer.on('connection', connection => {
-        conn = connection;
-        setupConnHandlers();
-    });
-
-    peer.on('error', err => {
-        console.error(err);
-        alert("Peer Error: " + err.type);
-    });
-}
-
-function setupConnHandlers() {
-    conn.on('open', () => {
-        if(isHost) {
-            // Host kirim deck awal ke Guest
-            startOnlineGame();
-        } else {
-            // Guest menunggu data dari host
-            document.getElementById('screen-join').classList.add('hidden');
-        }
-    });
-
-    conn.on('data', data => {
-        handleIncomingData(data);
-    });
-
-    conn.on('close', () => {
-        alert("Lawan terputus.");
-        location.reload();
-    });
-}
-
-function handleIncomingData(data) {
-    if (data.type === 'START_GAME') {
-        deck = data.deck.map(d => new Card(d.suit, d.value));
-        discardPile = [new Card(data.firstCard.suit, data.firstCard.value)];
-        playerHand = data.hand.map(d => new Card(d.suit, d.value));
-        opponentHandCount = data.oppHandCount;
-        gameState = 'PLAYING';
-        turn = 'host';
-        hideAllScreens();
-        showFloatingText("GAME START!", width/2, height/2, "#fff");
-    } 
-    else if (data.type === 'MOVE') {
-        // Lawan melakukan gerakan
-        const cardMoved = new Card(data.card.suit, data.card.value);
-        discardPile.push(cardMoved);
-        opponentHandCount = data.oppHandCount;
-        turn = data.nextTurn;
-        playSound('play');
-        showFloatingText("Lawan Jalan", width/2, 100, "#aaa");
-    }
-    else if (data.type === 'DRAW') {
-        opponentHandCount = data.oppHandCount;
-        turn = data.nextTurn;
-        showFloatingText("Lawan Ambil Kartu", width/2, 100, "#aaa");
-    }
-}
-
-// --- UI NAVIGATION ---
-
-function updateFsBtn() {
-    const chk = document.getElementById('fs-check');
-    const btn = document.getElementById('btn-fs-next');
-    btn.disabled = !chk.checked;
-    btn.className = chk.checked ? 'btn-active' : 'btn-main';
-}
-
-function goFullscreen() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen();
-    document.getElementById('screen-fs').classList.add('hidden');
-    document.getElementById('screen-mode').classList.remove('hidden');
-}
-
-function showOnlineMenu() {
-    hideAllScreens();
-    document.getElementById('screen-online').classList.remove('hidden');
-}
-
-function backToMode() {
-    hideAllScreens();
-    document.getElementById('screen-mode').classList.remove('hidden');
-}
-
-function createRoom() {
-    isHost = true;
-    isOnline = true;
-    hideAllScreens();
-    document.getElementById('screen-host').classList.remove('hidden');
-    // Generate 4 digit ID
-    const randomID = Math.floor(1000 + Math.random() * 9000).toString();
-    initPeer(randomID);
-}
-
-function showJoinMenu() {
-    hideAllScreens();
-    document.getElementById('screen-join').classList.remove('hidden');
-}
-
-function joinRoom() {
-    const id = document.getElementById('join-id-input').value;
-    if(id.length !== 4) return alert("Kode harus 4 digit");
-    isHost = false;
-    isOnline = true;
-    initPeer();
+// Audio Context
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    let t = audioCtx.currentTime;
     
-    setTimeout(() => {
-        conn = peer.connect(id);
-        setupConnHandlers();
-    }, 500);
-}
-
-function hideAllScreens() {
-    document.querySelectorAll('.overlay').forEach(s => s.classList.add('hidden'));
-}
-
-// --- GAME LOGIC ---
-
-class Card {
-    constructor(suit, value) {
-        this.suit = suit; this.value = value;
-        this.x = width/2; this.y = -200;
-        this.targetX = width/2; this.targetY = height/2;
-        this.isHovered = false;
-        this.width = 0; this.height = 0;
+    if (type === 'play') {
+        osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'thud') {
+        osc.type = 'square'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        osc.start(); osc.stop(t + 0.2);
+    } else if (type === 'deal') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t);
+        gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.08);
+        osc.start(); osc.stop(t + 0.08);
+    } else if (type === 'crit') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.start(); osc.stop(t + 0.3);
     }
+}
+
+// --- CLASS DEFINITIONS ---
+class Card {
+    constructor(suit, value, id=null) {
+        this.suit = suit; this.value = value;
+        this.id = id || Math.random().toString(36).substr(2, 9);
+        this.x = -100; this.y = -100;
+        this.targetX = width / 2; this.targetY = height / 2;
+        this.width = 0; this.height = 0;
+        this.isHovered = false;
+    }
+
     draw(ctx, isFaceUp, x, y, w, h) {
         this.x += (this.targetX - this.x) * 0.15;
         this.y += (this.targetY - this.y) * 0.15;
@@ -291,258 +306,627 @@ class Card {
         const drawY = y !== undefined ? y : this.y;
         const drawW = w || this.width;
         const drawH = h || this.height;
+        const r = 10;
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.fillStyle = isFaceUp ? COLORS.cardBg : COLORS.cardBack;
-        ctx.strokeStyle = isFaceUp ? COLORS[this.suit] : COLORS.cardBackOutline;
-        ctx.lineWidth = 3;
-        
-        // Card Shape
-        ctx.beginPath(); ctx.roundRect(-drawW/2, -drawH/2, drawW, drawH, 10);
-        ctx.fill(); ctx.stroke();
 
         if (isFaceUp) {
+            ctx.fillStyle = COLORS.cardBg;
+            ctx.strokeStyle = COLORS[this.suit];
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = this.isHovered ? 20 : 10;
+            ctx.shadowOffsetY = 5;
+
+            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
+            ctx.fill(); ctx.stroke();
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
             ctx.fillStyle = COLORS[this.suit];
-            ctx.font = `bold ${drawW * 0.5}px Orbitron`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = `bold ${drawW * 0.55}px Orbitron`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(this.value, 0, -drawH*0.1);
             drawElementIcon(ctx, this.suit, 0, drawH*0.3, drawW * 0.2);
+            ctx.font = `bold ${drawW * 0.2}px Orbitron`;
+            ctx.fillText(this.value, -drawW/2 + 15, -drawH/2 + 20);
+            ctx.fillText(this.value, drawW/2 - 15, drawH/2 - 20);
+        } else {
+            ctx.fillStyle = COLORS.cardBack;
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
+            ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
+            ctx.beginPath(); let pad = 8;
+            ctx.roundRect(-drawW/2 + pad, -drawH/2 + pad, drawW - pad*2, drawH - pad*2, r/2);
+            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-10, -10); ctx.lineTo(10, 10); ctx.moveTo(10, -10); ctx.lineTo(-10, 10); ctx.stroke();
         }
         ctx.restore();
     }
 }
 
-function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } }
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.size = Math.random() * 5 + 2;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1;
+    }
+    update() { this.x += this.vx; this.y += this.vy; this.life -= 0.03; this.size *= 0.95; }
+    draw(ctx) {
+        ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    }
+}
+
+// --- FUNGSI MENU & NAVIGASI ---
+
+function checkFullscreenRequirement() {
+    const chk = document.getElementById('fs-check');
+    const btn = document.getElementById('fs-btn');
+    btn.disabled = !chk.checked;
+}
+
+function enterFullscreenSequence() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => {});
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('mode-screen').classList.remove('hidden');
+}
+
+function backToMode() {
+    document.getElementById('online-screen').classList.add('hidden');
+    document.getElementById('mode-screen').classList.remove('hidden');
+    if(peer) { peer.destroy(); peer = null; }
+}
+
+function showOnlineMenu() {
+    document.getElementById('mode-screen').classList.add('hidden');
+    document.getElementById('online-screen').classList.remove('hidden');
+    document.getElementById('online-main').classList.remove('hidden');
+    document.getElementById('online-create').classList.add('hidden');
+    document.getElementById('online-join').classList.add('hidden');
+}
 
 function startOfflineGame() {
+    document.getElementById('mode-screen').classList.add('hidden');
     isOnline = false;
-    hideAllScreens();
-    initDeck();
-    dealInitialCards();
-    gameState = 'PLAYING';
-    turn = 'player';
+    isHost = true; // Offline acts as host logic
+    initGameSequence();
 }
 
-function startOnlineGame() {
-    initDeck();
-    // Host membagi kartu
-    const hostHand = [];
-    const guestHand = [];
-    for(let i=0; i<6; i++) {
-        hostHand.push(deck.pop());
-        guestHand.push(deck.pop());
-    }
-    const firstCard = deck.pop();
-    discardPile = [firstCard];
-    playerHand = hostHand;
-    opponentHandCount = 6;
+// --- FUNGSI ONLINE / PEERJS ---
+const PREFIX = 'neon-rift-game-v1-';
 
-    // Kirim data ke Guest
-    conn.send({
-        type: 'START_GAME',
-        deck: deck,
-        firstCard: firstCard,
-        hand: guestHand,
-        oppHandCount: hostHand.length
-    });
-
-    gameState = 'PLAYING';
-    turn = 'host';
-    hideAllScreens();
+function showLoading(msg) {
+    document.getElementById('loading-layer').style.display = 'flex';
+    document.getElementById('loading-text').innerText = msg;
+}
+function hideLoading() {
+    document.getElementById('loading-layer').style.display = 'none';
 }
 
-function initDeck() {
-    deck = [];
-    SUITS.forEach(s => {
-        for(let i=1; i<=9; i++) {
-            deck.push(new Card(s, i));
-            if(i<=5) deck.push(new Card(s, i));
-        }
-    });
-    shuffle(deck);
-}
-
-function dealInitialCards() {
-    playerHand = []; aiHand = [];
-    for(let i=0; i<6; i++) {
-        playerHand.push(deck.pop());
-        aiHand.push(deck.pop());
-    }
-    discardPile = [deck.pop()];
-}
-
-function handleInput(x, y) {
-    if (gameState !== 'PLAYING') return;
+function createRoom() {
+    showLoading('Creating Room...');
+    // Generate 4 digit code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
     
-    // Check turn
-    if (isOnline) {
-        const myTurnLabel = isHost ? 'host' : 'guest';
-        if (turn !== myTurnLabel) return;
-    } else {
-        if (turn !== 'player') return;
-    }
+    peer = new Peer(PREFIX + code);
+    
+    peer.on('open', (id) => {
+        hideLoading();
+        document.getElementById('online-main').classList.add('hidden');
+        document.getElementById('online-create').classList.remove('hidden');
+        document.getElementById('host-room-code').innerText = code;
+        isHost = true;
+        isOnline = true;
+    });
 
-    // Check Hand
-    for (let i = playerHand.length - 1; i >= 0; i--) {
-        let c = playerHand[i];
-        if (x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) {
-            playCard(i);
-            return;
-        }
-    }
+    peer.on('connection', (c) => {
+        conn = c;
+        setupConnection();
+        // Host memulai game otomatis saat player join
+        setTimeout(() => {
+            document.getElementById('online-screen').classList.add('hidden');
+            initGameSequence();
+        }, 1000);
+    });
 
-    // Check Deck (Draw)
-    if (x < 120 && y > height/2 - 100 && y < height/2 + 100) {
-        drawCard();
+    peer.on('error', (err) => {
+        hideLoading();
+        alert("Error creating room (Code might be taken). Try again.");
+    });
+}
+
+function showJoinInput() {
+    document.getElementById('online-main').classList.add('hidden');
+    document.getElementById('online-join').classList.remove('hidden');
+}
+
+function joinRoom() {
+    const code = document.getElementById('join-code-input').value;
+    if(code.length !== 4) return alert("Enter 4 digit code!");
+
+    showLoading('Joining Room ' + code + '...');
+    peer = new Peer(); // Random ID for joiner
+
+    peer.on('open', (id) => {
+        conn = peer.connect(PREFIX + code);
+        setupConnection();
+    });
+
+    peer.on('error', (err) => {
+        hideLoading();
+        alert("Room not found or connection error.");
+        document.getElementById('online-join').classList.add('hidden');
+        document.getElementById('online-main').classList.remove('hidden');
+    });
+}
+
+function setupConnection() {
+    conn.on('open', () => {
+        hideLoading();
+        console.log("Connected to peer!");
+    });
+    conn.on('data', (data) => {
+        handleNetworkData(data);
+    });
+    conn.on('close', () => {
+        alert("Connection lost!");
+        location.reload();
+    });
+}
+
+function cancelOnline() {
+    if(peer) peer.destroy();
+    if(conn) conn.close();
+    showOnlineMenu();
+}
+
+function sendData(data) {
+    if(isOnline && conn && conn.open) {
+        conn.send(data);
     }
 }
 
-function playCard(index) {
-    const card = playerHand[index];
-    const top = discardPile[discardPile.length - 1];
+// --- GAME LOGIC ---
 
-    if (card.suit === top.suit || card.value === top.value) {
-        playerHand.splice(index, 1);
-        discardPile.push(card);
-        playSound('play');
+function initGameSequence() {
+    gameState = 'DEALING';
+    playerHand = []; aiHand = []; discardPile = []; deck = [];
 
-        let nextTurn = "";
-        if (isOnline) {
-            nextTurn = isHost ? 'guest' : 'host';
-            conn.send({
-                type: 'MOVE',
-                card: {suit: card.suit, value: card.value},
-                oppHandCount: playerHand.length,
-                nextTurn: nextTurn
+    // Jika Offline atau Host Online: Generate Kartu
+    if (!isOnline || isHost) {
+        SUITS.forEach(suit => {
+            for (let i = 1; i <= 9; i++) {
+                deck.push(new Card(suit, i));
+                if(i <= 5) deck.push(new Card(suit, i));
+            }
+        });
+        shuffle(deck);
+
+        // Deal logic (virtual deal to arrays first)
+        let pHandCards = [];
+        let aHandCards = [];
+        
+        for(let i=0; i<6; i++) pHandCards.push(deck.pop());
+        for(let i=0; i<6; i++) aHandCards.push(deck.pop());
+        
+        // Setup initial discard
+        let firstDiscard = deck.pop();
+        
+        if (isOnline && isHost) {
+            // Kirim data deck awal ke Client
+            // Kita kirim kartu 'pHandCards' ke Client sebagai tangan mereka
+            // 'aHandCards' adalah tangan Host
+            sendData({
+                type: 'INIT_GAME',
+                myHand: pHandCards, // Host hand (for me) -> Sent as opp hand for them? No.
+                // Logika: Host pHand adalah Host, aHand adalah Joiner
+                // Host perspective: playerHand = Host, aiHand = Joiner
+                // Joiner perspective: playerHand = Joiner, aiHand = Host
+                
+                // Let's simplified: Host sends "Your Hand" and "My Hand"
+                hostHand: pHandCards, 
+                joinerHand: aHandCards,
+                deck: deck,
+                firstDiscard: firstDiscard
             });
+            
+            playerHand = pHandCards;
+            aiHand = aHandCards;
+            discardPile = [firstDiscard];
+            startVisualDealing(); // Start animasi host
         } else {
-            nextTurn = 'ai';
-            setTimeout(aiTurn, 1000);
+            // Offline
+            playerHand = pHandCards;
+            aiHand = aHandCards;
+            discardPile = [firstDiscard];
+            startVisualDealing();
         }
-
-        turn = nextTurn;
-        if(playerHand.length === 0) endGame("KAMU MENANG!");
+    } else {
+        // Jika Online Joiner: Tunggu data dari Host
+        showLoading("Waiting for Host...");
     }
 }
 
-function drawCard() {
-    if (deck.length === 0) return;
-    const c = deck.pop();
-    playerHand.push(c);
-    playSound('deal');
+function handleNetworkData(data) {
+    if (data.type === 'INIT_GAME') {
+        hideLoading();
+        document.getElementById('online-screen').classList.add('hidden');
+        
+        // Setup state dari Host
+        // Ingat: hostHand adalah tangan Host (lawan bagi Joiner)
+        // joinerHand adalah tangan Joiner (Player bagi Joiner)
+        playerHand = data.joinerHand.map(d => new Card(d.suit, d.value, d.id));
+        aiHand = data.hostHand.map(d => new Card(d.suit, d.value, d.id));
+        
+        // Reconstruct Deck (sisa)
+        deck = data.deck.map(d => new Card(d.suit, d.value, d.id));
+        
+        // Initial Discard
+        let fd = data.firstDiscard;
+        discardPile = [new Card(fd.suit, fd.value, fd.id)];
+        
+        startVisualDealing();
+    }
+    else if (data.type === 'OPPONENT_MOVE') {
+        // Lawan (AI slot) mengeluarkan kartu
+        let cardData = data.card;
+        // Cari kartu di tangan AI visual yang cocok
+        // (Di visualisasi multiplayer, kita tidak selalu sync index 100% akurat kalau lag, tapi kita coba cari ID atau Suit/Value)
+        let idx = aiHand.findIndex(c => c.value === cardData.value && c.suit === cardData.suit);
+        if (idx === -1) idx = 0; // Fallback
+        
+        executeMove('ai', idx, false); // false = jangan kirim balik
+    }
+    else if (data.type === 'OPPONENT_DRAW') {
+        drawCardToHand(aiHand, true);
+        showFloatingText("Opponent Draw", width/2, 100, "#aaa");
+        turn = 'player'; // Giliran balik ke saya
+    }
+    else if (data.type === 'RESTART') {
+        document.getElementById('game-over').style.display = 'none';
+        initGameSequence();
+    }
+}
 
-    let nextTurn = "";
+function startVisualDealing() {
+    // Set posisi awal kartu agar animasi berjalan mulus
+    [...playerHand, ...aiHand, ...deck, ...discardPile].forEach(c => {
+        c.x = width/2; c.y = height/2; // Start center
+        c.targetX = width/2; c.targetY = height/2;
+    });
+
+    // Karena data sudah ada, kita hanya mainkan animasi deal visualnya
+    // Reset posisi ke deck visual
+    let allCards = [...playerHand, ...aiHand];
+    allCards.forEach(c => { c.x = 60; c.y = height/2; });
+    
+    // Animasikan spawn discard pile pertama
+    let top = discardPile[discardPile.length-1];
+    top.x = width/2; top.y = -200;
+    setTimeout(() => {
+        playSound('thud');
+        for(let i=0; i<10; i++) particles.push(new Particle(width/2, height/2, '#fff'));
+        
+        // Determine Turn: Host always goes first in V1
+        gameState = 'PLAYING';
+        turn = isHost ? 'player' : 'ai'; // Kalau Host, turn player. Kalau Joiner, turn 'ai' (menunggu host)
+        
+        let msg = turn === 'player' ? "YOUR TURN!" : "OPPONENT TURN";
+        showFloatingText(msg, width/2, height/2, "#fff");
+    }, 1000);
+}
+
+
+function restartGame() {
+    document.getElementById('game-over').style.display = 'none';
+    initGameSequence();
+}
+
+function handleRestart() {
+    if(isOnline) {
+        sendData({type: 'RESTART'});
+        restartGame();
+    } else {
+        restartGame();
+    }
+}
+
+function drawCardToHand(hand, animate = true) {
+    if (deck.length === 0) reshuffleDeck();
+    if (deck.length === 0) return null;
+
+    let card = deck.pop();
+    card.x = 60; card.y = height / 2;
+    hand.push(card);
+    if(animate) playSound('deal');
+    return card;
+}
+
+function reshuffleDeck() {
+    if (discardPile.length > 1) {
+        let top = discardPile.pop();
+        // Kalau online, reshuffle harus sync.
+        // Untuk simpelnya, kita anggap deck lokal valid karena logic validasi ada di tiap client
+        deck = discardPile;
+        shuffle(deck);
+        discardPile = [top];
+        showFloatingText("Reshuffling!", width/2, height/2, "#fff");
+    }
+}
+
+// --- GAMEPLAY LOGIC ---
+
+function isValidMove(card, topCard) {
+    return card.suit === topCard.suit || card.value === topCard.value;
+}
+
+function isCriticalHit(card, topCard) {
+    return COUNTER_MAP[card.suit] === topCard.suit;
+}
+
+// who: 'player' or 'ai'
+// broadcast: boolean (apakah kirim info ini ke network)
+function executeMove(who, cardIndex, broadcast = true) {
+    let hand = who === 'player' ? playerHand : aiHand;
+    let card = hand[cardIndex];
+    let topCard = discardPile[discardPile.length - 1];
+
+    if(!card) return; // Safety
+
+    hand.splice(cardIndex, 1);
+    discardPile.push(card);
+    playSound('play');
+
+    if (broadcast && isOnline && who === 'player') {
+        sendData({
+            type: 'OPPONENT_MOVE',
+            card: { suit: card.suit, value: card.value }
+        });
+    }
+
+    // Visual Effect
+    card.targetX = width/2; card.targetY = height/2;
+    for(let i=0; i<8; i++) particles.push(new Particle(width/2, height/2, COLORS[card.suit]));
+
+    let victim = who === 'player' ? 'ai' : 'player';
+    
+    if (isCriticalHit(card, topCard)) {
+        playSound('crit');
+        setTimeout(() => {
+            for(let i=0; i<20; i++) particles.push(new Particle(width/2, height/2, COLORS[card.suit]));
+            showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[card.suit]);
+            // Hukuman
+            drawCardToHand(victim === 'player' ? playerHand : aiHand);
+            showFloatingText("+1 Card", width/2, height/2 + 50, "#fff");
+        }, 300);
+    }
+
+    if (hand.length === 0) {
+        setTimeout(() => {
+            let msg = who === 'player' ? "KAMU MENANG!" : "KAMU KALAH!";
+            endGame(msg);
+        }, 500);
+        return;
+    }
+
+    turn = victim;
+
+    // Logic perpindahan turn
+    if (!isOnline) {
+        // OFFLINE LOGIC
+        if (turn === 'ai') setTimeout(aiTurnOffline, 1200);
+    } else {
+        // ONLINE LOGIC
+        // Tidak ada AI otomatis. Kita hanya set flag turn.
+        // Jika turn 'ai', berarti kita menunggu data dari network.
+    }
+}
+
+function playerInput(cardIndex) {
+    if (gameState !== 'PLAYING' || turn !== 'player') return;
+    let card = playerHand[cardIndex];
+    let top = discardPile[discardPile.length - 1];
+
+    if (isValidMove(card, top)) {
+        executeMove('player', cardIndex, true);
+    } else {
+        card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
+        showFloatingText("X", card.x, card.y - 50, "red");
+    }
+}
+
+// Tombol Draw Deck
+function handleDeckClick() {
+    if (gameState !== 'PLAYING' || turn !== 'player') return;
+    
+    drawCardToHand(playerHand);
+    
     if (isOnline) {
-        nextTurn = isHost ? 'guest' : 'host';
-        conn.send({ type: 'DRAW', oppHandCount: playerHand.length, nextTurn: nextTurn });
-    } else {
-        nextTurn = 'ai';
-        setTimeout(aiTurn, 1000);
+        sendData({ type: 'OPPONENT_DRAW' });
     }
-    turn = nextTurn;
+
+    turn = 'ai'; // Pass turn
+    showFloatingText("Skip Turn", width/2, height/2 + 80, "#aaa");
+
+    if (!isOnline) {
+        setTimeout(aiTurnOffline, 1000);
+    }
 }
 
-function aiTurn() {
-    if (gameState !== 'PLAYING' || isOnline) return;
-    const top = discardPile[discardPile.length - 1];
-    let index = aiHand.findIndex(c => c.suit === top.suit || c.value === top.value);
+function aiTurnOffline() {
+    if (gameState !== 'PLAYING') return;
+    let top = discardPile[discardPile.length - 1];
+    
+    let moves = [];
+    aiHand.forEach((c, i) => { if(isValidMove(c, top)) moves.push(i); });
 
-    if (index !== -1) {
-        discardPile.push(aiHand[index]);
-        aiHand.splice(index, 1);
-        playSound('play');
-        if(aiHand.length === 0) endGame("AI MENANG!");
-    } else {
-        aiHand.push(deck.pop());
+    let bestMove = -1;
+    for(let idx of moves) {
+        if(isCriticalHit(aiHand[idx], top)) { bestMove = idx; break; }
     }
-    turn = 'player';
+    if (bestMove === -1 && moves.length > 0) bestMove = moves[Math.floor(Math.random() * moves.length)];
+
+    if (bestMove !== -1) {
+        executeMove('ai', bestMove);
+    } else {
+        let newCard = drawCardToHand(aiHand);
+        showFloatingText("AI Draw", width/2, 100, "#aaa");
+        if (newCard && isValidMove(newCard, top)) {
+            setTimeout(() => executeMove('ai', aiHand.length - 1), 800);
+        } else {
+            turn = 'player';
+        }
+    }
 }
 
 function endGame(msg) {
     gameState = 'GAMEOVER';
     document.getElementById('winner-text').innerText = msg;
-    document.getElementById('ui-layer').classList.remove('hidden');
+    document.getElementById('game-over').style.display = 'block';
 }
 
-// --- ANIMATION LOOP ---
+// --- RENDER LOOP ---
 
 function draw() {
-    ctx.clearRect(0,0,width,height);
-    let cardW = width < 600 ? 65 : 90;
+    ctx.clearRect(0, 0, width, height);
+    
+    let cardW = width < 600 ? 65 : 100;
     let cardH = cardW * 1.4;
 
-    if (gameState === 'PLAYING') {
-        // Deck
-        ctx.fillStyle = COLORS.cardBack; ctx.beginPath();
-        ctx.roundRect(20, height/2 - cardH/2, cardW, cardH, 10); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.font="12px Orbitron"; ctx.fillText("DECK", 60, height/2 + cardH/2 + 20);
-
-        // Discard
-        discardPile.slice(-3).forEach(c => c.draw(ctx, true, width/2, height/2, cardW, cardH));
-
-        // Opponent
-        let oppCount = isOnline ? opponentHandCount : aiHand.length;
-        let oppSpread = Math.min(width / (oppCount + 1), cardW * 0.5);
-        for(let i=0; i<oppCount; i++) {
-            let ox = (width/2 - ((oppCount-1)*oppSpread)/2) + i*oppSpread;
-            ctx.fillStyle = COLORS.cardBack; ctx.beginPath();
-            ctx.roundRect(ox - cardW/4, -cardH/2, cardW/2, cardH/1.5, 5); ctx.fill();
+    // 1. Draw Deck
+    if (deck.length > 0) {
+        let deckX = 60; let deckY = height / 2;
+        for(let i=0; i<Math.min(deck.length, 3); i++) {
+            ctx.fillStyle = '#111'; ctx.strokeStyle = '#333';
+            roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
+            ctx.fill(); ctx.stroke();
         }
-
-        // Player
-        let pSpread = Math.min(width / (playerHand.length + 1), cardW + 10);
-        let pStart = width/2 - ((playerHand.length-1)*pSpread)/2;
-        playerHand.forEach((c, i) => {
-            c.targetX = pStart + i*pSpread;
-            c.targetY = height - (c.isHovered ? cardH*0.8 : cardH*0.6);
-            c.width = cardW; c.height = cardH;
-            c.draw(ctx, true);
-        });
-
-        // Info
-        ctx.fillStyle = "#fff"; ctx.font = "bold 14px Orbitron"; ctx.textAlign="center";
-        let myRoleID = isOnline ? (isHost ? 'host' : 'guest') : 'player';
-        ctx.fillText(turn === myRoleID ? "GILIRANMU" : "GILIRAN LAWAN", width/2, height/2 + cardH/2 + 50);
+        let topDeckY = (deckY - cardH/2) - (Math.min(deck.length, 3)*2);
+        ctx.fillStyle = COLORS.cardBack; ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
+        roundRect(ctx, deckX - cardW/2, topDeckY, cardW, cardH, 10); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = "12px Orbitron"; ctx.textAlign = "center";
+        ctx.fillText("DECK", deckX, deckY + cardH/2 + 20);
     }
-    
-    particles.forEach(p => p.draw(ctx));
-    floatingTexts.forEach(t => { t.y -= 1; t.life -= 0.02; 
-        ctx.globalAlpha = Math.max(0, t.life); ctx.fillStyle = t.color;
-        ctx.fillText(t.text, t.x, t.y); ctx.globalAlpha = 1;
+
+    // 2. Discard Pile
+    if (discardPile.length > 0) {
+        let startIdx = Math.max(0, discardPile.length - 3);
+        for(let i = startIdx; i < discardPile.length; i++) {
+            let c = discardPile[i];
+            if(Math.abs(c.x - width/2) < 2) c.x = width/2;
+            if(Math.abs(c.y - height/2) < 2) c.y = height/2;
+            c.draw(ctx, true, undefined, undefined, cardW, cardH);
+        }
+    } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 2;
+        roundRect(ctx, width/2 - cardW/2, height/2 - cardH/2, cardW, cardH, 10); ctx.stroke();
+    }
+
+    // 3. Hand Opponent (AI/Online)
+    let aiSpread = Math.min(width / (aiHand.length + 2), cardW * 0.7);
+    let aiStart = width/2 - ((aiHand.length - 1) * aiSpread) / 2;
+    aiHand.forEach((c, i) => {
+        c.targetX = aiStart + i * aiSpread;
+        c.targetY = -cardH * 0.4;
+        c.draw(ctx, false, undefined, undefined, cardW, cardH);
     });
+
+    // 4. Hand Player
+    let pSpread = Math.min(width / (playerHand.length + 1), cardW + 10);
+    let pStart = width/2 - ((playerHand.length - 1) * pSpread) / 2;
+    playerHand.forEach((c, i) => {
+        c.targetX = pStart + i * pSpread;
+        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
+        c.width = cardW; c.height = cardH;
+        c.draw(ctx, true);
+    });
+
+    particles.forEach(p => p.draw(ctx));
+    floatingTexts.forEach(t => t.draw(ctx));
+
+    if(gameState === 'PLAYING') {
+        ctx.font = "bold 16px Orbitron"; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        let txt = "";
+        if (turn === 'player') txt = "YOUR TURN";
+        else txt = isOnline ? "OPPONENT TURN..." : "AI THINKING...";
+        ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
+    }
 }
 
-function loop() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    draw();
-    requestAnimationFrame(loop);
+function update() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        floatingTexts[i].update(); if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+    }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+// --- INPUTS ---
+function handleInput(x, y) {
+    if (gameState !== 'PLAYING' || turn !== 'player') return;
+
+    // Klik Kartu
+    for (let i = playerHand.length - 1; i >= 0; i--) {
+        let c = playerHand[i];
+        if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
+            y > c.y - c.height/2 && y < c.y + c.height/2) {
+            playerInput(i); return;
+        }
+    }
+    // Klik Deck
+    let deckX = 60; let deckY = height/2;
+    let w = width < 600 ? 65 : 100; let h = w*1.4;
+    if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
+        y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
+        handleDeckClick();
+    }
+}
+
+function handleHover(x, y) {
+    let hovered = false;
+    for (let i = playerHand.length - 1; i >= 0; i--) {
+        let c = playerHand[i];
+        if (!hovered && x > c.x - c.width/2 && x < c.x + c.width/2 && 
+            y > c.y - c.height/2 && y < c.y + c.height/2) {
+            c.isHovered = true; hovered = true;
+        } else c.isHovered = false;
+    }
 }
 
 // --- UTILS ---
-function playSound(type) {
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.connect(g); g.connect(audioCtx.destination);
-    if(type==='play') { osc.frequency.setValueAtTime(400, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } }
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
+function showFloatingText(txt, x, y, c) { 
+    floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
+        ctx.globalAlpha=Math.max(0,this.life); ctx.fillStyle=this.color; ctx.strokeStyle='#000'; ctx.lineWidth=3;
+        ctx.font="bold 24px Orbitron"; ctx.strokeText(this.text,this.x,this.y); ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1;
+    }});
 }
 function drawElementIcon(ctx, type, x, y, s) {
-    ctx.beginPath();
-    if(type==='fire') ctx.arc(0,0,s,0,Math.PI*2);
-    else if(type==='water') ctx.rect(-s/2,-s/2,s,s);
-    else ctx.moveTo(0,-s); ctx.lineTo(s,s); ctx.lineTo(-s,s);
-    ctx.fill();
+    ctx.save(); ctx.translate(x, y); ctx.beginPath();
+    if (type === 'fire') { ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s); } 
+    else if (type === 'water') { ctx.arc(0, 0, s*0.8, 0, Math.PI*2); } 
+    else if (type === 'leaf') { ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s); }
+    ctx.fill(); ctx.restore();
 }
-function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 1}); }
+function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
 
+window.addEventListener('resize', resize);
 canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
-canvas.addEventListener('mousemove', e => {
-    playerHand.forEach(c => {
-        c.isHovered = (e.clientX > c.x - c.width/2 && e.clientX < c.x + c.width/2 && e.clientY > c.y - c.height/2 && e.clientY < c.y + c.height/2);
-    });
-});
-canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); });
+canvas.addEventListener('mousemove', e => handleHover(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
 
+resize();
 loop();
 </script>
 </body>
