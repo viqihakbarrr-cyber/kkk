@@ -2,496 +2,548 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Co-op Rhythm 3D</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON RIFT: Multiplayer</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; color: white; user-select: none; }
-        
-        /* UI LAYOUTS */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
-        .screen { pointer-events: auto; text-align: center; background: rgba(0,0,0,0.85); padding: 40px; border: 2px solid #00ffff; box-shadow: 0 0 20px #00ffff; border-radius: 10px; display: none; max-width: 90%; }
-        .active { display: block; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-        h1 { color: #00ffff; text-transform: uppercase; margin-bottom: 20px; text-shadow: 0 0 10px #00ffff; }
-        h2 { font-size: 1.2rem; margin-bottom: 10px; }
-        
-        button { background: transparent; color: #fff; border: 2px solid #fff; padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; transition: 0.2s; font-family: inherit; font-weight: bold; }
-        button:hover { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
-        
-        input[type="text"] { background: transparent; border: 2px solid #fff; color: #fff; padding: 10px; font-size: 24px; text-align: center; width: 150px; margin-bottom: 20px; font-family: inherit; }
-        input[type="file"] { margin: 20px 0; }
-
-        /* GAME HUD */
-        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-        #score-board { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; }
-        #waiting-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; color: #aaa; }
-        
-        /* FEEDBACK EFFECT */
-        .feedback { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: 900; opacity: 0; transition: opacity 0.2s; text-shadow: 0 0 20px currentColor; }
-        .anim-pop { animation: popUp 0.5s forwards; }
-
-        @keyframes popUp {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        body {
+            margin: 0; overflow: hidden; background-color: #050505;
+            font-family: 'Orbitron', sans-serif; touch-action: none; user-select: none;
         }
 
-        #fullscreen-btn { position: absolute; top: 10px; right: 10px; z-index: 100; font-size: 12px; padding: 5px 10px; }
+        #gameCanvas { display: block; width: 100%; height: 100vh; background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%); }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 0, 0, 0.9); z-index: 200; backdrop-filter: blur(8px);
+        }
+
+        .modal-box {
+            background: #fff; padding: 30px; border-radius: 15px; text-align: center;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3); border: 4px solid #333;
+            max-width: 85%; min-width: 300px;
+        }
+
+        h1 { margin: 0 0 15px 0; color: #000; font-size: 24px; }
+        p { color: #666; font-size: 14px; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+
+        button {
+            padding: 12px 25px; border: none; border-radius: 50px; font-family: 'Orbitron';
+            font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px;
+        }
+
+        .btn-main { background: #000; color: #fff; }
+        .btn-active { background: linear-gradient(45deg, #0088FF, #00CC44); color: #fff; }
+        .btn-active:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        input[type="text"] {
+            padding: 10px; border: 2px solid #ddd; border-radius: 8px;
+            font-family: 'Orbitron'; text-align: center; font-size: 20px; width: 80%; margin-bottom: 10px;
+        }
+
+        .hidden { display: none !important; }
+        .status-msg { margin-top: 10px; font-size: 12px; color: #ff0055; font-weight: bold; }
+
     </style>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <button id="fullscreen-btn">FULLSCREEN</button>
+    <canvas id="gameCanvas"></canvas>
 
-    <div id="ui-layer">
-        <div id="screen-start" class="screen active">
-            <h1>Neon Rhythm Co-op</h1>
-            <p>Mainkan bersama teman (Local WiFi/Internet)</p>
-            <button onclick="showCreate()">CREATE ROOM (P1)</button>
-            <button onclick="showJoin()">JOIN ROOM (P2)</button>
-        </div>
-
-        <div id="screen-create" class="screen">
-            <h1>Room Created</h1>
-            <p>Kode Room:</p>
-            <h2 id="room-code-display" style="font-size: 40px; color: #ff00ff;">...</h2>
-            <p>Bagikan kode ini ke Player 2</p>
-            <hr style="border-color: #333; margin: 20px 0;">
-            <p>Unggah Lagu MP3:</p>
-            <input type="file" id="audioFile" accept="audio/*">
-            <br>
-            <div id="p1-status">Menunggu Player 2...</div>
-            <button id="btn-start-game" style="display:none;" onclick="startGameP1()">START GAME</button>
-        </div>
-
-        <div id="screen-join" class="screen">
-            <h1>Join Room</h1>
-            <p>Masukkan 4-Digit Kode:</p>
-            <input type="text" id="join-code-input" maxlength="4" placeholder="ABCD">
-            <br>
-            <button onclick="joinRoom()">JOIN</button>
-            <div id="p2-status"></div>
+    <div id="screen-fs" class="overlay">
+        <div class="modal-box">
+            <h1>NEON RIFT</h1>
+            <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; margin: 20px 0;">
+                <input type="checkbox" id="fs-check" style="transform:scale(1.5)" onchange="updateFsBtn()">
+                Go Fullscreen [✓]
+            </label>
+            <button id="btn-fs-next" class="btn-main" disabled onclick="goFullscreen()">NEXT</button>
         </div>
     </div>
 
-    <div id="hud">
-        <div id="score-board">SKOR: <span id="score-val">0</span></div>
-        <div id="feedback-text" class="feedback" style="color: #00ffff;">PERFECT</div>
-        <div id="waiting-msg" style="display:none;">Menunggu Host Memulai...</div>
+    <div id="screen-mode" class="overlay hidden">
+        <div class="modal-box">
+            <h1>PILIH MODE</h1>
+            <div class="btn-group">
+                <button class="btn-active" onclick="showOnlineMenu()">PLAY ONLINE</button>
+                <button class="btn-main" onclick="startOfflineGame()">PLAY OFFLINE (VS AI)</button>
+            </div>
+        </div>
     </div>
 
-    <audio id="music-player" style="display:none;"></audio>
+    <div id="screen-online" class="overlay hidden">
+        <div class="modal-box">
+            <h1>ONLINE PLAY</h1>
+            <div class="btn-group">
+                <button class="btn-active" onclick="createRoom()">CREATE ROOM</button>
+                <button class="btn-main" onclick="showJoinMenu()">JOIN ROOM</button>
+                <button style="background:none; color:#999; font-size:12px;" onclick="backToMode()">KEMBALI</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        /* --- GLOBAL VARIABLES --- */
-        let role = ''; // 'host' or 'client'
-        let peer, conn;
-        let myId, otherId;
-        
-        // Game State
-        let isPlaying = false;
-        let score = 0;
-        let audioCtx, analyser, dataArray;
-        let audioSource;
-        
-        // Three.js Vars
-        let scene, camera, renderer;
-        let ring, grid;
-        let balls = [];
-        const ballSpeed = 0.5; // Kecepatan bola
-        const spawnZ = -80; // Jarak spawn
-        
-        // Inputs
-        let mouseX = 0, mouseY = 0; // Normalized -1 to 1
-        let p2Y = 0; // Data Y dari P2
-        let p1X = 0; // Data X dari P1 (untuk dikirim ke P2 jika perlu visual sync)
+    <div id="screen-host" class="overlay hidden">
+        <div class="modal-box">
+            <h1>WAITING PLAYER...</h1>
+            <p>Berikan kode ini ke temanmu:</p>
+            <div id="room-id-display" style="font-size: 40px; font-weight: bold; margin: 20px 0; letter-spacing: 5px; color: #0088FF;">----</div>
+            <p id="connection-status">Inisialisasi Peer...</p>
+        </div>
+    </div>
 
-        /* --- FULLSCREEN & SETUP --- */
-        document.getElementById('fullscreen-btn').addEventListener('click', () => {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    <div id="screen-join" class="overlay hidden">
+        <div class="modal-box">
+            <h1>JOIN ROOM</h1>
+            <p>Masukkan 4 Digit Kode Host:</p>
+            <input type="text" id="join-id-input" maxlength="4" placeholder="0000">
+            <div class="btn-group">
+                <button class="btn-active" onclick="joinRoom()">CONNECT</button>
+                <button class="btn-main" onclick="showOnlineMenu()">BACK</button>
+            </div>
+            <div id="join-error" class="status-msg"></div>
+        </div>
+    </div>
+
+    <div id="ui-layer" class="overlay hidden" style="background:rgba(0,0,0,0.7)">
+        <div class="modal-box">
+            <h1 id="winner-text">MENANG!</h1>
+            <button class="btn-active" onclick="location.reload()">MAIN LAGI</button>
+        </div>
+    </div>
+
+<script>
+// --- KONFIGURASI GAME ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+let particles = [];
+let floatingTexts = [];
+
+const SUITS = ['fire', 'water', 'leaf'];
+const COLORS = { fire: '#FF2222', water: '#0088FF', leaf: '#00CC44', cardBg: '#FFFFFF', cardBack: '#1a1a1a', cardBackOutline: '#00FFFF' };
+const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
+
+// Multiplayer States
+let peer = null;
+let conn = null;
+let isHost = false;
+let myRole = 'player'; // 'player' atau 'ai' (dalam offline)
+let isOnline = false;
+
+// Game State
+let deck = [];
+let discardPile = [];
+let playerHand = [];
+let opponentHandCount = 0; // Hanya hitung jumlah untuk kartu lawan
+let aiHand = []; // Digunakan jika offline
+let turn = 'host'; // Host selalu jalan duluan
+let gameState = 'MENU';
+
+// --- PEER JS LOGIC ---
+
+function initPeer(customID) {
+    peer = new Peer(customID, { debug: 1 });
+
+    peer.on('open', id => {
+        if(isHost) {
+            document.getElementById('room-id-display').innerText = id;
+            document.getElementById('connection-status').innerText = "Menunggu lawan bergabung...";
+        }
+    });
+
+    peer.on('connection', connection => {
+        conn = connection;
+        setupConnHandlers();
+    });
+
+    peer.on('error', err => {
+        console.error(err);
+        alert("Peer Error: " + err.type);
+    });
+}
+
+function setupConnHandlers() {
+    conn.on('open', () => {
+        if(isHost) {
+            // Host kirim deck awal ke Guest
+            startOnlineGame();
+        } else {
+            // Guest menunggu data dari host
+            document.getElementById('screen-join').classList.add('hidden');
+        }
+    });
+
+    conn.on('data', data => {
+        handleIncomingData(data);
+    });
+
+    conn.on('close', () => {
+        alert("Lawan terputus.");
+        location.reload();
+    });
+}
+
+function handleIncomingData(data) {
+    if (data.type === 'START_GAME') {
+        deck = data.deck.map(d => new Card(d.suit, d.value));
+        discardPile = [new Card(data.firstCard.suit, data.firstCard.value)];
+        playerHand = data.hand.map(d => new Card(d.suit, d.value));
+        opponentHandCount = data.oppHandCount;
+        gameState = 'PLAYING';
+        turn = 'host';
+        hideAllScreens();
+        showFloatingText("GAME START!", width/2, height/2, "#fff");
+    } 
+    else if (data.type === 'MOVE') {
+        // Lawan melakukan gerakan
+        const cardMoved = new Card(data.card.suit, data.card.value);
+        discardPile.push(cardMoved);
+        opponentHandCount = data.oppHandCount;
+        turn = data.nextTurn;
+        playSound('play');
+        showFloatingText("Lawan Jalan", width/2, 100, "#aaa");
+    }
+    else if (data.type === 'DRAW') {
+        opponentHandCount = data.oppHandCount;
+        turn = data.nextTurn;
+        showFloatingText("Lawan Ambil Kartu", width/2, 100, "#aaa");
+    }
+}
+
+// --- UI NAVIGATION ---
+
+function updateFsBtn() {
+    const chk = document.getElementById('fs-check');
+    const btn = document.getElementById('btn-fs-next');
+    btn.disabled = !chk.checked;
+    btn.className = chk.checked ? 'btn-active' : 'btn-main';
+}
+
+function goFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    document.getElementById('screen-fs').classList.add('hidden');
+    document.getElementById('screen-mode').classList.remove('hidden');
+}
+
+function showOnlineMenu() {
+    hideAllScreens();
+    document.getElementById('screen-online').classList.remove('hidden');
+}
+
+function backToMode() {
+    hideAllScreens();
+    document.getElementById('screen-mode').classList.remove('hidden');
+}
+
+function createRoom() {
+    isHost = true;
+    isOnline = true;
+    hideAllScreens();
+    document.getElementById('screen-host').classList.remove('hidden');
+    // Generate 4 digit ID
+    const randomID = Math.floor(1000 + Math.random() * 9000).toString();
+    initPeer(randomID);
+}
+
+function showJoinMenu() {
+    hideAllScreens();
+    document.getElementById('screen-join').classList.remove('hidden');
+}
+
+function joinRoom() {
+    const id = document.getElementById('join-id-input').value;
+    if(id.length !== 4) return alert("Kode harus 4 digit");
+    isHost = false;
+    isOnline = true;
+    initPeer();
+    
+    setTimeout(() => {
+        conn = peer.connect(id);
+        setupConnHandlers();
+    }, 500);
+}
+
+function hideAllScreens() {
+    document.querySelectorAll('.overlay').forEach(s => s.classList.add('hidden'));
+}
+
+// --- GAME LOGIC ---
+
+class Card {
+    constructor(suit, value) {
+        this.suit = suit; this.value = value;
+        this.x = width/2; this.y = -200;
+        this.targetX = width/2; this.targetY = height/2;
+        this.isHovered = false;
+        this.width = 0; this.height = 0;
+    }
+    draw(ctx, isFaceUp, x, y, w, h) {
+        this.x += (this.targetX - this.x) * 0.15;
+        this.y += (this.targetY - this.y) * 0.15;
+        const drawX = x !== undefined ? x : this.x;
+        const drawY = y !== undefined ? y : this.y;
+        const drawW = w || this.width;
+        const drawH = h || this.height;
+
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.fillStyle = isFaceUp ? COLORS.cardBg : COLORS.cardBack;
+        ctx.strokeStyle = isFaceUp ? COLORS[this.suit] : COLORS.cardBackOutline;
+        ctx.lineWidth = 3;
+        
+        // Card Shape
+        ctx.beginPath(); ctx.roundRect(-drawW/2, -drawH/2, drawW, drawH, 10);
+        ctx.fill(); ctx.stroke();
+
+        if (isFaceUp) {
+            ctx.fillStyle = COLORS[this.suit];
+            ctx.font = `bold ${drawW * 0.5}px Orbitron`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(this.value, 0, -drawH*0.1);
+            drawElementIcon(ctx, this.suit, 0, drawH*0.3, drawW * 0.2);
+        }
+        ctx.restore();
+    }
+}
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } }
+
+function startOfflineGame() {
+    isOnline = false;
+    hideAllScreens();
+    initDeck();
+    dealInitialCards();
+    gameState = 'PLAYING';
+    turn = 'player';
+}
+
+function startOnlineGame() {
+    initDeck();
+    // Host membagi kartu
+    const hostHand = [];
+    const guestHand = [];
+    for(let i=0; i<6; i++) {
+        hostHand.push(deck.pop());
+        guestHand.push(deck.pop());
+    }
+    const firstCard = deck.pop();
+    discardPile = [firstCard];
+    playerHand = hostHand;
+    opponentHandCount = 6;
+
+    // Kirim data ke Guest
+    conn.send({
+        type: 'START_GAME',
+        deck: deck,
+        firstCard: firstCard,
+        hand: guestHand,
+        oppHandCount: hostHand.length
+    });
+
+    gameState = 'PLAYING';
+    turn = 'host';
+    hideAllScreens();
+}
+
+function initDeck() {
+    deck = [];
+    SUITS.forEach(s => {
+        for(let i=1; i<=9; i++) {
+            deck.push(new Card(s, i));
+            if(i<=5) deck.push(new Card(s, i));
+        }
+    });
+    shuffle(deck);
+}
+
+function dealInitialCards() {
+    playerHand = []; aiHand = [];
+    for(let i=0; i<6; i++) {
+        playerHand.push(deck.pop());
+        aiHand.push(deck.pop());
+    }
+    discardPile = [deck.pop()];
+}
+
+function handleInput(x, y) {
+    if (gameState !== 'PLAYING') return;
+    
+    // Check turn
+    if (isOnline) {
+        const myTurnLabel = isHost ? 'host' : 'guest';
+        if (turn !== myTurnLabel) return;
+    } else {
+        if (turn !== 'player') return;
+    }
+
+    // Check Hand
+    for (let i = playerHand.length - 1; i >= 0; i--) {
+        let c = playerHand[i];
+        if (x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) {
+            playCard(i);
+            return;
+        }
+    }
+
+    // Check Deck (Draw)
+    if (x < 120 && y > height/2 - 100 && y < height/2 + 100) {
+        drawCard();
+    }
+}
+
+function playCard(index) {
+    const card = playerHand[index];
+    const top = discardPile[discardPile.length - 1];
+
+    if (card.suit === top.suit || card.value === top.value) {
+        playerHand.splice(index, 1);
+        discardPile.push(card);
+        playSound('play');
+
+        let nextTurn = "";
+        if (isOnline) {
+            nextTurn = isHost ? 'guest' : 'host';
+            conn.send({
+                type: 'MOVE',
+                card: {suit: card.suit, value: card.value},
+                oppHandCount: playerHand.length,
+                nextTurn: nextTurn
+            });
+        } else {
+            nextTurn = 'ai';
+            setTimeout(aiTurn, 1000);
+        }
+
+        turn = nextTurn;
+        if(playerHand.length === 0) endGame("KAMU MENANG!");
+    }
+}
+
+function drawCard() {
+    if (deck.length === 0) return;
+    const c = deck.pop();
+    playerHand.push(c);
+    playSound('deal');
+
+    let nextTurn = "";
+    if (isOnline) {
+        nextTurn = isHost ? 'guest' : 'host';
+        conn.send({ type: 'DRAW', oppHandCount: playerHand.length, nextTurn: nextTurn });
+    } else {
+        nextTurn = 'ai';
+        setTimeout(aiTurn, 1000);
+    }
+    turn = nextTurn;
+}
+
+function aiTurn() {
+    if (gameState !== 'PLAYING' || isOnline) return;
+    const top = discardPile[discardPile.length - 1];
+    let index = aiHand.findIndex(c => c.suit === top.suit || c.value === top.value);
+
+    if (index !== -1) {
+        discardPile.push(aiHand[index]);
+        aiHand.splice(index, 1);
+        playSound('play');
+        if(aiHand.length === 0) endGame("AI MENANG!");
+    } else {
+        aiHand.push(deck.pop());
+    }
+    turn = 'player';
+}
+
+function endGame(msg) {
+    gameState = 'GAMEOVER';
+    document.getElementById('winner-text').innerText = msg;
+    document.getElementById('ui-layer').classList.remove('hidden');
+}
+
+// --- ANIMATION LOOP ---
+
+function draw() {
+    ctx.clearRect(0,0,width,height);
+    let cardW = width < 600 ? 65 : 90;
+    let cardH = cardW * 1.4;
+
+    if (gameState === 'PLAYING') {
+        // Deck
+        ctx.fillStyle = COLORS.cardBack; ctx.beginPath();
+        ctx.roundRect(20, height/2 - cardH/2, cardW, cardH, 10); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.font="12px Orbitron"; ctx.fillText("DECK", 60, height/2 + cardH/2 + 20);
+
+        // Discard
+        discardPile.slice(-3).forEach(c => c.draw(ctx, true, width/2, height/2, cardW, cardH));
+
+        // Opponent
+        let oppCount = isOnline ? opponentHandCount : aiHand.length;
+        let oppSpread = Math.min(width / (oppCount + 1), cardW * 0.5);
+        for(let i=0; i<oppCount; i++) {
+            let ox = (width/2 - ((oppCount-1)*oppSpread)/2) + i*oppSpread;
+            ctx.fillStyle = COLORS.cardBack; ctx.beginPath();
+            ctx.roundRect(ox - cardW/4, -cardH/2, cardW/2, cardH/1.5, 5); ctx.fill();
+        }
+
+        // Player
+        let pSpread = Math.min(width / (playerHand.length + 1), cardW + 10);
+        let pStart = width/2 - ((playerHand.length-1)*pSpread)/2;
+        playerHand.forEach((c, i) => {
+            c.targetX = pStart + i*pSpread;
+            c.targetY = height - (c.isHovered ? cardH*0.8 : cardH*0.6);
+            c.width = cardW; c.height = cardH;
+            c.draw(ctx, true);
         });
 
-        function switchScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
+        // Info
+        ctx.fillStyle = "#fff"; ctx.font = "bold 14px Orbitron"; ctx.textAlign="center";
+        let myRoleID = isOnline ? (isHost ? 'host' : 'guest') : 'player';
+        ctx.fillText(turn === myRoleID ? "GILIRANMU" : "GILIRAN LAWAN", width/2, height/2 + cardH/2 + 50);
+    }
+    
+    particles.forEach(p => p.draw(ctx));
+    floatingTexts.forEach(t => { t.y -= 1; t.life -= 0.02; 
+        ctx.globalAlpha = Math.max(0, t.life); ctx.fillStyle = t.color;
+        ctx.fillText(t.text, t.x, t.y); ctx.globalAlpha = 1;
+    });
+}
 
-        /* --- PEERJS CONNECTION LOGIC --- */
-        function initPeer(customId = null) {
-            // Menggunakan PeerJS cloud server default (gratis, kadang ada limit)
-            peer = new Peer(customId);
-            
-            peer.on('open', (id) => {
-                myId = id;
-                console.log('My ID:', id);
-                if(role === 'host') {
-                    // Tampilkan hanya 4 karakter terakhir sebagai "Kode" agar simpel
-                    let shortCode = id.substring(0, 4).toUpperCase(); 
-                    // Agar mudah, kita paksa ID menjadi random 4 huruf jika memungkinkan, 
-                    // tapi karena ID harus unik global, kita pakai ID asli peerjs dan user ketik full atau kita mapping.
-                    // TRICK: Kita buat ID sendiri yang random 4 huruf.
-                }
-            });
+function loop() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    draw();
+    requestAnimationFrame(loop);
+}
 
-            peer.on('connection', (c) => {
-                conn = c;
-                setupConnectionHandlers();
-                if(role === 'host') {
-                    document.getElementById('p1-status').innerText = "Player 2 Terhubung!";
-                    checkReadyP1();
-                }
-            });
-            
-            peer.on('error', (err) => {
-                console.error(err);
-                alert("Koneksi Error (Coba refresh atau nama ID sudah dipakai).");
-            });
-        }
+// --- UTILS ---
+function playSound(type) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.connect(g); g.connect(audioCtx.destination);
+    if(type==='play') { osc.frequency.setValueAtTime(400, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1); }
+}
+function drawElementIcon(ctx, type, x, y, s) {
+    ctx.beginPath();
+    if(type==='fire') ctx.arc(0,0,s,0,Math.PI*2);
+    else if(type==='water') ctx.rect(-s/2,-s/2,s,s);
+    else ctx.moveTo(0,-s); ctx.lineTo(s,s); ctx.lineTo(-s,s);
+    ctx.fill();
+}
+function showFloatingText(text, x, y, color) { floatingTexts.push({text, x, y, color, life: 1}); }
 
-        function setupConnectionHandlers() {
-            conn.on('data', (data) => {
-                // Handling Data
-                if (role === 'host') {
-                    if (data.type === 'input') {
-                        p2Y = data.y; // Host menerima input Y dari Client
-                    }
-                } else if (role === 'client') {
-                    if (data.type === 'start') {
-                        startGameClient();
-                    }
-                    if (data.type === 'sync') {
-                        // Client menerima posisi bola dan skor dari Host untuk visualisasi
-                        syncGameData(data); 
-                    }
-                    if (data.type === 'feedback') {
-                        showFeedback(data.text, data.color);
-                    }
-                }
-            });
-            conn.on('open', () => {
-                if(role === 'client') {
-                     document.getElementById('p2-status').innerText = "Terhubung ke P1! Menunggu Game...";
-                     document.getElementById('hud').style.display = 'block';
-                     document.getElementById('waiting-msg').style.display = 'block';
-                     switchScreen('none'); // Hide UI
-                }
-            });
-        }
+canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
+canvas.addEventListener('mousemove', e => {
+    playerHand.forEach(c => {
+        c.isHovered = (e.clientX > c.x - c.width/2 && e.clientX < c.x + c.width/2 && e.clientY > c.y - c.height/2 && e.clientY < c.y + c.height/2);
+    });
+});
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); });
 
-        /* --- LOBBY LOGIC --- */
-        function showCreate() {
-            role = 'host';
-            // Generate 4 digit random ID
-            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-            document.getElementById('room-code-display').innerText = code;
-            switchScreen('screen-create');
-            initPeer("game_" + code); // ID unik di server peerjs
-        }
-
-        function showJoin() {
-            role = 'client';
-            switchScreen('screen-join');
-            // Client ID acak
-            initPeer(); 
-        }
-
-        function joinRoom() {
-            const code = document.getElementById('join-code-input').value.toUpperCase();
-            if(code.length < 4) return alert("Masukkan kode 4 digit");
-            
-            const targetId = "game_" + code;
-            conn = peer.connect(targetId);
-            setupConnectionHandlers();
-            document.getElementById('p2-status').innerText = "Menghubungkan...";
-        }
-
-        // P1 Upload Audio
-        const fileInput = document.getElementById('audioFile');
-        let audioBuffer = null;
-        
-        fileInput.onchange = function() {
-            const file = this.files[0];
-            if(file) {
-                checkReadyP1();
-            }
-        };
-
-        function checkReadyP1() {
-            if(conn && fileInput.files.length > 0) {
-                document.getElementById('btn-start-game').style.display = 'inline-block';
-            }
-        }
-
-        /* --- GAMEPLAY & THREE.JS --- */
-        function initThreeJS() {
-            // Scene
-            scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.02);
-
-            // Camera
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 5;
-            camera.position.y = 2;
-
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            // Grid Floor
-            grid = new THREE.GridHelper(100, 40, 0xff00ff, 0x222222);
-            grid.position.y = -2;
-            scene.add(grid);
-
-            // The Player Ring (Torus)
-            const geometry = new THREE.TorusGeometry(1, 0.05, 16, 100);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            ring = new THREE.Mesh(geometry, material);
-            scene.add(ring);
-
-            // Lights
-            const light = new THREE.AmbientLight(0x404040); 
-            scene.add(light);
-            const pointLight = new THREE.PointLight(0x0000ff, 1, 100);
-            pointLight.position.set(0, 0, 5);
-            scene.add(pointLight);
-
-            // Resize handler
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-
-            // Input Handler (Mouse/Touch)
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('touchmove', onTouch, {passive: false});
-        }
-
-        function onMove(e) {
-            // Normalize -1 to 1
-            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-            updateRingPos();
-        }
-        
-        function onTouch(e) {
-            e.preventDefault();
-            let touch = e.touches[0];
-            mouseX = (touch.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(touch.clientY / window.innerHeight) * 2 + 1;
-            updateRingPos();
-        }
-
-        function updateRingPos() {
-            // Batas pergerakan
-            const limitX = 4; 
-            const limitY = 2.5;
-
-            if (role === 'host') {
-                // Host control X
-                p1X = mouseX * limitX;
-                ring.position.x = p1X;
-                ring.position.y = p2Y * limitY; // Y controlled by P2 data
-            } else {
-                // Client control Y
-                // Send Y to host
-                if(conn && conn.open) {
-                    conn.send({ type: 'input', y: mouseY });
-                }
-                // Client visual local (prediksi agar smooth)
-                // Sebenarnya posisi asli ring ditentukan oleh data sync dari Host, 
-                // tapi kita update lokal juga biar responsif di layar sendiri
-                ring.position.y = mouseY * limitY;
-            }
-        }
-
-        /* --- GAME LOGIC (HOST ONLY) --- */
-        async function startGameP1() {
-            switchScreen('none');
-            document.getElementById('hud').style.display = 'block';
-            
-            initThreeJS();
-            
-            // Audio Context Setup
-            const file = fileInput.files[0];
-            const arrayBuffer = await file.arrayBuffer();
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-            
-            // Start P2
-            conn.send({ type: 'start' });
-
-            // Setup Playback & Analyzer
-            playMusic(audioBuffer);
-            
-            isPlaying = true;
-            loop();
-        }
-
-        function startGameClient() {
-            document.getElementById('waiting-msg').style.display = 'none';
-            initThreeJS();
-            // Client loop hanya render, logic di Host
-            loopClient();
-        }
-
-        function playMusic(buffer) {
-            audioSource = audioCtx.createBufferSource();
-            audioSource.buffer = buffer;
-            
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            audioSource.connect(analyser);
-            analyser.connect(audioCtx.destination);
-            audioSource.start(0);
-        }
-
-        // SPAWNING BALLS (BEAT DETECTION SIMPLE)
-        let lastSpawn = 0;
-        function detectBeat() {
-            if(!analyser) return;
-            analyser.getByteFrequencyData(dataArray);
-            
-            // Hitung rata-rata volume frekuensi rendah (bass/kick)
-            let sum = 0;
-            for(let i=0; i<10; i++) sum += dataArray[i];
-            let avg = sum / 10;
-
-            // Threshold beat
-            if (avg > 230 && Date.now() - lastSpawn > 400) { // 400ms cooldown
-                spawnBall();
-                lastSpawn = Date.now();
-            }
-        }
-
-        function spawnBall() {
-            // Bola 3D
-            const geo = new THREE.SphereGeometry(0.5, 32, 32);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x0055ff }); // Biru seperti contoh
-            const ball = new THREE.Mesh(geo, mat);
-            
-            // Posisi Random X Y
-            ball.position.z = spawnZ;
-            ball.position.x = (Math.random() - 0.5) * 6; // Range X
-            ball.position.y = (Math.random() - 0.5) * 4; // Range Y
-
-            scene.add(ball);
-            balls.push(ball);
-        }
-
-        /* --- LOOPS --- */
-        function loop() {
-            if(!isPlaying) return;
-            requestAnimationFrame(loop);
-
-            detectBeat(); // Host only
-
-            // Move Balls
-            for (let i = balls.length - 1; i >= 0; i--) {
-                let b = balls[i];
-                b.position.z += ballSpeed;
-
-                // Check Hit
-                if (b.position.z > 0) {
-                    // Logic Hitbox sederhana
-                    // Bola harus dekat dengan ring secara X dan Y saat Z ~ 0
-                    let dx = Math.abs(b.position.x - ring.position.x);
-                    let dy = Math.abs(b.position.y - ring.position.y);
-                    
-                    if (dx < 1.2 && dy < 1.2) {
-                        // HIT!
-                        score += 10;
-                        updateScore(score);
-                        triggerFeedback("PERFECT", "#d900ff"); // Ungu
-                        scene.remove(b);
-                        balls.splice(i, 1);
-                    } else if (b.position.z > 2) {
-                        // MISS (lewat kamera)
-                        scene.remove(b);
-                        balls.splice(i, 1);
-                        triggerFeedback("MISS", "#ff0000");
-                    }
-                }
-            }
-            
-            // Render
-            renderer.render(scene, camera);
-
-            // Sync Data to Client
-            if(conn && conn.open) {
-                // Mengirim posisi ring X, score, dan data bola (agar client bisa render bola)
-                // Untuk optimasi, kita kirim array posisi bola sederhana
-                let ballData = balls.map(b => ({x: b.position.x, y: b.position.y, z: b.position.z}));
-                conn.send({
-                    type: 'sync',
-                    score: score,
-                    ringX: ring.position.x, // Client butuh X host
-                    balls: ballData
-                });
-            }
-        }
-
-        function loopClient() {
-            requestAnimationFrame(loopClient);
-            renderer.render(scene, camera);
-        }
-
-        /* --- SYNC FUNCTIONS --- */
-        function syncGameData(data) {
-            document.getElementById('score-val').innerText = data.score;
-            
-            // Sync Ring X (P1 Control)
-            ring.position.x = data.ringX;
-            // Ring Y is controlled locally by client mouse, but to be sure visual is same:
-            // ring.position.y = mouseY * limit; (handled in updateRingPos)
-
-            // Sync Balls
-            // Hapus bola lama
-            balls.forEach(b => scene.remove(b));
-            balls = [];
-            
-            // Buat bola baru sesuai data host (Agak berat, tapi akurat untuk visual)
-            data.balls.forEach(bData => {
-                const geo = new THREE.SphereGeometry(0.5, 16, 16); // Lower poly for client optimization
-                const mat = new THREE.MeshBasicMaterial({ color: 0x0055ff });
-                const b = new THREE.Mesh(geo, mat);
-                b.position.set(bData.x, bData.y, bData.z);
-                scene.add(b);
-                balls.push(b);
-            });
-        }
-
-        function updateScore(val) {
-            document.getElementById('score-val').innerText = val;
-        }
-
-        function triggerFeedback(text, color) {
-            const el = document.getElementById('feedback-text');
-            el.innerText = text;
-            el.style.color = color;
-            el.classList.remove('anim-pop');
-            void el.offsetWidth; // trigger reflow
-            el.classList.add('anim-pop');
-
-            if(conn && conn.open) {
-                conn.send({ type: 'feedback', text: text, color: color });
-            }
-        }
-
-        function showFeedback(text, color) {
-            const el = document.getElementById('feedback-text');
-            el.innerText = text;
-            el.style.color = color;
-            el.classList.remove('anim-pop');
-            void el.offsetWidth;
-            el.classList.add('anim-pop');
-        }
-
-    </script>
+loop();
+</script>
 </body>
 </html>
