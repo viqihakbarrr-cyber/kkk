@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RIFT: Ultimate Battle</title>
+    <title>NEON RIFT: Online Battle (Fixed)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -108,8 +108,7 @@
             background: #000;
             border: none; color: white;
             font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
-            cursor: pointer;
-            border-radius: 50px;
+            cursor: pointer; border-radius: 50px;
             transition: all 0.2s;
             margin: 10px;
             min-width: 150px;
@@ -131,7 +130,6 @@
             box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 1000;
         }
 
         .hidden { display: none !important; }
@@ -215,11 +213,11 @@ let floatingTexts = [];
 // Game Constants
 const SUITS = ['fire', 'water', 'leaf'];
 const COLORS = {
-    fire: '#FF3333',
-    water: '#00AAFF',
-    leaf: '#00DD44',
+    fire: '#FF2222',
+    water: '#0088FF',
+    leaf: '#00CC44',
     cardBg: '#FFFFFF',
-    cardBack: '#151515',
+    cardBack: '#1a1a1a',
     cardBackOutline: '#00FFFF'
 };
 const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
@@ -231,7 +229,7 @@ let myHand = [];
 let opponentHand = []; 
 let turn = ''; 
 let gameState = 'MENU'; 
-let isAnimating = false; // Mencegah input saat animasi deal
+let isAnimating = false; 
 
 // Audio Context
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -254,13 +252,6 @@ function playSound(type) {
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
         osc.start(); osc.stop(t + 0.3);
-    } else if (type === 'win') {
-        osc.type = 'square'; 
-        osc.frequency.setValueAtTime(400, t); 
-        osc.frequency.linearRampToValueAtTime(800, t + 0.2);
-        osc.frequency.linearRampToValueAtTime(400, t + 0.4);
-        gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.5);
-        osc.start(); osc.stop(t + 0.5);
     }
 }
 
@@ -269,7 +260,7 @@ class Card {
     constructor(suit, value) {
         this.suit = suit; this.value = value;
         this.id = Math.random().toString(36).substr(2, 9);
-        this.x = 60; this.y = height/2; // Start from Deck Position
+        this.x = 60; this.y = height/2; 
         this.targetX = width / 2; this.targetY = height / 2;
         this.width = 0; this.height = 0;
         this.isHovered = false;
@@ -290,10 +281,9 @@ class Card {
         ctx.translate(drawX, drawY);
 
         if (isFaceUp) {
-            // Background White
             ctx.fillStyle = COLORS.cardBg;
             ctx.strokeStyle = COLORS[this.suit];
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.shadowColor = 'rgba(0,0,0,0.3)';
             ctx.shadowBlur = this.isHovered ? 20 : 5;
             ctx.shadowOffsetY = 3;
@@ -302,35 +292,25 @@ class Card {
             ctx.fill(); ctx.stroke();
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            // FIX: Element Icon in Center (Lebih Besar & Jelas)
-            drawElementIcon(ctx, this.suit, 0, 0, drawW * 0.4);
+            drawElementIcon(ctx, this.suit, 0, 0, drawW * 0.35);
 
-            // Numbers: Top Right & Bottom Left
             ctx.fillStyle = COLORS[this.suit];
             ctx.font = `bold ${drawW * 0.25}px Orbitron`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            
-            // Top Right
             ctx.fillText(this.value, drawW/2 - 20, -drawH/2 + 25);
-            // Bottom Left
             ctx.fillText(this.value, -drawW/2 + 20, drawH/2 - 25);
 
         } else {
-            // Card Back
             ctx.fillStyle = COLORS.cardBack;
-            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
             roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
             ctx.fill(); ctx.stroke();
-            
             ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
             ctx.beginPath();
-            let pad = 6;
+            let pad = 8;
             ctx.roundRect(-drawW/2 + pad, -drawH/2 + pad, drawW - pad*2, drawH - pad*2, r/2);
             ctx.stroke();
-
-            // Logo Tengah Belakang
-            ctx.fillStyle = '#00FFFF';
-            ctx.beginPath(); ctx.arc(0,0, 10, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-10, -10); ctx.lineTo(10, 10); ctx.moveTo(10, -10); ctx.lineTo(-10, 10); ctx.stroke();
         }
         ctx.restore();
     }
@@ -450,12 +430,10 @@ function resetLobby() {
 function setupConnection() {
     conn.on('open', () => { console.log("Connected"); });
     conn.on('data', (data) => { handleNetworkData(data); });
-    conn.on('close', () => { 
-        if(gameState !== 'GAMEOVER') endGame("DISCONNECTED", "Opponent left the game"); 
-    });
+    conn.on('close', () => { endGame("DISCONNECTED", "Opponent left the game"); });
 }
 
-// --- DATA HANDLING ---
+// --- DATA HANDLING (FIXED HERE) ---
 function handleNetworkData(data) {
     if (data.type === 'START_GAME') {
         document.getElementById('lobby-screen').classList.add('hidden');
@@ -480,12 +458,27 @@ function handleNetworkData(data) {
         opponentHand.push(c);
         playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
+        
         turn = 'me';
         showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
 
-    } else if (data.type === 'GAME_WIN') {
-        // Lawan mengirim sinyal bahwa dia menang (kartu habis)
-        endGame("YOU LOSE", "Opponent cleared their hand!");
+    } else if (data.type === 'EXTRA_CARD') {
+        // Menerima penalti (Kartu asli)
+        let c = data.card;
+        let nc = new Card(c.suit, c.value);
+        nc.x = 60; nc.y = height/2;
+        nc.targetX = width/2; nc.targetY = -200;
+        myHand.push(nc);
+        playSound('deal');
+        showFloatingText("Penalty!", width/2, height/2+50, "red");
+
+    } else if (data.type === 'PENALTY_SYNC') {
+        // FIX: Lawan (Host) menerima penalti, Client harus update visual!
+        let c = new Card('fire', 1);
+        c.x = 60; c.y = height/2; // Animasi dari deck
+        opponentHand.push(c); // Tambah kartu ke tangan lawan (visual)
+        playSound('deal');
+        showFloatingText("Opponent Penalized!", width/2, 100, "red");
     }
 }
 
@@ -502,7 +495,6 @@ function startMultiplayerGame() {
             if(i <= 5) realDeck.push({suit, value: i});
         }
     });
-    // Shuffle
     for (let i = realDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; }
 
     let p1H = realDeck.splice(0, 6); // Host (Me)
@@ -518,8 +510,8 @@ function startMultiplayerGame() {
         type: 'START_GAME',
         deckCount: realDeck.length,
         topDiscard: top,
-        p1HandCount: 6, 
-        p2Hand: p2H,    
+        p1HandCount: 6,
+        p2Hand: p2H, 
         turn: turn === 'me' ? 'p1' : 'p2'
     });
 
@@ -532,7 +524,7 @@ function playDealAnimation(myCards, oppCount, topCard) {
     opponentHand = [];
     discardPile = [];
 
-    let dealSpeed = 100;
+    let dealSpeed = 150; 
     let totalCards = myCards.length + oppCount;
     let dealt = 0;
 
@@ -540,7 +532,7 @@ function playDealAnimation(myCards, oppCount, topCard) {
         if (dealt >= totalCards) {
             clearInterval(dealInterval);
             setTimeout(() => {
-                topCard.x = 60; topCard.y = height/2; 
+                topCard.x = 60; topCard.y = height/2;
                 discardPile.push(topCard);
                 playSound('play');
                 isAnimating = false;
@@ -570,7 +562,7 @@ function playDealAnimation(myCards, oppCount, topCard) {
     }, dealSpeed);
 }
 
-// --- MOVE EXECUTION (UPDATED LOGIC) ---
+// --- MOVE EXECUTION (FIXED HERE) ---
 
 function isValidMove(card, topCard) {
     return card.suit === topCard.suit || card.value === topCard.value;
@@ -594,26 +586,28 @@ function playerInput(cardIndex) {
             playSound('crit');
             showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
             
-            // FIX 1 (Attacker Side): Update Visual Opponent Hand (+2)
-            // Agar tampilan jumlah kartu lawan bertambah di layar kita
-            for(let i=0; i<2; i++) {
-                let dummy = new Card('fire', 1);
-                dummy.x = width/2; dummy.y = height/2; // Muncul dari tumpukan tengah
-                dummy.targetY = -100; // Terbang ke lawan
-                opponentHand.push(dummy);
+            // FIX: Saat saya menyerang lawan
+            if(isHost) {
+                // Host memberikan 2 kartu ke Client
+                for(let i=0; i<2; i++) {
+                    let penalty = drawCardFromDeckLogic(); 
+                    if(penalty) {
+                        setTimeout(() => {
+                            conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
+                            opponentHand.push(new Card('fire',1)); // Update visual Host
+                        }, i * 200); 
+                    }
+                }
             }
         }
 
-        // Kirim move ke lawan
         conn.send({
             type: 'OPPONENT_MOVE',
             card: { suit: card.suit, value: card.value },
             isCrit: isCrit
         });
 
-        // FIX 2 (Win Condition): Check Immediately
         if(myHand.length === 0) {
-            conn.send({ type: 'GAME_WIN' });
             endGame("YOU WIN!", "Victory Achieved");
             return;
         }
@@ -628,6 +622,7 @@ function playerInput(cardIndex) {
 function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value);
     
+    // Kurangi visual kartu lawan
     if(opponentHand.length > 0) opponentHand.pop(); 
     
     card.x = width/2; card.y = -100;
@@ -638,19 +633,34 @@ function processOpponentMove(cardData, isCrit) {
 
     if(isCrit) {
         playSound('crit');
-        showFloatingText("HIT BY CRIT!", width/2, height/2 - 50, "red");
+        showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
         
-        // FIX 1 (Victim Side): Terima Penalti 2 Kartu secara nyata
-        for(let i=0; i<2; i++) {
-            setTimeout(() => {
+        // FIX: Saat saya (Host) diserang
+        if(isHost) {
+            for(let i=0; i<2; i++) {
                 let penalty = drawCardFromDeckLogic();
-                penalty.x = 60; penalty.y = height/2; // Dari deck
-                myHand.push(penalty);
-                playSound('deal');
-                showFloatingText("+1 Card", width/2, height/2+50, "red");
-            }, i * 200);
+                if(penalty) {
+                    setTimeout(() => {
+                        penalty.x = 60; penalty.y = height/2; 
+                        myHand.push(penalty);
+                        playSound('deal');
+                        showFloatingText("+1 Card", width/2, height/2+50, "red");
+                        
+                        // FIX: BERITAHU CLIENT SAYA NAMBAH KARTU
+                        conn.send({ type: 'PENALTY_SYNC' });
+                    }, i * 200);
+                }
+            }
         }
     }
+
+    // Cek kemenangan HANYA jika tangan lawan benar-benar habis
+    // Delay sedikit untuk memastikan sync penalti berjalan jika ada crit
+    setTimeout(() => {
+        if(opponentHand.length === 0) {
+            endGame("YOU LOSE", "Opponent cleared their hand");
+        }
+    }, 500);
 
     turn = 'me';
 }
@@ -658,15 +668,25 @@ function processOpponentMove(cardData, isCrit) {
 function requestDraw() {
     if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
 
-    let newCard = drawCardFromDeckLogic();
-    newCard.x = 60; newCard.y = height/2;
-    myHand.push(newCard);
-    playSound('deal');
-    
-    conn.send({ type: 'OPPONENT_DRAW' });
-    
-    turn = 'opponent'; 
-    showFloatingText("Turn Ended", width/2, height/2, "#aaa");
+    let newCard;
+    if(isHost) {
+        newCard = drawCardFromDeckLogic();
+    } else {
+        let s = SUITS[Math.floor(Math.random()*3)];
+        let v = Math.floor(Math.random()*9)+1;
+        newCard = new Card(s, v);
+    }
+
+    if(newCard) {
+        newCard.x = 60; newCard.y = height/2;
+        myHand.push(newCard);
+        playSound('deal');
+        
+        conn.send({ type: 'OPPONENT_DRAW' });
+        
+        turn = 'opponent'; 
+        showFloatingText("Turn Ended", width/2, height/2, "#aaa");
+    }
 }
 
 function drawCardFromDeckLogic() {
@@ -677,7 +697,6 @@ function drawCardFromDeckLogic() {
 
 function endGame(title, subtitle) {
     gameState = 'GAMEOVER';
-    playSound('win');
     document.getElementById('winner-text').innerText = title;
     document.getElementById('sub-winner-text').innerText = subtitle;
     document.getElementById('game-over').style.display = 'block';
@@ -690,29 +709,28 @@ function endGame(title, subtitle) {
 function draw() {
     ctx.clearRect(0, 0, width, height);
     
-    let cardW = width < 600 ? 70 : 110;
-    let cardH = cardW * 1.45;
+    let cardW = width < 600 ? 65 : 100;
+    let cardH = cardW * 1.4;
 
-    // 1. Draw Deck (Visual)
+    // Deck
     let deckX = 60; let deckY = height / 2;
     for(let i=0; i<3; i++) {
         ctx.fillStyle = '#111'; ctx.strokeStyle = '#333';
         roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
         ctx.fill(); ctx.stroke();
     }
-    // Top Deck Card Back
     ctx.fillStyle = COLORS.cardBack; ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
     roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - 6, cardW, cardH, 10);
     ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = "12px Orbitron"; ctx.textAlign = "center";
     ctx.fillText("DECK", deckX, deckY + cardH/2 + 20);
 
-    // 2. Draw Discard Pile
+    // Discard Pile
     if (discardPile.length > 0) {
         let startIdx = Math.max(0, discardPile.length - 3);
         for(let i = startIdx; i < discardPile.length; i++) {
             let c = discardPile[i];
-            if(!isAnimating && Math.abs(c.x - width/2) < 2) c.x = width/2; 
+            if(!isAnimating && Math.abs(c.x - width/2) < 2) c.x = width/2;
             if(!isAnimating && Math.abs(c.y - height/2) < 2) c.y = height/2;
             c.draw(ctx, true, undefined, undefined, cardW, cardH);
         }
@@ -721,21 +739,21 @@ function draw() {
         roundRect(ctx, width/2 - cardW/2, height/2 - cardH/2, cardW, cardH, 10); ctx.stroke();
     }
 
-    // 3. Hand Opponent (Top)
+    // Opponent Hand
     let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
     let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
     opponentHand.forEach((c, i) => {
         c.targetX = oppStart + i * oppSpread;
-        c.targetY = -cardH * 0.5; // Hide partially
+        c.targetY = -cardH * 0.4;
         c.draw(ctx, false, undefined, undefined, cardW, cardH);
     });
 
-    // 4. Hand My (Bottom)
+    // My Hand
     let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
     myHand.forEach((c, i) => {
         c.targetX = pStart + i * pSpread;
-        c.targetY = height - (c.isHovered ? cardH * 0.85 : cardH * 0.6);
+        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
         c.width = cardW; c.height = cardH;
         c.draw(ctx, true);
     });
@@ -743,16 +761,12 @@ function draw() {
     particles.forEach(p => p.draw(ctx));
     floatingTexts.forEach(t => t.draw(ctx));
 
-    // Turn Indicator
     if(gameState === 'PLAYING' && !isAnimating) {
-        ctx.font = "bold 18px Orbitron"; 
+        ctx.font = "bold 16px Orbitron"; 
         ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888';
         ctx.textAlign = 'center';
         let txt = turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN";
-        ctx.fillText(txt, width/2, height/2 + cardH/2 + 50);
-        
-        ctx.font = "14px Orbitron"; ctx.fillStyle = "#666";
-        ctx.fillText(`Opponent Cards: ${opponentHand.length}`, width/2, 40);
+        ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
     }
 }
 
@@ -773,7 +787,6 @@ function loop() { update(); draw(); requestAnimationFrame(loop); }
 function handleInput(x, y) {
     if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
 
-    // Cek Klik Tangan
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
         if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
@@ -782,9 +795,8 @@ function handleInput(x, y) {
         }
     }
 
-    // Cek Klik Deck (Draw)
     let deckX = 60; let deckY = height/2;
-    let w = width < 600 ? 70 : 110; let h = w*1.45;
+    let w = width < 600 ? 65 : 100; let h = w*1.4;
     if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
         y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
         requestDraw();
@@ -802,48 +814,24 @@ function handleHover(x, y) {
     }
 }
 
-// --- UTILS & VISUALS ---
+// --- UTILS ---
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
-
 function showFloatingText(txt, x, y, c) { 
-    floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1.5, update: function(){this.y-=1; this.life-=0.02;}, draw: function(ctx){
+    floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
         ctx.globalAlpha=Math.max(0,this.life); ctx.fillStyle=this.color; ctx.strokeStyle='#000'; ctx.lineWidth=3;
-        ctx.font="bold 28px Orbitron"; ctx.strokeText(this.text,this.x,this.y); ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1;
+        ctx.font="bold 24px Orbitron"; ctx.strokeText(this.text,this.x,this.y); ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1;
     }});
 }
-
-// FIX 3: ELEMENT ICONS (Better Vector Shapes)
 function drawElementIcon(ctx, type, x, y, s) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = COLORS[type];
-    
-    ctx.beginPath();
+    ctx.save(); ctx.translate(x, y); ctx.beginPath();
     if (type === 'fire') {
-        // Bentuk Api
-        ctx.moveTo(0, -s);
-        ctx.quadraticCurveTo(s, -s/3, s, s/2);
-        ctx.quadraticCurveTo(0, s*1.3, -s, s/2);
-        ctx.quadraticCurveTo(-s, -s/3, 0, -s);
+        ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s);
     } else if (type === 'water') {
-        // Bentuk Tetesan Air
-        ctx.moveTo(0, -s);
-        ctx.bezierCurveTo(s, 0, s, s, 0, s);
-        ctx.bezierCurveTo(-s, s, -s, 0, 0, -s);
+        ctx.arc(0, 0, s*0.8, 0, Math.PI*2);
     } else if (type === 'leaf') {
-        // Bentuk Daun
-        ctx.moveTo(0, -s);
-        ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); 
-        ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s);
-        // Garis tengah daun
-        ctx.fillStyle = COLORS[type];
-        ctx.fill();
-        ctx.strokeStyle = '#004400'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, -s+5); ctx.lineTo(0, s-5); ctx.stroke();
-        return; // Leaf has custom stroke
+        ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s);
     }
-    ctx.fill();
-    ctx.restore();
+    ctx.fill(); ctx.restore();
 }
 
 function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
