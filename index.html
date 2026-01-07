@@ -340,7 +340,7 @@
                 if (s.mesh.position.z > 5) {
                     if (state.role === 'host' && !s.processed) {
                         // Missed by passing camera
-                        sendData({ type: 'result', id: s.id, res: 'MISS', score: Math.max(0, state.score-10) });
+                        sendData({ type: 'result', id: s.id, res: 'L BANGET', score: Math.max(0, state.score-10) });
                         state.score = Math.max(0, state.score-10);
                         updateScoreUI();
                         createParticles(s.mesh.position, 0xff0000);
