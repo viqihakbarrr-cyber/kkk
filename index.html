@@ -3,845 +3,634 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON RIFT: Online Battle (Fixed)</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <title>Pistol Duel PvP</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-
         body {
             margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
             overflow: hidden;
-            background-color: #050505;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none;
             user-select: none;
-            -webkit-user-select: none;
         }
 
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100vh;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
-        }
-
-        /* UI Layers */
-        #ui-layer, #start-screen, #lobby-screen, #loading-layer {
+        /* SCREEN: LOBBY & UI */
+        .screen {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #fff;
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 { color: #333; margin-bottom: 30px; font-size: 2rem; text-transform: uppercase; letter-spacing: 5px; }
+        
+        .btn {
+            background: #333;
+            color: white;
+            padding: 15px 40px;
+            margin: 10px;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 200px;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.95); }
+        
+        input {
+            padding: 15px;
+            font-size: 1.2rem;
+            margin: 10px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            text-align: center;
+            width: 250px;
+        }
+
+        #statusMsg { margin-top: 20px; color: #666; font-style: italic; }
+
+        /* GAME CANVAS & HUD */
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            /* Pattern Kotak-kotak */
+            background-color: #ffffff;
+            background-image: 
+                linear-gradient(#e0e0e0 1px, transparent 1px),
+                linear-gradient(90deg, #e0e0e0 1px, transparent 1px);
+            background-size: 40px 40px;
+            display: none; /* Hidden by default */
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 50px;
+            box-sizing: border-box;
             pointer-events: none;
         }
 
-        /* Interactive Layers */
-        #start-screen, #lobby-screen, #game-over {
-            pointer-events: auto;
-        }
-
-        #start-screen, #lobby-screen {
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 200;
-            backdrop-filter: blur(5px);
-        }
-
-        /* Loading Layer */
-        #loading-layer {
-            background: rgba(0,0,0,0.8);
-            z-index: 300;
-            display: none;
+        .hp-box {
+            width: 200px;
+            background: rgba(0,0,0,0.1);
+            border: 2px solid #333;
+            height: 20px;
+            position: relative;
         }
         
-        .spinner {
-            width: 50px; height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid #00CC44;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-text { color: white; margin-top: 20px; font-size: 16px; letter-spacing: 2px; }
-
-        .modal-box {
-            background: #fff;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
-            border: 4px solid #333;
-            max-width: 90%;
-            width: 400px;
+        .hp-bar {
+            height: 100%;
+            background: #4caf50;
+            width: 100%;
+            transition: width 0.2s;
         }
 
-        h1 { margin: 0 0 20px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
-        h2 { margin: 0 0 15px 0; color: #333; font-size: 18px; }
-        
-        .checkbox-container {
-            margin: 20px 0;
-            font-size: 16px;
+        .player-label {
+            margin-bottom: 5px;
+            font-weight: bold;
             color: #333;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            cursor: pointer;
         }
-
-        input[type="checkbox"] {
-            transform: scale(1.5);
-            cursor: pointer;
-            accent-color: #000;
-        }
-
-        /* Inputs & Buttons */
-        .input-group { margin-bottom: 20px; }
-        input[type="number"] {
-            padding: 10px; font-family: 'Orbitron'; font-size: 24px; text-align: center;
-            border: 2px solid #333; border-radius: 10px; width: 150px; outline: none;
-        }
-        input[type="number"]:focus { border-color: #0088FF; }
-
-        .room-code-display {
-            font-size: 36px; font-weight: bold; color: #0088FF; margin: 20px 0;
-            letter-spacing: 5px;
-        }
-
-        button.main-btn {
-            padding: 15px 30px;
-            background: #000;
-            border: none; color: white;
-            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
-            cursor: pointer; border-radius: 50px;
-            transition: all 0.2s;
-            margin: 10px;
-            min-width: 150px;
-        }
-
-        button.main-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        button.main-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,136,255,0.5); }
-        button.main-btn.active { background: linear-gradient(45deg, #0088FF, #00CC44); }
-
-        .btn-secondary { background: #555 !important; }
-
-        /* Game Over Screen */
-        #game-over {
-            display: none;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px; border-radius: 20px;
-            text-align: center; border: 3px solid #333;
-            pointer-events: auto;
-            box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .hidden { display: none !important; }
-
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="loading-layer">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loading-msg">CONNECTING...</div>
+    <div id="lobbyScreen" class="screen">
+        <h1>DUEL PVP</h1>
+        <button class="btn" onclick="showCreate()">Create Room</button>
+        <button class="btn" onclick="showJoin()">Join Room</button>
     </div>
 
-    <div id="start-screen">
-        <div class="modal-box">
-            <h1>NEON RIFT</h1>
-            <p style="color:#666; font-size:14px;">Online Multiplayer Edition</p>
-            
-            <label class="checkbox-container">
-                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
-                Enable Fullscreen [✓]
-            </label>
-
-            <button id="start-btn" class="main-btn" disabled onclick="goToLobby()">ENTER LOBBY</button>
-        </div>
+    <div id="createScreen" class="screen hidden">
+        <h1>HOST GAME</h1>
+        <input type="text" id="hostRoomName" placeholder="Nama Room (Unik)">
+        <button class="btn" onclick="createRoom()">Buat & Tunggu</button>
+        <button class="btn" style="background:#888" onclick="backToMain()">Kembali</button>
+        <p id="createStatus"></p>
     </div>
 
-    <div id="lobby-screen" class="hidden">
-        <div class="modal-box" id="lobby-main">
-            <h1>MULTIPLAYER</h1>
-            <button class="main-btn active" onclick="createRoom()">CREATE ROOM</button>
-            <br>
-            <button class="main-btn btn-secondary" onclick="showJoinUI()">JOIN ROOM</button>
-        </div>
+    <div id="joinScreen" class="screen hidden">
+        <h1>JOIN GAME</h1>
+        <input type="text" id="joinRoomName" placeholder="Masukkan Nama Room">
+        <button class="btn" onclick="joinRoom()">Cari & Masuk</button>
+        <button class="btn" style="background:#888" onclick="backToMain()">Kembali</button>
+        <p id="joinStatus"></p>
+    </div>
 
-        <div class="modal-box hidden" id="lobby-wait">
-            <h2>ROOM CODE</h2>
-            <div class="room-code-display" id="host-room-code">----</div>
-            <p>Waiting for opponent...</p>
-            <div class="spinner" style="width:30px; height:30px; margin: 0 auto;"></div>
-            <br>
-            <button class="main-btn btn-secondary" onclick="resetLobby()">CANCEL</button>
-        </div>
-
-        <div class="modal-box hidden" id="lobby-join">
-            <h2>ENTER CODE</h2>
-            <div class="input-group">
-                <input type="number" id="join-code-input" placeholder="0000" maxlength="4">
+    <div id="gameContainer">
+        <div id="hud">
+            <div>
+                <div class="player-label">YOU <span id="myHpText">100%</span></div>
+                <div class="hp-box"><div id="myHpBar" class="hp-bar"></div></div>
             </div>
-            <button class="main-btn active" onclick="joinRoom()">JOIN</button>
-            <br>
-            <button class="main-btn btn-secondary" onclick="resetLobby()">BACK</button>
+            <div style="text-align: right;">
+                <div class="player-label">ENEMY <span id="enemyHpText">100%</span></div>
+                <div class="hp-box"><div id="enemyHpBar" class="hp-bar" style="float: right; background: #f44336;"></div></div>
+            </div>
         </div>
-    </div>
-
-    <div id="ui-layer">
-        <div id="game-over">
-            <h1 id="winner-text">YOU WIN!</h1>
-            <p id="sub-winner-text" style="color:#666; margin-bottom:20px;">Opponent Disconnected</p>
-            <button class="main-btn active" onclick="location.reload()">MAIN MENU</button>
-        </div>
+        <canvas id="gameCanvas"></canvas>
     </div>
 
 <script>
-// --- KONFIGURASI PEERJS & NETWORK ---
+/**
+ * KONFIGURASI GAME & NETWORKING
+ */
+const CONFIG = {
+    rotationSpeed: 0.15,
+    recoilForce: 8,
+    bulletSpeed: 18,
+    friction: 0.97,
+    bounceFactor: 0.8,
+    pistolScale: 0.8, // Skala diperkecil
+    damage: 5
+};
+
+// Networking Globals
 let peer = null;
 let conn = null;
-let myPeerID = null;
 let isHost = false;
-const ID_PREFIX = "neon-rift-v2-";
+let myId = null;
 
-// --- KONFIGURASI CANVAS & GAME ---
+// Game Globals
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let width, height;
+let gameActive = false;
+let isTouching = false;
+
+// Entities
+const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, hp: 100, color: '#333' };
+const enemy = { x: -100, y: -100, angle: 0, hp: 100, visible: false }; // Enemy dikontrol oleh data network
+let bullets = [];
 let particles = [];
-let floatingTexts = [];
 
-// Game Constants
-const SUITS = ['fire', 'water', 'leaf'];
-const COLORS = {
-    fire: '#FF2222',
-    water: '#0088FF',
-    leaf: '#00CC44',
-    cardBg: '#FFFFFF',
-    cardBack: '#1a1a1a',
-    cardBackOutline: '#00FFFF'
-};
-const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
+/* =========================================
+   UI & LOBBY LOGIC
+   ========================================= */
 
-// Game State
-let deck = [];
-let discardPile = [];
-let myHand = [];
-let opponentHand = []; 
-let turn = ''; 
-let gameState = 'MENU'; 
-let isAnimating = false; 
-
-// Audio Context
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    let t = audioCtx.currentTime;
-    
-    if (type === 'play') {
-        osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
-        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-        osc.start(); osc.stop(t + 0.1);
-    } else if (type === 'deal') {
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t);
-        gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.08);
-        osc.start(); osc.stop(t + 0.08);
-    } else if (type === 'crit') {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
-        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-        osc.start(); osc.stop(t + 0.3);
-    }
+function backToMain() {
+    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+    document.getElementById('lobbyScreen').classList.remove('hidden');
 }
 
-// --- CLASS DEFINITIONS ---
-class Card {
-    constructor(suit, value) {
-        this.suit = suit; this.value = value;
-        this.id = Math.random().toString(36).substr(2, 9);
-        this.x = 60; this.y = height/2; 
-        this.targetX = width / 2; this.targetY = height / 2;
-        this.width = 0; this.height = 0;
-        this.isHovered = false;
-        this.rotation = 0;
-    }
-
-    draw(ctx, isFaceUp, x, y, w, h) {
-        this.x += (this.targetX - this.x) * 0.15;
-        this.y += (this.targetY - this.y) * 0.15;
-
-        const drawX = x !== undefined ? x : this.x;
-        const drawY = y !== undefined ? y : this.y;
-        const drawW = w || this.width;
-        const drawH = h || this.height;
-        const r = 10;
-
-        ctx.save();
-        ctx.translate(drawX, drawY);
-
-        if (isFaceUp) {
-            ctx.fillStyle = COLORS.cardBg;
-            ctx.strokeStyle = COLORS[this.suit];
-            ctx.lineWidth = 2;
-            ctx.shadowColor = 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = this.isHovered ? 20 : 5;
-            ctx.shadowOffsetY = 3;
-
-            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
-            ctx.fill(); ctx.stroke();
-            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-            drawElementIcon(ctx, this.suit, 0, 0, drawW * 0.35);
-
-            ctx.fillStyle = COLORS[this.suit];
-            ctx.font = `bold ${drawW * 0.25}px Orbitron`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(this.value, drawW/2 - 20, -drawH/2 + 25);
-            ctx.fillText(this.value, -drawW/2 + 20, drawH/2 - 25);
-
-        } else {
-            ctx.fillStyle = COLORS.cardBack;
-            ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
-            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
-            ctx.fill(); ctx.stroke();
-            ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
-            ctx.beginPath();
-            let pad = 8;
-            ctx.roundRect(-drawW/2 + pad, -drawH/2 + pad, drawW - pad*2, drawH - pad*2, r/2);
-            ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(-10, -10); ctx.lineTo(10, 10); ctx.moveTo(10, -10); ctx.lineTo(-10, 10); ctx.stroke();
-        }
-        ctx.restore();
-    }
+function showCreate() {
+    document.getElementById('lobbyScreen').classList.add('hidden');
+    document.getElementById('createScreen').classList.remove('hidden');
 }
 
-class Particle {
-    constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
-        this.size = Math.random() * 5 + 2;
-        this.vx = (Math.random() - 0.5) * 10;
-        this.vy = (Math.random() - 0.5) * 10;
-        this.life = 1;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        this.life -= 0.03; this.size *= 0.95;
-    }
-    draw(ctx) {
-        ctx.globalAlpha = Math.max(0, this.life);
-        ctx.fillStyle = this.color;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill(); ctx.globalAlpha = 1;
-    }
-}
-
-// --- FUNGSI LOBBY & NETWORK ---
-
-function showLoading(msg) {
-    document.getElementById('loading-layer').style.display = 'flex';
-    document.getElementById('loading-msg').innerText = msg;
-}
-function hideLoading() {
-    document.getElementById('loading-layer').style.display = 'none';
-}
-
-function checkFullscreenRequirement() {
-    const chk = document.getElementById('fs-check');
-    const btn = document.getElementById('start-btn');
-    if(chk.checked) {
-        btn.classList.add('active');
-        btn.disabled = false;
-    } else {
-        btn.classList.remove('active');
-        btn.disabled = true;
-    }
-}
-
-function goToLobby() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => {});
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('lobby-screen').classList.remove('hidden');
+function showJoin() {
+    document.getElementById('lobbyScreen').classList.add('hidden');
+    document.getElementById('joinScreen').classList.remove('hidden');
 }
 
 function createRoom() {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    const fullID = ID_PREFIX + code;
-    showLoading("CREATING ROOM...");
-    peer = new Peer(fullID);
+    const roomName = document.getElementById('hostRoomName').value.trim();
+    if(!roomName) return alert("Isi nama room!");
     
+    document.getElementById('createStatus').innerText = "Connecting to server...";
+    
+    // Init PeerJS dengan ID custom (nama room)
+    peer = new Peer(roomName, { debug: 2 });
+
     peer.on('open', (id) => {
-        hideLoading();
+        document.getElementById('createStatus').innerText = `Room "${id}" dibuat! Menunggu lawan...`;
         isHost = true;
-        myPeerID = id;
-        document.getElementById('lobby-main').classList.add('hidden');
-        document.getElementById('lobby-wait').classList.remove('hidden');
-        document.getElementById('host-room-code').innerText = code;
     });
 
     peer.on('connection', (c) => {
+        // Lawan masuk
         conn = c;
         setupConnection();
-        showFloatingText("PLAYER JOINED!", width/2, height/2, "#0f0");
-        setTimeout(startMultiplayerGame, 1000);
     });
 
     peer.on('error', (err) => {
-        hideLoading();
-        alert("Error creating room: " + err);
-        resetLobby();
+        document.getElementById('createStatus').innerText = "Error: Nama room mungkin sudah dipakai.";
     });
-}
-
-function showJoinUI() {
-    document.getElementById('lobby-main').classList.add('hidden');
-    document.getElementById('lobby-join').classList.remove('hidden');
 }
 
 function joinRoom() {
-    const input = document.getElementById('join-code-input').value;
-    if (input.length !== 4) { alert("Enter 4 digits code!"); return; }
-    showLoading("JOINING ROOM...");
-    const targetID = ID_PREFIX + input;
-    peer = new Peer(); 
-    peer.on('open', () => {
-        conn = peer.connect(targetID);
-        setupConnection();
-    });
-    peer.on('error', (err) => {
-        hideLoading();
-        alert("Room not found!");
-        resetLobby();
-    });
-}
+    const roomName = document.getElementById('joinRoomName').value.trim();
+    if(!roomName) return alert("Isi nama room!");
 
-function resetLobby() {
-    if(peer) peer.destroy();
-    peer = null; conn = null;
-    document.getElementById('lobby-main').classList.remove('hidden');
-    document.getElementById('lobby-wait').classList.add('hidden');
-    document.getElementById('lobby-join').classList.add('hidden');
-    hideLoading();
+    document.getElementById('joinStatus').innerText = "Mencari room...";
+    
+    // Joiner tidak butuh ID spesifik, random saja
+    peer = new Peer();
+
+    peer.on('open', (id) => {
+        // Connect ke Host
+        conn = peer.connect(roomName);
+        isHost = false;
+        
+        conn.on('open', () => {
+            setupConnection();
+        });
+
+        conn.on('error', (err) => {
+            document.getElementById('joinStatus').innerText = "Gagal connect ke room.";
+        });
+    });
+
+    peer.on('error', (err) => {
+        document.getElementById('joinStatus').innerText = "Connection Error.";
+    });
 }
 
 function setupConnection() {
-    conn.on('open', () => { console.log("Connected"); });
-    conn.on('data', (data) => { handleNetworkData(data); });
-    conn.on('close', () => { endGame("DISCONNECTED", "Opponent left the game"); });
-}
-
-// --- DATA HANDLING (FIXED HERE) ---
-function handleNetworkData(data) {
-    if (data.type === 'START_GAME') {
-        document.getElementById('lobby-screen').classList.add('hidden');
-        hideLoading();
-        gameState = 'PLAYING';
-        
-        turn = data.turn === 'p2' ? 'me' : 'opponent';
-
-        let myStartCards = data.p2Hand.map(c => new Card(c.suit, c.value));
-        let oppStartCount = data.p1HandCount;
-        let topCard = new Card(data.topDiscard.suit, data.topDiscard.value);
-
-        playDealAnimation(myStartCards, oppStartCount, topCard);
+    console.log("Connected!");
+    // Sembunyikan UI lobby, tampilkan game
+    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+    document.getElementById('gameContainer').style.display = 'block';
     
-    } else if (data.type === 'OPPONENT_MOVE') {
-        processOpponentMove(data.card, data.isCrit);
-    
-    } else if (data.type === 'OPPONENT_DRAW') {
-        // Lawan mengambil kartu biasa
-        let c = new Card('fire', 1);
-        c.x = 60; c.y = height/2;
-        opponentHand.push(c);
-        playSound('deal');
-        showFloatingText("Opponent Drew", width/2, 100, "#aaa");
-        
-        turn = 'me';
-        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
+    initGame();
 
-    } else if (data.type === 'EXTRA_CARD') {
-        // Menerima penalti (Kartu asli)
-        let c = data.card;
-        let nc = new Card(c.suit, c.value);
-        nc.x = 60; nc.y = height/2;
-        nc.targetX = width/2; nc.targetY = -200;
-        myHand.push(nc);
-        playSound('deal');
-        showFloatingText("Penalty!", width/2, height/2+50, "red");
-
-    } else if (data.type === 'PENALTY_SYNC') {
-        // FIX: Lawan (Host) menerima penalti, Client harus update visual!
-        let c = new Card('fire', 1);
-        c.x = 60; c.y = height/2; // Animasi dari deck
-        opponentHand.push(c); // Tambah kartu ke tangan lawan (visual)
-        playSound('deal');
-        showFloatingText("Opponent Penalized!", width/2, 100, "red");
-    }
-}
-
-// --- GAME LOGIC & ANIMATION ---
-
-function startMultiplayerGame() {
-    document.getElementById('lobby-screen').classList.add('hidden');
-    gameState = 'PLAYING';
-
-    let realDeck = [];
-    SUITS.forEach(suit => {
-        for (let i = 1; i <= 9; i++) {
-            realDeck.push({suit, value: i});
-            if(i <= 5) realDeck.push({suit, value: i});
-        }
+    // Handle Data Masuk
+    conn.on('data', (data) => {
+        handleNetworkData(data);
     });
-    for (let i = realDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; }
+}
 
-    let p1H = realDeck.splice(0, 6); // Host (Me)
-    let p2H = realDeck.splice(0, 6); // Client
-    let top = realDeck.pop();
+/* =========================================
+   GAME ENGINE
+   ========================================= */
+
+function resize() {
+    // Membuat arena luas tapi tetap rasio 16:9 agar fair
+    // Kita gunakan viewport window, tapi logic game menganggap area lebih "zoom out"
+    // karena ukuran pistol (CONFIG.pistolScale) kita kecilkan.
     
-    let myStartCards = p1H.map(c => new Card(c.suit, c.value));
-    let topCardObj = new Card(top.suit, top.value);
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const ratio = 16/9;
 
-    turn = Math.random() > 0.5 ? 'me' : 'opponent';
-
-    conn.send({
-        type: 'START_GAME',
-        deckCount: realDeck.length,
-        topDiscard: top,
-        p1HandCount: 6,
-        p2Hand: p2H, 
-        turn: turn === 'me' ? 'p1' : 'p2'
-    });
-
-    playDealAnimation(myStartCards, 6, topCardObj);
-}
-
-function playDealAnimation(myCards, oppCount, topCard) {
-    isAnimating = true;
-    myHand = [];
-    opponentHand = [];
-    discardPile = [];
-
-    let dealSpeed = 150; 
-    let totalCards = myCards.length + oppCount;
-    let dealt = 0;
-
-    let dealInterval = setInterval(() => {
-        if (dealt >= totalCards) {
-            clearInterval(dealInterval);
-            setTimeout(() => {
-                topCard.x = 60; topCard.y = height/2;
-                discardPile.push(topCard);
-                playSound('play');
-                isAnimating = false;
-                
-                setTimeout(() => {
-                    showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff");
-                }, 500);
-
-            }, 300);
-            return;
-        }
-
-        if (dealt % 2 === 0) {
-            let c = new Card('fire', 1);
-            c.x = 60; c.y = height/2;
-            opponentHand.push(c);
-        } else {
-            let cardIndex = Math.floor(dealt / 2);
-            if (myCards[cardIndex]) {
-                let c = myCards[cardIndex];
-                c.x = 60; c.y = height/2;
-                myHand.push(c);
-            }
-        }
-        playSound('deal');
-        dealt++;
-    }, dealSpeed);
-}
-
-// --- MOVE EXECUTION (FIXED HERE) ---
-
-function isValidMove(card, topCard) {
-    return card.suit === topCard.suit || card.value === topCard.value;
-}
-
-function playerInput(cardIndex) {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
-    
-    let card = myHand[cardIndex];
-    let top = discardPile[discardPile.length - 1];
-
-    if (isValidMove(card, top)) {
-        myHand.splice(cardIndex, 1);
-        discardPile.push(card);
-        card.targetX = width/2; card.targetY = height/2;
-        playSound('play');
-
-        let isCrit = COUNTER_MAP[card.suit] === top.suit;
-        
-        if(isCrit) {
-            playSound('crit');
-            showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
-            
-            // FIX: Saat saya menyerang lawan
-            if(isHost) {
-                // Host memberikan 2 kartu ke Client
-                for(let i=0; i<2; i++) {
-                    let penalty = drawCardFromDeckLogic(); 
-                    if(penalty) {
-                        setTimeout(() => {
-                            conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
-                            opponentHand.push(new Card('fire',1)); // Update visual Host
-                        }, i * 200); 
-                    }
-                }
-            }
-        }
-
-        conn.send({
-            type: 'OPPONENT_MOVE',
-            card: { suit: card.suit, value: card.value },
-            isCrit: isCrit
-        });
-
-        if(myHand.length === 0) {
-            endGame("YOU WIN!", "Victory Achieved");
-            return;
-        }
-
-        turn = 'opponent';
+    if (winW / winH > ratio) {
+        height = winH;
+        width = height * ratio;
     } else {
-        card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
-        showFloatingText("Invalid Move", card.x, card.y - 50, "red");
+        width = winW;
+        height = width / ratio;
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+
+    // Reset posisi spawn
+    if (gameActive && !isHost && player.x === 0) {
+        // Joiner spawn kanan
+        player.x = width * 0.8;
+        player.y = height * 0.5;
+    } else if (gameActive && isHost && player.x === 0) {
+        // Host spawn kiri
+        player.x = width * 0.2;
+        player.y = height * 0.5;
     }
 }
 
-function processOpponentMove(cardData, isCrit) {
-    let card = new Card(cardData.suit, cardData.value);
+function initGame() {
+    resize();
+    gameActive = true;
     
-    // Kurangi visual kartu lawan
-    if(opponentHand.length > 0) opponentHand.pop(); 
-    
-    card.x = width/2; card.y = -100;
-    card.targetX = width/2; card.targetY = height/2;
-    
-    discardPile.push(card);
-    playSound('play');
-
-    if(isCrit) {
-        playSound('crit');
-        showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
-        
-        // FIX: Saat saya (Host) diserang
-        if(isHost) {
-            for(let i=0; i<2; i++) {
-                let penalty = drawCardFromDeckLogic();
-                if(penalty) {
-                    setTimeout(() => {
-                        penalty.x = 60; penalty.y = height/2; 
-                        myHand.push(penalty);
-                        playSound('deal');
-                        showFloatingText("+1 Card", width/2, height/2+50, "red");
-                        
-                        // FIX: BERITAHU CLIENT SAYA NAMBAH KARTU
-                        conn.send({ type: 'PENALTY_SYNC' });
-                    }, i * 200);
-                }
-            }
-        }
-    }
-
-    // Cek kemenangan HANYA jika tangan lawan benar-benar habis
-    // Delay sedikit untuk memastikan sync penalti berjalan jika ada crit
-    setTimeout(() => {
-        if(opponentHand.length === 0) {
-            endGame("YOU LOSE", "Opponent cleared their hand");
-        }
-    }, 500);
-
-    turn = 'me';
-}
-
-function requestDraw() {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
-
-    let newCard;
-    if(isHost) {
-        newCard = drawCardFromDeckLogic();
+    // Spawn positions
+    if (isHost) {
+        player.x = width * 0.2;
+        player.y = height * 0.5;
+        player.vx = 2; // Mulai bergerak
     } else {
-        let s = SUITS[Math.floor(Math.random()*3)];
-        let v = Math.floor(Math.random()*9)+1;
-        newCard = new Card(s, v);
+        player.x = width * 0.8;
+        player.y = height * 0.5;
+        player.vx = -2;
+        player.angle = Math.PI; // Hadap kiri
     }
-
-    if(newCard) {
-        newCard.x = 60; newCard.y = height/2;
-        myHand.push(newCard);
-        playSound('deal');
-        
-        conn.send({ type: 'OPPONENT_DRAW' });
-        
-        turn = 'opponent'; 
-        showFloatingText("Turn Ended", width/2, height/2, "#aaa");
-    }
-}
-
-function drawCardFromDeckLogic() {
-    let s = SUITS[Math.floor(Math.random()*3)];
-    let v = Math.floor(Math.random()*9)+1;
-    return new Card(s, v);
-}
-
-function endGame(title, subtitle) {
-    gameState = 'GAMEOVER';
-    document.getElementById('winner-text').innerText = title;
-    document.getElementById('sub-winner-text').innerText = subtitle;
-    document.getElementById('game-over').style.display = 'block';
-    setTimeout(()=> { if(peer) peer.destroy(); }, 2000);
-}
-
-
-// --- RENDER LOOP ---
-
-function draw() {
-    ctx.clearRect(0, 0, width, height);
     
-    let cardW = width < 600 ? 65 : 100;
-    let cardH = cardW * 1.4;
-
-    // Deck
-    let deckX = 60; let deckY = height / 2;
-    for(let i=0; i<3; i++) {
-        ctx.fillStyle = '#111'; ctx.strokeStyle = '#333';
-        roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
-        ctx.fill(); ctx.stroke();
-    }
-    ctx.fillStyle = COLORS.cardBack; ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
-    roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - 6, cardW, cardH, 10);
-    ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.font = "12px Orbitron"; ctx.textAlign = "center";
-    ctx.fillText("DECK", deckX, deckY + cardH/2 + 20);
-
-    // Discard Pile
-    if (discardPile.length > 0) {
-        let startIdx = Math.max(0, discardPile.length - 3);
-        for(let i = startIdx; i < discardPile.length; i++) {
-            let c = discardPile[i];
-            if(!isAnimating && Math.abs(c.x - width/2) < 2) c.x = width/2;
-            if(!isAnimating && Math.abs(c.y - height/2) < 2) c.y = height/2;
-            c.draw(ctx, true, undefined, undefined, cardW, cardH);
-        }
-    } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 2;
-        roundRect(ctx, width/2 - cardW/2, height/2 - cardH/2, cardW, cardH, 10); ctx.stroke();
-    }
-
-    // Opponent Hand
-    let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
-    let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
-    opponentHand.forEach((c, i) => {
-        c.targetX = oppStart + i * oppSpread;
-        c.targetY = -cardH * 0.4;
-        c.draw(ctx, false, undefined, undefined, cardW, cardH);
-    });
-
-    // My Hand
-    let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
-    let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
-    myHand.forEach((c, i) => {
-        c.targetX = pStart + i * pSpread;
-        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
-        c.width = cardW; c.height = cardH;
-        c.draw(ctx, true);
-    });
-
-    particles.forEach(p => p.draw(ctx));
-    floatingTexts.forEach(t => t.draw(ctx));
-
-    if(gameState === 'PLAYING' && !isAnimating) {
-        ctx.font = "bold 16px Orbitron"; 
-        ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888';
-        ctx.textAlign = 'center';
-        let txt = turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN";
-        ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
-    }
+    enemy.visible = true;
+    updateHpUI();
+    requestAnimationFrame(gameLoop);
+    
+    // Loop Kirim Data (30fps)
+    setInterval(sendPlayerData, 1000/30);
 }
 
 function update() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        if (particles[i].life <= 0) particles.splice(i, 1);
+    if(!gameActive) return;
+
+    // --- PLAYER PHYSICS ---
+    if (isTouching) {
+        // Freeze & Aim
+        player.vx = 0;
+        player.vy = 0;
+    } else {
+        // Spin & Move
+        player.angle += CONFIG.rotationSpeed;
+        player.x += player.vx;
+        player.y += player.vy;
+        
+        // Friction
+        player.vx *= CONFIG.friction;
+        player.vy *= CONFIG.friction;
     }
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        floatingTexts[i].update();
-        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
-    }
-}
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+    // Wall Bounce
+    const r = 20 * CONFIG.pistolScale;
+    if (player.x < r) { player.x = r; player.vx *= -CONFIG.bounceFactor; }
+    if (player.x > width - r) { player.x = width - r; player.vx *= -CONFIG.bounceFactor; }
+    if (player.y < r) { player.y = r; player.vy *= -CONFIG.bounceFactor; }
+    if (player.y > height - r) { player.y = height - r; player.vy *= -CONFIG.bounceFactor; }
 
-// --- INPUTS ---
-function handleInput(x, y) {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
+    // --- BULLETS ---
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        b.x += Math.cos(b.angle) * CONFIG.bulletSpeed;
+        b.y += Math.sin(b.angle) * CONFIG.bulletSpeed;
 
-    for (let i = myHand.length - 1; i >= 0; i--) {
-        let c = myHand[i];
-        if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
-            y > c.y - c.height/2 && y < c.y + c.height/2) {
-            playerInput(i); return;
+        // Out of bounds
+        if (b.x < 0 || b.x > width || b.y < 0 || b.y > height) {
+            bullets.splice(i, 1);
+            continue;
+        }
+
+        // Collision Logic
+        // Kita hanya mengecek peluru yang KITA tembak kena musuh atau tidak
+        // (Client-side hit detection untuk shooter)
+        if (b.owner === 'me') {
+            const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
+            // Hitbox musuh kira-kira 30px
+            if (dist < 30) {
+                // HIT!
+                bullets.splice(i, 1);
+                createExplosion(enemy.x, enemy.y, '#ff0000');
+                
+                // Kirim event HIT ke musuh
+                if(conn && conn.open) {
+                    conn.send({ type: 'hit' });
+                }
+                
+                // Update tampilan HP musuh lokal (hanya visual, sync asli via network)
+                enemy.hp = Math.max(0, enemy.hp - CONFIG.damage);
+                updateHpUI();
+                continue;
+            }
         }
     }
 
-    let deckX = 60; let deckY = height/2;
-    let w = width < 600 ? 65 : 100; let h = w*1.4;
-    if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
-        y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
-        requestDraw();
+    // --- PARTICLES ---
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+        if (p.life <= 0) particles.splice(i, 1);
     }
 }
 
-function handleHover(x, y) {
-    let hovered = false;
-    for (let i = myHand.length - 1; i >= 0; i--) {
-        let c = myHand[i];
-        if (!hovered && x > c.x - c.width/2 && x < c.x + c.width/2 && 
-            y > c.y - c.height/2 && y < c.y + c.height/2) {
-            c.isHovered = true; hovered = true;
-        } else c.isHovered = false;
+function draw() {
+    // Clear & Outline Arena
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw Enemy
+    if (enemy.visible) {
+        drawPistol(ctx, enemy.x, enemy.y, enemy.angle, '#f44336'); // Merah
+    }
+
+    // Draw Player
+    drawPistol(ctx, player.x, player.y, player.angle, '#333'); // Hitam
+
+    // Draw Bullets
+    bullets.forEach(b => {
+        ctx.fillStyle = (b.owner === 'me') ? '#000' : '#f00';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw Particles
+    particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    });
+}
+
+function drawPistol(ctx, x, y, angle, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    
+    // Skala Lebih Kecil sesuai Request
+    const scale = (width * 0.0015) * CONFIG.pistolScale; 
+    ctx.scale(scale, scale);
+
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.2)';
+    ctx.shadowBlur = 5;
+
+    // Grip
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(-10, 10);
+    ctx.lineTo(-15, 40);
+    ctx.lineTo(15, 40);
+    ctx.lineTo(10, 10);
+    ctx.fill();
+
+    // Slide/Barrel
+    ctx.fillStyle = color === '#333' ? '#555' : '#e57373'; // Sedikit lebih terang dari body
+    ctx.fillRect(-30, -15, 70, 20);
+    
+    // Detail Slide
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    for(let i=0; i<3; i++) ctx.fillRect(-28 + (i*4), -12, 2, 14);
+
+    // Barrel Hole
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(40, -5, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Center Pivot
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function updateHpUI() {
+    document.getElementById('myHpBar').style.width = player.hp + "%";
+    document.getElementById('myHpText').innerText = player.hp + "%";
+    
+    document.getElementById('enemyHpBar').style.width = enemy.hp + "%";
+    document.getElementById('enemyHpText').innerText = enemy.hp + "%";
+
+    if(player.hp <= 0) gameOver("YOU LOSE");
+    if(enemy.hp <= 0) gameOver("YOU WIN");
+}
+
+function gameOver(msg) {
+    gameActive = false;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0,0,width,height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '30px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, width/2, height/2);
+    setTimeout(() => {
+        location.reload(); // Reset simple
+    }, 3000);
+}
+
+/* =========================================
+   NETWORKING LOGIC
+   ========================================= */
+
+function sendPlayerData() {
+    if (!conn || !conn.open) return;
+    conn.send({
+        type: 'update',
+        x: player.x,
+        y: player.y,
+        angle: player.angle,
+        hp: player.hp
+    });
+}
+
+function handleNetworkData(data) {
+    if (data.type === 'update') {
+        // Sync posisi musuh
+        enemy.x = data.x; // Bisa ditambahkan interpolasi agar lebih halus
+        enemy.y = data.y;
+        enemy.angle = data.angle;
+        // Enemy HP di-update berdasarkan data yang mereka kirim (source of truth diri sendiri)
+        // Kecuali kita pakai logika shooter-authoritative
+    }
+    else if (data.type === 'shoot') {
+        // Musuh nembak
+        bullets.push({
+            x: data.x,
+            y: data.y,
+            angle: data.angle,
+            owner: 'enemy'
+        });
+        // Muzzle flash di musuh
+        createExplosion(enemy.x + Math.cos(enemy.angle)*30, enemy.y + Math.sin(enemy.angle)*30, '#ffffaa', 3);
+    }
+    else if (data.type === 'hit') {
+        // Kita kena tembak!
+        player.hp -= CONFIG.damage;
+        createExplosion(player.x, player.y, '#ff0000');
+        updateHpUI();
+        // Kirim update HP terbaru kita ke musuh segera
+        sendPlayerData();
     }
 }
 
-// --- UTILS ---
-function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
-function showFloatingText(txt, x, y, c) { 
-    floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
-        ctx.globalAlpha=Math.max(0,this.life); ctx.fillStyle=this.color; ctx.strokeStyle='#000'; ctx.lineWidth=3;
-        ctx.font="bold 24px Orbitron"; ctx.strokeText(this.text,this.x,this.y); ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1;
-    }});
-}
-function drawElementIcon(ctx, type, x, y, s) {
-    ctx.save(); ctx.translate(x, y); ctx.beginPath();
-    if (type === 'fire') {
-        ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s);
-    } else if (type === 'water') {
-        ctx.arc(0, 0, s*0.8, 0, Math.PI*2);
-    } else if (type === 'leaf') {
-        ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s);
+/* =========================================
+   INPUT & SHOOTING
+   ========================================= */
+
+function shoot() {
+    // Posisi ujung laras
+    const barrelLen = (width * 0.0015 * CONFIG.pistolScale) * 40; 
+    const muzzleX = player.x + Math.cos(player.angle) * barrelLen;
+    const muzzleY = player.y + Math.sin(player.angle) * barrelLen;
+
+    // Tambah peluru lokal
+    const bulletAngle = player.angle;
+    bullets.push({
+        x: muzzleX,
+        y: muzzleY,
+        angle: bulletAngle,
+        owner: 'me'
+    });
+
+    // Recoil
+    player.vx -= Math.cos(player.angle) * CONFIG.recoilForce;
+    player.vy -= Math.sin(player.angle) * CONFIG.recoilForce;
+    
+    // FX
+    createExplosion(muzzleX, muzzleY, '#ffffaa', 5);
+
+    // Network: Beritahu musuh kita nembak
+    if(conn && conn.open) {
+        conn.send({
+            type: 'shoot',
+            x: muzzleX,
+            y: muzzleY,
+            angle: bulletAngle
+        });
     }
-    ctx.fill(); ctx.restore();
 }
 
-function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+function createExplosion(x, y, color, count=10) {
+    for(let i=0; i<count; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            life: 1.0,
+            color: color,
+            size: Math.random() * 3
+        });
+    }
+}
+
+function handleStart(e) {
+    if(!gameActive) return;
+    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    isTouching = true;
+}
+
+function handleEnd(e) {
+    if(!gameActive) return;
+    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    if (isTouching) {
+        isTouching = false;
+        shoot();
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    if(gameActive) requestAnimationFrame(gameLoop);
+}
+
+// Events
+window.addEventListener('mousedown', handleStart);
+window.addEventListener('mouseup', handleEnd);
+window.addEventListener('touchstart', handleStart, {passive: false});
+window.addEventListener('touchend', handleEnd, {passive: false});
 window.addEventListener('resize', resize);
-canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
-canvas.addEventListener('mousemove', e => handleHover(e.clientX, e.clientY));
-canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
 
-resize();
-loop();
 </script>
 </body>
 </html>
