@@ -2,550 +2,698 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR FPS Battle: Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Beat The Circle 3D</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
 
         body {
             margin: 0;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Orbitron', sans-serif;
-            color: #0ff;
+            font-family: 'Montserrat', sans-serif;
+            color: white;
             user-select: none;
         }
 
-        /* UI LAYERS */
-        #video-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover;
-            z-index: 0;
-        }
-
-        #game-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none; /* Let clicks pass through to canvas if needed */
-        }
-
-        /* MENU SCREEN */
-        #menu-screen {
+        /* --- UI Overlay & Containers --- */
+        #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 20, 40, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
+            pointer-events: none; /* Biar klik tembus ke canvas saat main */
+            z-index: 10;
+        }
+
+        .interactive {
             pointer-events: auto;
         }
 
-        h1 { text-transform: uppercase; letter-spacing: 5px; text-shadow: 0 0 10px #0ff; text-align: center;}
-        
-        .btn {
-            background: rgba(0, 255, 255, 0.1);
-            border: 2px solid #0ff;
-            color: #0ff;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-family: inherit;
-            margin: 10px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: 0.3s;
-            width: 80%;
-            max-width: 300px;
-        }
-        .btn:active { background: #0ff; color: #000; }
-        
-        input {
-            background: transparent;
-            border: 2px solid #0ff;
-            color: #fff;
-            padding: 10px;
-            font-size: 20px;
-            text-align: center;
-            font-family: inherit;
-            margin: 10px;
-            width: 200px;
-        }
-
-        /* HUD */
-        #hud {
-            display: none;
+        /* --- Screens --- */
+        .screen {
             position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.9);
+            transition: opacity 0.5s;
+        }
+
+        .hidden {
+            opacity: 0;
             pointer-events: none;
+            display: none !important;
         }
 
-        .crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
-            border: 2px solid rgba(0, 255, 255, 0.5);
-            border-radius: 50%;
-        }
-        .crosshair::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 4px; height: 4px;
-            background: #f00;
-            transform: translate(-50%, -50%);
-        }
+        h1 { font-size: 3rem; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 10px #00f; }
+        h2 { font-size: 1.5rem; color: #aaa; margin-bottom: 30px; }
 
-        #health-bar {
+        /* --- Buttons & Inputs --- */
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background: transparent;
+            border: 2px solid white;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        button:hover { background: white; color: black; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        button:disabled { border-color: #555; color: #555; cursor: not-allowed; background: transparent; box-shadow: none; }
+
+        input[type="text"] {
+            padding: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+            background: #222;
+            border: 2px solid #555;
+            color: white;
+            border-radius: 10px;
+            width: 200px;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+        }
+        input[type="file"] { display: none; }
+        .file-upload-btn { background: #00f; border-color: #00f; }
+
+        /* --- HUD (Heads Up Display) --- */
+        #score-board {
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 200px;
-            height: 20px;
-            border: 2px solid #0ff;
-        }
-        #health-fill {
-            width: 100%;
-            height: 100%;
-            background: #0f0;
-            transition: width 0.2s;
+            font-size: 1.5rem;
+            font-weight: bold;
         }
 
-        #status-msg {
+        #feedback-text {
             position: absolute;
-            bottom: 100px;
-            width: 100%;
-            text-align: center;
-            font-size: 14px;
-            color: #ff0;
-            text-shadow: 1px 1px 2px black;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: 900;
+            text-shadow: 2px 2px 0 #000;
+            opacity: 0;
+            transition: transform 0.1s;
         }
 
-        #fire-btn {
+        #fullscreen-btn {
             position: absolute;
-            bottom: 40px;
-            right: 40px;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(255, 0, 0, 0.3);
-            border: 3px solid #f00;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px;
+            border: 1px solid white;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            cursor: pointer;
+            z-index: 100;
             pointer-events: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #fff;
         }
-        #fire-btn:active { background: rgba(255, 0, 0, 0.8); }
 
-        .hidden { display: none !important; }
-
-        /* DAMAGE EFFECT */
-        #damage-overlay {
+        /* --- Orientation Warning --- */
+        #orientation-warning {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: red;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            z-index: 15;
+            background: #000;
+            color: #fff;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            text-align: center;
+        }
+        
+        @media (orientation: portrait) {
+            #orientation-warning { display: flex; }
+        }
+
+        /* Animations */
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
 
-    <video id="video-bg" autoplay playsinline muted></video>
-
-    <div id="game-layer"></div>
-
-    <div id="damage-overlay"></div>
-
-    <div id="hud">
-        <div id="health-bar"><div id="health-fill"></div></div>
-        <div style="position:absolute; top:45px; left:20px;">ROOM: <span id="room-display">---</span></div>
-        <div class="crosshair"></div>
-        <div id="status-msg">Menunggu lawan...</div>
-        <div id="fire-btn">TEMBAK</div>
+    <div id="orientation-warning">
+        <div style="font-size: 3rem;">⚠️</div>
+        <h1>PUTAR HP ANDA</h1>
+        <p>Game ini hanya bisa dimainkan dalam mode Landscape.</p>
     </div>
 
-    <div id="menu-screen">
-        <h1>AR Cyber<br>Shooter</h1>
-        <p style="font-size: 12px; color: #aaa; text-align:center; max-width:80%;">
-            Pastikan izinkan akses Kamera & Sensor Gerak.<br>Mainkan di Chrome/Safari Mobile.
-        </p>
-        <button class="btn" onclick="game.createRoom()">Buat Room (Host)</button>
-        <div style="display:flex; align-items:center;">
-            <input type="text" id="room-code-input" placeholder="4 Digit Kode" maxlength="4">
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        
+        <div id="score-board">SKOR: <span id="score-val">0</span></div>
+        
+        <div id="feedback-text">PERFECT</div>
+
+        <button id="fullscreen-btn" onclick="toggleFullScreen()">⛶</button>
+
+        <div id="screen-lobby" class="screen interactive">
+            <h1>BEAT THE CIRCLE</h1>
+            <p style="margin-bottom: 40px; color: #888;">Co-op Rhythm Game</p>
+            
+            <div id="lobby-buttons">
+                <button onclick="createRoom()">Create Room</button>
+                <button onclick="showJoinInput()">Join Room</button>
+            </div>
+
+            <div id="join-container" style="display:none; flex-direction: column; align-items: center;">
+                <input type="text" id="room-code-input" placeholder="0000" maxlength="4">
+                <div>
+                    <button onclick="joinRoom()">Connect</button>
+                    <button onclick="resetLobby()" style="font-size: 0.8rem; border: none;">Cancel</button>
+                </div>
+            </div>
+
+            <div id="status-msg" style="margin-top:20px; color: yellow;"></div>
         </div>
-        <button class="btn" onclick="game.joinRoom()">Join Room</button>
-        <div id="menu-status" style="margin-top:20px; color:#f0f;"></div>
+
+        <div id="screen-host" class="screen interactive hidden">
+            <h1>ROOM: <span id="display-room-code" style="color:#00f">----</span></h1>
+            <h2 id="host-status">Menunggu Player 2...</h2>
+            
+            <div id="host-controls" style="display:none; flex-direction: column; align-items: center;">
+                <input type="file" id="audio-file" accept="audio/mp3" onchange="handleFileUpload(this)">
+                <button class="file-upload-btn" onclick="document.getElementById('audio-file').click()">
+                    1. Unggah Lagu (MP3)
+                </button>
+                <p id="file-name" style="font-size: 0.8rem; color: #aaa; margin-bottom: 20px;">Belum ada lagu</p>
+                
+                <button id="btn-play" disabled onclick="startGameHost()">2. PLAY GAME</button>
+            </div>
+        </div>
+
+        <div id="screen-joiner" class="screen interactive hidden">
+            <h1>CONNECTED</h1>
+            <h2>Menunggu Host memulai game...</h2>
+            <p>Tugas Anda: Kontrol Vertikal (Atas/Bawah)</p>
+        </div>
+
     </div>
 
     <script>
-        /**
-         * AUDIO SYSTEM (Synthesizer - Tanpa aset file)
-         */
-        const AudioSys = {
-            ctx: new (window.AudioContext || window.webkitAudioContext)(),
-            playShoot() {
-                if(this.ctx.state === 'suspended') this.ctx.resume();
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.1);
-            },
-            playHit() {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.2);
+        // --- Game Config & State ---
+        const CONFIG = {
+            sphereSpeed: 0.5,
+            spawnZ: -60,
+            hitZ: 0,
+            gridSize: 20,
+            colors: {
+                perfect: '#bf00ff', // Ungu
+                good: '#00ff00',    // Hijau
+                great: '#aaaaaa',   // Abu
+                miss: '#ff0000'
             }
         };
 
-        /**
-         * GAME LOGIC
-         */
-        const game = {
+        let state = {
+            score: 0,
+            isPlaying: false,
+            role: null, // 'host' or 'client'
+            myAxis: null, // 'x' or 'y'
             peer: null,
             conn: null,
-            myId: null,
-            isHost: false,
-            health: 100,
-            
-            // 3D Variables
-            scene: null,
-            camera: null,
-            renderer: null,
-            enemyMesh: null,
-            projectiles: [],
-            
-            // Orientation
-            alphaOffset: 0, // Calibration
-
-            init() {
-                // Generate random ID for simplicity in PeerJS if creating
-                this.scene = new THREE.Scene();
-                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                document.getElementById('game-layer').appendChild(this.renderer.domElement);
-
-                // Setup Lighting
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-                this.scene.add(ambientLight);
-                
-                // Create Enemy Marker (Floating Drone Representation)
-                const geometry = new THREE.SphereGeometry(1, 16, 16);
-                const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-                this.enemyMesh = new THREE.Mesh(geometry, material);
-                
-                // Add a "ring" to make it look cooler
-                const ringGeo = new THREE.TorusGeometry(1.5, 0.1, 8, 30);
-                const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-                const ring = new THREE.Mesh(ringGeo, ringMat);
-                this.enemyMesh.add(ring);
-
-                this.scene.add(this.enemyMesh);
-                this.enemyMesh.position.set(0, 0, 1000); // Hide initially
-
-                window.addEventListener('resize', () => {
-                    this.camera.aspect = window.innerWidth / window.innerHeight;
-                    this.camera.updateProjectionMatrix();
-                    this.renderer.setSize(window.innerWidth, window.innerHeight);
-                });
-
-                this.startCamera();
-                this.animate();
-            },
-
-            startCamera() {
-                const video = document.getElementById('video-bg');
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                    .then(stream => { video.srcObject = stream; })
-                    .catch(err => console.error("Camera Error:", err));
-                }
-            },
-
-            // --- NETWORKING ---
-
-            createRoom() {
-                this.requestSensors().then(() => {
-                    const code = Math.floor(1000 + Math.random() * 9000).toString();
-                    this.initPeer(code);
-                    this.isHost = true;
-                });
-            },
-
-            joinRoom() {
-                const code = document.getElementById('room-code-input').value;
-                if(code.length !== 4) { alert("Masukkan 4 digit kode!"); return; }
-                
-                this.requestSensors().then(() => {
-                    this.initPeer(null, code); // Pass null as ID, connect to code
-                });
-            },
-
-            initPeer(id, connectToId = null) {
-                document.getElementById('menu-status').innerText = "Connecting to Network...";
-                
-                // We use a prefix 'ar-shooter-' to avoid collision on the public server
-                const myPeerId = id ? `ar-shooter-${id}` : undefined;
-                
-                this.peer = new Peer(myPeerId);
-
-                this.peer.on('open', (peerId) => {
-                    this.myId = peerId;
-                    if(id) {
-                        // I am Host
-                        this.startGameUI(id);
-                        document.getElementById('status-msg').innerText = "Share Code: " + id;
-                    } else if (connectToId) {
-                        // I am Joiner
-                        this.connectToPeer(`ar-shooter-${connectToId}`);
-                    }
-                });
-
-                this.peer.on('connection', (conn) => {
-                    this.setupConnection(conn);
-                });
-                
-                this.peer.on('error', (err) => {
-                    alert("Error: " + err.type);
-                    document.getElementById('menu-status').innerText = "Error";
-                });
-            },
-
-            connectToPeer(remoteId) {
-                const conn = this.peer.connect(remoteId);
-                conn.on('open', () => {
-                    this.setupConnection(conn);
-                    this.startGameUI(remoteId.split('-')[2]); // Extract simple code
-                });
-            },
-
-            setupConnection(conn) {
-                this.conn = conn;
-                document.getElementById('status-msg').innerText = "CONNECTED! Enemy Detected!";
-                
-                // Send init ping
-                this.sendData({ type: 'ping' });
-
-                this.conn.on('data', (data) => {
-                    this.handleData(data);
-                });
-            },
-
-            sendData(data) {
-                if(this.conn && this.conn.open) {
-                    this.conn.send(data);
-                }
-            },
-
-            handleData(data) {
-                if(data.type === 'hit') {
-                    this.takeDamage(data.amount);
-                }
-                else if(data.type === 'position') {
-                    // Update Enemy Position in 3D world based on their relative rotation
-                    // Logic: If enemy rotates 180 deg, they are "behind" us if we are face to face.
-                    // For simplicity in this demo: We create a virtual arena.
-                    // We map the enemy's compass heading to a position around a circle.
-                    this.updateEnemyPosition(data.alpha, data.beta, data.gamma);
-                }
-            },
-
-            // --- GAMEPLAY LOGIC ---
-
-            startGameUI(roomCode) {
-                document.getElementById('menu-screen').classList.add('hidden');
-                document.getElementById('hud').style.display = 'block';
-                document.getElementById('room-display').innerText = roomCode;
-                
-                // Bind Fire Button
-                document.getElementById('fire-btn').addEventListener('touchstart', (e) => {
-                    e.preventDefault(); 
-                    this.shoot(); 
-                });
-                document.getElementById('fire-btn').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.shoot();
-                });
-            },
-
-            shoot() {
-                if(this.health <= 0) return;
-                AudioSys.playShoot();
-                
-                // Visual Recoil
-                document.body.style.transform = "scale(1.02)";
-                setTimeout(() => document.body.style.transform = "scale(1)", 50);
-
-                // Raycast
-                const raycaster = new THREE.Raycaster();
-                // 0,0 is center of screen in normalized coordinates
-                raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-
-                const intersects = raycaster.intersectObject(this.enemyMesh);
-                
-                if (intersects.length > 0) {
-                    // HIT!
-                    document.getElementById('status-msg').innerText = "TARGET HIT!";
-                    document.getElementById('status-msg').style.color = "red";
-                    this.enemyMesh.material.color.setHex(0xffffff); // Flash white
-                    setTimeout(() => this.enemyMesh.material.color.setHex(0xff0000), 100);
-                    
-                    this.sendData({ type: 'hit', amount: 10 });
-                } else {
-                    document.getElementById('status-msg').innerText = "MISSED";
-                    document.getElementById('status-msg').style.color = "yellow";
-                }
-            },
-
-            takeDamage(amount) {
-                this.health -= amount;
-                AudioSys.playHit();
-                
-                // Flash Screen
-                const overlay = document.getElementById('damage-overlay');
-                overlay.style.opacity = 0.6;
-                setTimeout(() => overlay.style.opacity = 0, 300);
-
-                // Update UI
-                const fill = document.getElementById('health-fill');
-                fill.style.width = this.health + "%";
-                if(this.health <= 30) fill.style.background = "red";
-
-                if(this.health <= 0) {
-                    document.getElementById('status-msg').innerText = "GAME OVER";
-                    alert("YOU DIED!");
-                    location.reload();
-                }
-            },
-
-            // --- SENSOR & 3D LOGIC ---
-            
-            async requestSensors() {
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    try {
-                        const permissionState = await DeviceOrientationEvent.requestPermission();
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', (e) => this.handleOrientation(e));
-                        } else {
-                            alert("Butuh izin Gyroscope untuk bermain!");
-                        }
-                    } catch (error) {
-                        console.error(error);
-                    }
-                } else {
-                    // Android / Non-iOS 13+
-                    window.addEventListener('deviceorientation', (e) => this.handleOrientation(e));
-                }
-            },
-
-            handleOrientation(event) {
-                // Update Local Camera Rotation
-                // Simple conversion from DeviceOrientation to Three.js camera rotation
-                if(!event.alpha) return;
-
-                // Send my orientation to peer (to let them know where I'm looking)
-                // We send data every 100ms roughly to save bandwidth, or every frame
-                if(this.conn && this.conn.open && Math.random() > 0.8) {
-                    this.sendData({
-                        type: 'position',
-                        alpha: event.alpha,
-                        beta: event.beta,
-                        gamma: event.gamma
-                    });
-                }
-
-                const alpha = event.alpha ? THREE.Math.degToRad(event.alpha) : 0; // Z
-                const beta = event.beta ? THREE.Math.degToRad(event.beta) : 0; // X
-                const gamma = event.gamma ? THREE.Math.degToRad(event.gamma) : 0; // Y
-
-                // Note: DeviceOrientation in ThreeJS is tricky manually. 
-                // For this simple game, we map Euler angles directly.
-                // Improving: Use quaternion for better stability, but Euler is readable for single-file.
-                
-                // Adjust for screen orientation
-                const orient = window.screen.orientation ? window.screen.orientation.angle : 0; 
-                
-                // Basic rotation lock
-                this.camera.rotation.x = beta;
-                this.camera.rotation.y = alpha + this.alphaOffset; 
-                // We typically don't roll the camera (z) in FPS as much, or gamma handles it.
-            },
-
-            updateEnemyPosition(remoteAlpha, remoteBeta, remoteGamma) {
-                // IMPORTANT LOGIC:
-                // How do we know where the enemy is WITHOUT GPS?
-                // We simulate it. Let's assume the enemy is always "North" relative to the game world start.
-                // Or better: The enemy is a static object in the world at (0, 0, -10).
-                // As YOU rotate your phone, the camera rotates, and you see or lose sight of the enemy.
-                
-                // To make it multiplayer dynamic:
-                // We can make the enemy move based on THEIR gyro. 
-                // E.g., If they lean left, the drone moves left.
-                
-                const rAlpha = THREE.Math.degToRad(remoteAlpha || 0);
-                
-                // Calculate position on a circle around player
-                // Using their "Alpha" (Compass direction) to place them relative to us?
-                // No, simpler: Enemy is at a fixed world coordinate (0,0,-10). 
-                // But we add slight movement based on their inputs to make them hard to hit.
-                
-                const moveScale = 5;
-                const x = Math.sin(rAlpha) * moveScale;
-                const y = Math.sin(THREE.Math.degToRad(remoteBeta)) * moveScale;
-                
-                // Smooth interpolation could go here
-                this.enemyMesh.position.x = x;
-                this.enemyMesh.position.y = y;
-                this.enemyMesh.rotation.y += 0.05; // Spin effect
-            },
-
-            animate() {
-                requestAnimationFrame(() => this.animate());
-                this.renderer.render(this.scene, this.camera);
-            }
+            audioCtx: null,
+            analyser: null,
+            dataArray: null,
+            source: null,
+            audioBuffer: null
         };
 
-        // Start initialization
-        game.init();
+        // Objects
+        let scene, camera, renderer, ring, grid;
+        let spheres = []; // Array of { mesh, id, processed }
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let targetPos = new THREE.Vector2(0, 0); // Posisi target ring (X dari P1, Y dari P2)
+
+        // --- 1. SETUP THREE.JS ---
+        function initThree() {
+            const container = document.getElementById('game-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000); // Hitam pekat
+            scene.fog = new THREE.Fog(0x000000, 10, 60); // Kabut biar bola muncul halus
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            pointLight.position.set(0, 10, 10);
+            scene.add(pointLight);
+
+            // Grid Floor
+            grid = new THREE.GridHelper(50, 20, 0x444444, 0x222222);
+            grid.position.y = -5;
+            scene.add(grid);
+
+            // Player Ring (Outline Circle)
+            const geometry = new THREE.RingGeometry(2.8, 3, 32);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            ring = new THREE.Mesh(geometry, material);
+            ring.position.z = CONFIG.hitZ;
+            scene.add(ring);
+
+            // Listener Resize
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // Input Listeners (Drag)
+            document.addEventListener('mousemove', onInputMove);
+            document.addEventListener('touchmove', onInputMove, { passive: false });
+            
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 2. LOGIC GAMEPLAY & RENDER LOOP ---
+
+        // Input Handling (Drag)
+        function onInputMove(e) {
+            if (!state.isPlaying) return;
+            e.preventDefault();
+
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            // Normalisasi mouse ke -1 s/d 1
+            const xNorm = (clientX / window.innerWidth) * 2 - 1;
+            const yNorm = -(clientY / window.innerHeight) * 2 + 1;
+
+            // Map ke posisi dunia (kurang lebih range -15 sampai 15 untuk X, -10 sampai 10 untuk Y)
+            // Kita batasi area gerak
+            const rangeX = 12;
+            const rangeY = 8;
+
+            let val = 0;
+            if (state.myAxis === 'x') {
+                val = xNorm * rangeX;
+                targetPos.x = val;
+                // Kirim ke partner
+                sendData({ type: 'move', val: val });
+            } else if (state.myAxis === 'y') {
+                val = yNorm * rangeY;
+                targetPos.y = val;
+                // Kirim ke partner
+                sendData({ type: 'move', val: val });
+            }
+        }
+
+        // Main Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!state.isPlaying) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // Update Ring Position (Smooth lerp)
+            ring.position.x += (targetPos.x - ring.position.x) * 0.2;
+            ring.position.y += (targetPos.y - ring.position.y) * 0.2;
+
+            // Audio Analysis (HOST Only) untuk Spawn Bola
+            if (state.role === 'host' && state.analyser) {
+                detectBeat();
+            }
+
+            // Update Spheres
+            for (let i = spheres.length - 1; i >= 0; i--) {
+                const s = spheres[i];
+                s.mesh.position.z += CONFIG.sphereSpeed;
+
+                // Rotasi sedikit biar dinamis
+                s.mesh.rotation.x += 0.01;
+                s.mesh.rotation.y += 0.01;
+
+                // Cek Collision (Hanya Host yang hitung skor untuk sinkronisasi)
+                if (state.role === 'host' && !s.processed) {
+                    // Jika melewati ring (z > 0)
+                    if (s.mesh.position.z >= CONFIG.hitZ) {
+                        checkHit(s, i);
+                    }
+                } else if (state.role === 'client' && s.mesh.position.z > 5) {
+                    // Cleanup visual di client
+                    scene.remove(s.mesh);
+                    spheres.splice(i, 1);
+                }
+            }
+
+            // Gerakan Grid agar terasa maju
+            grid.position.z += CONFIG.sphereSpeed;
+            if (grid.position.z >= CONFIG.gridSize) grid.position.z = 0;
+
+            renderer.render(scene, camera);
+        }
+
+        // Spawn Sphere Logic
+        function spawnSphere(x, y) {
+            const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+            // Warna Biru (0x0000ff) + Emissive biar nyala
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x0055ff, 
+                emissive: 0x0000aa,
+                emissiveIntensity: 0.5,
+                roughness: 0.1
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            mesh.position.set(x, y, CONFIG.spawnZ);
+            scene.add(mesh);
+            spheres.push({ mesh: mesh, processed: false });
+        }
+
+        // Logic Beat Detection Sederhana
+        let lastSpawnTime = 0;
+        function detectBeat() {
+            state.analyser.getByteFrequencyData(state.dataArray);
+            
+            // Ambil rata-rata frekuensi rendah (Bass)
+            let sum = 0;
+            const bassCount = 10; 
+            for(let i = 0; i < bassCount; i++) {
+                sum += state.dataArray[i];
+            }
+            const average = sum / bassCount;
+
+            const now = Date.now();
+            // Threshold sensitivitas dan cooldown min 400ms
+            if (average > 230 && now - lastSpawnTime > 400) { 
+                triggerSpawn();
+                lastSpawnTime = now;
+            }
+            // Fallback: Jika lagu sepi, spawn random sesekali
+            else if (now - lastSpawnTime > 2000) {
+                triggerSpawn();
+                lastSpawnTime = now;
+            }
+        }
+
+        function triggerSpawn() {
+            // Posisi random dalam jangkauan layar
+            const rX = (Math.random() * 20) - 10;
+            const rY = (Math.random() * 12) - 6;
+            
+            // Spawn lokal
+            spawnSphere(rX, rY);
+            // Kirim perintah spawn ke client
+            sendData({ type: 'spawn', x: rX, y: rY });
+        }
+
+        // Hit Detection (Host Only)
+        function checkHit(s, index) {
+            s.processed = true;
+            
+            // Jarak antara tengah bola dan tengah ring
+            const dx = s.mesh.position.x - ring.position.x;
+            const dy = s.mesh.position.y - ring.position.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            let result = "MISS";
+            let color = CONFIG.colors.miss;
+
+            if (dist < 1.0) { // Masuk area
+                if (dist < 0.3) {
+                    result = "PERFECT";
+                    color = CONFIG.colors.perfect;
+                    state.score += 100;
+                } else if (dist < 1.5) {
+                    result = "GOOD";
+                    color = CONFIG.colors.good;
+                    state.score += 50;
+                } else {
+                    result = "GREAT";
+                    color = CONFIG.colors.great;
+                    state.score += 20;
+                }
+            } else {
+                // Miss
+                state.score = Math.max(0, state.score - 10);
+            }
+
+            // Hapus bola visual
+            scene.remove(s.mesh);
+            spheres.splice(index, 1);
+
+            // Update UI & Broadcast
+            showFeedback(result, color);
+            updateScoreUI();
+            sendData({ type: 'result', text: result, color: color, score: state.score });
+        }
+
+        // --- 3. UI & FEEDBACK ---
+        function showFeedback(text, colorStr) {
+            const el = document.getElementById('feedback-text');
+            el.innerText = text;
+            el.style.color = colorStr;
+            
+            // Trigger animation CSS
+            el.style.animation = 'none';
+            el.offsetHeight; /* trigger reflow */
+            el.style.animation = 'pop 0.5s ease-out forwards';
+        }
+
+        function updateScoreUI() {
+            document.getElementById('score-val').innerText = state.score;
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // --- 4. PEER JS & MULTIPLAYER LOGIC ---
+        
+        // Helper: Generate 4 digit code
+        function generateRoomCode() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+        
+        // Prefix agar ID unik di server publik peerjs
+        const ID_PREFIX = "btc-game-v1-"; 
+
+        function initPeer(id) {
+            state.peer = new Peer(ID_PREFIX + id);
+            
+            state.peer.on('open', (id) => {
+                console.log('My ID: ' + id);
+            });
+
+            state.peer.on('error', (err) => {
+                console.error(err);
+                document.getElementById('status-msg').innerText = "Error: ID mungkin sudah dipakai.";
+            });
+        }
+
+        // HOST FLOW
+        function createRoom() {
+            const code = generateRoomCode();
+            initPeer(code);
+            
+            state.role = 'host';
+            state.myAxis = 'x'; // Host control X
+            targetPos.y = 0; // Default
+
+            document.getElementById('screen-lobby').classList.add('hidden');
+            document.getElementById('screen-host').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = code;
+
+            // Tunggu koneksi
+            state.peer.on('connection', (conn) => {
+                state.conn = conn;
+                setupConnectionHandlers();
+                document.getElementById('host-status').innerText = "Player 2 Terhubung!";
+                document.getElementById('host-status').style.color = "#0f0";
+                document.getElementById('host-controls').style.display = 'flex';
+                
+                // Kirim Role ke Client
+                setTimeout(() => {
+                    sendData({ type: 'init', role: 'client' });
+                }, 1000);
+            });
+        }
+
+        // CLIENT FLOW
+        function showJoinInput() {
+            document.getElementById('lobby-buttons').style.display = 'none';
+            document.getElementById('join-container').style.display = 'flex';
+        }
+
+        function resetLobby() {
+            document.getElementById('lobby-buttons').style.display = 'block';
+            document.getElementById('join-container').style.display = 'none';
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('room-code-input').value;
+            if (code.length !== 4) {
+                alert("Masukkan 4 digit kode!");
+                return;
+            }
+
+            // Client ID random
+            const myTempId = generateRoomCode() + generateRoomCode(); 
+            initPeer(myTempId);
+
+            state.peer.on('open', () => {
+                // Connect ke Host
+                const conn = state.peer.connect(ID_PREFIX + code);
+                
+                conn.on('open', () => {
+                    state.conn = conn;
+                    state.role = 'client';
+                    state.myAxis = 'y'; // Client control Y
+                    
+                    document.getElementById('screen-lobby').classList.add('hidden');
+                    document.getElementById('screen-joiner').classList.remove('hidden');
+                    
+                    setupConnectionHandlers();
+                });
+
+                conn.on('error', (err) => {
+                    alert("Gagal konek. Cek kode.");
+                });
+            });
+        }
+
+        // DATA HANDLING
+        function setupConnectionHandlers() {
+            state.conn.on('data', (data) => {
+                handleData(data);
+            });
+        }
+
+        function sendData(data) {
+            if (state.conn && state.conn.open) {
+                state.conn.send(data);
+            }
+        }
+
+        function handleData(data) {
+            if (data.type === 'move') {
+                // Update posisi lawan
+                if (state.role === 'host') targetPos.y = data.val;
+                if (state.role === 'client') targetPos.x = data.val;
+            } 
+            else if (data.type === 'start') {
+                // Client mulai game
+                document.getElementById('ui-layer').classList.add('hidden-ui'); // hide menus
+                // Hide semua screen UI
+                document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+                state.isPlaying = true;
+            }
+            else if (data.type === 'spawn') {
+                // Client spawn bola visual
+                spawnSphere(data.x, data.y);
+            }
+            else if (data.type === 'result') {
+                // Tampilkan hasil hitungan host
+                showFeedback(data.text, data.color);
+                state.score = data.score;
+                updateScoreUI();
+            }
+        }
+
+        // --- 5. AUDIO HANDLING (HOST) ---
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            document.getElementById('file-name').innerText = file.name;
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-play').style.borderColor = "#0f0";
+            document.getElementById('btn-play').style.color = "#0f0";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                state.audioCtx.decodeAudioData(arrayBuffer, function(buffer) {
+                    state.audioBuffer = buffer;
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function startGameHost() {
+            if (!state.audioBuffer) return;
+
+            // Setup Audio Graph
+            state.source = state.audioCtx.createBufferSource();
+            state.source.buffer = state.audioBuffer;
+            
+            state.analyser = state.audioCtx.createAnalyser();
+            state.analyser.fftSize = 256;
+            state.source.connect(state.analyser);
+            state.analyser.connect(state.audioCtx.destination);
+            
+            state.dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+
+            state.source.start(0);
+
+            // Hide UI
+            document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+            
+            state.isPlaying = true;
+            
+            // Beritahu Client untuk mulai
+            sendData({ type: 'start' });
+
+            // Handle lagu selesai
+            state.source.onended = () => {
+                alert("Game Selesai! Skor Akhir: " + state.score);
+                location.reload();
+            };
+        }
+
+        // --- INIT ---
+        initThree();
 
     </script>
 </body>
