@@ -2,635 +2,277 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pistol Duel PvP</title>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WebCall</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none;
-            user-select: none;
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --bg: #f0f2f5;
+            --card: #ffffff;
         }
 
-        /* SCREEN: LOBBY & UI */
-        .screen {
-            position: absolute;
-            width: 100%;
-            height: 100%;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: #fff;
-            z-index: 100;
-            transition: opacity 0.5s;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        h1 { color: #333; margin-bottom: 30px; font-size: 2rem; text-transform: uppercase; letter-spacing: 5px; }
-        
-        .btn {
-            background: #333;
-            color: white;
-            padding: 15px 40px;
-            margin: 10px;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            border-radius: 5px;
-            width: 200px;
-            transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.95); }
-        
-        input {
-            padding: 15px;
-            font-size: 1.2rem;
-            margin: 10px;
-            border: 2px solid #333;
-            border-radius: 5px;
-            text-align: center;
-            width: 250px;
-        }
-
-        #statusMsg { margin-top: 20px; color: #666; font-style: italic; }
-
-        /* GAME CANVAS & HUD */
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            /* Pattern Kotak-kotak */
-            background-color: #ffffff;
-            background-image: 
-                linear-gradient(#e0e0e0 1px, transparent 1px),
-                linear-gradient(90deg, #e0e0e0 1px, transparent 1px);
-            background-size: 40px 40px;
-            display: none; /* Hidden by default */
-        }
-
-        canvas {
-            display: block;
-            margin: 0 auto;
-            box-shadow: 0 0 50px rgba(0,0,0,0.1);
-        }
-
-        #hud {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 50px;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
             box-sizing: border-box;
-            pointer-events: none;
         }
 
-        .hp-box {
-            width: 200px;
-            background: rgba(0,0,0,0.1);
-            border: 2px solid #333;
-            height: 20px;
+        .phone-card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 { margin-top: 0; color: #333; }
+
+        .status {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: 500;
+            min-height: 20px;
+        }
+
+        .id-container {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            word-break: break-all;
+            cursor: pointer;
+            border: 1px dashed #ccc;
             position: relative;
         }
+
+        .id-container:active { background: #dde2e6; }
         
-        .hp-bar {
-            height: 100%;
-            background: #4caf50;
+        .id-label { font-size: 0.8em; color: #555; display: block; margin-bottom: 5px; }
+        .my-id-text { font-weight: bold; color: var(--primary); font-size: 1.1em; }
+
+        input {
             width: 100%;
-            transition: width 0.2s;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+            text-align: center;
+            outline: none;
+            transition: border 0.3s;
         }
 
-        .player-label {
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
+        input:focus { border-color: var(--primary); }
+
+        .controls {
+            display: grid;
+            gap: 10px;
         }
+
+        button {
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            width: 100%;
+            color: white;
+        }
+
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-call { background-color: var(--success); }
+        .btn-end { background-color: var(--danger); display: none; }
+        
+        /* Animasi saat menelpon */
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="lobbyScreen" class="screen">
-        <h1>DUEL PVP</h1>
-        <button class="btn" onclick="showCreate()">Create Room</button>
-        <button class="btn" onclick="showJoin()">Join Room</button>
-    </div>
+    <div class="phone-card">
+        <h2>📞 WebCall</h2>
+        <div id="status" class="status">Menghubungkan ke server...</div>
 
-    <div id="createScreen" class="screen hidden">
-        <h1>HOST GAME</h1>
-        <input type="text" id="hostRoomName" placeholder="Nama Room (Unik)">
-        <button class="btn" onclick="createRoom()">Buat & Tunggu</button>
-        <button class="btn" style="background:#888" onclick="backToMain()">Kembali</button>
-        <p id="createStatus"></p>
-    </div>
-
-    <div id="joinScreen" class="screen hidden">
-        <h1>JOIN GAME</h1>
-        <input type="text" id="joinRoomName" placeholder="Masukkan Nama Room">
-        <button class="btn" onclick="joinRoom()">Cari & Masuk</button>
-        <button class="btn" style="background:#888" onclick="backToMain()">Kembali</button>
-        <p id="joinStatus"></p>
-    </div>
-
-    <div id="gameContainer">
-        <div id="hud">
-            <div>
-                <div class="player-label">YOU <span id="myHpText">100%</span></div>
-                <div class="hp-box"><div id="myHpBar" class="hp-bar"></div></div>
-            </div>
-            <div style="text-align: right;">
-                <div class="player-label">ENEMY <span id="enemyHpText">100%</span></div>
-                <div class="hp-box"><div id="enemyHpBar" class="hp-bar" style="float: right; background: #f44336;"></div></div>
-            </div>
+        <div class="id-container" onclick="copyId()">
+            <span class="id-label">ID Anda (Klik untuk salin):</span>
+            <span id="my-id" class="my-id-text">...</span>
         </div>
-        <canvas id="gameCanvas"></canvas>
+
+        <div id="call-input-area">
+            <input type="text" id="remote-id" placeholder="Tempel ID Teman disini...">
+        </div>
+
+        <div class="controls">
+            <button id="btn-call" class="btn-call" onclick="initiateCall()">Panggil</button>
+            <button id="btn-end" class="btn-end" onclick="endCall()">Akhiri Panggilan</button>
+        </div>
     </div>
 
-<script>
-/**
- * KONFIGURASI GAME & NETWORKING
- */
-const CONFIG = {
-    rotationSpeed: 0.15,
-    recoilForce: 8,
-    bulletSpeed: 18,
-    friction: 0.97,
-    bounceFactor: 0.8,
-    pistolScale: 0.8, // Skala diperkecil
-    damage: 5
-};
+    <audio id="remote-audio" autoplay></audio>
 
-// Networking Globals
-let peer = null;
-let conn = null;
-let isHost = false;
-let myId = null;
+    <script>
+        let peer = null;
+        let currentCall = null;
+        let localStream = null;
 
-// Game Globals
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let width, height;
-let gameActive = false;
-let isTouching = false;
+        const statusEl = document.getElementById('status');
+        const myIdEl = document.getElementById('my-id');
+        const remoteIdInput = document.getElementById('remote-id');
+        const btnCall = document.getElementById('btn-call');
+        const btnEnd = document.getElementById('btn-end');
+        const inputArea = document.getElementById('call-input-area');
+        const remoteAudio = document.getElementById('remote-audio');
 
-// Entities
-const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, hp: 100, color: '#333' };
-const enemy = { x: -100, y: -100, angle: 0, hp: 100, visible: false }; // Enemy dikontrol oleh data network
-let bullets = [];
-let particles = [];
+        // 1. Inisialisasi PeerJS
+        function initPeer() {
+            // Membuat ID random otomatis
+            peer = new Peer(); 
 
-/* =========================================
-   UI & LOBBY LOGIC
-   ========================================= */
+            peer.on('open', (id) => {
+                myIdEl.innerText = id;
+                statusEl.innerText = "Siap untuk memanggil.";
+                console.log('My ID:', id);
+            });
 
-function backToMain() {
-    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-    document.getElementById('lobbyScreen').classList.remove('hidden');
-}
+            // 2. Menangani Panggilan Masuk
+            peer.on('call', (call) => {
+                if(confirm("Ada panggilan masuk. Terima?")) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then((stream) => {
+                            localStream = stream;
+                            call.answer(stream); // Jawab panggilan & kirim suara kita
+                            handleCallStream(call);
+                        })
+                        .catch((err) => {
+                            console.error('Gagal akses mic:', err);
+                            statusEl.innerText = "Gagal akses microphone.";
+                        });
+                } else {
+                    // Jika ditolak, tutup koneksi (opsional: implementasi logic tolak)
+                }
+            });
 
-function showCreate() {
-    document.getElementById('lobbyScreen').classList.add('hidden');
-    document.getElementById('createScreen').classList.remove('hidden');
-}
-
-function showJoin() {
-    document.getElementById('lobbyScreen').classList.add('hidden');
-    document.getElementById('joinScreen').classList.remove('hidden');
-}
-
-function createRoom() {
-    const roomName = document.getElementById('hostRoomName').value.trim();
-    if(!roomName) return alert("Isi nama room!");
-    
-    document.getElementById('createStatus').innerText = "Connecting to server...";
-    
-    // Init PeerJS dengan ID custom (nama room)
-    peer = new Peer(roomName, { debug: 2 });
-
-    peer.on('open', (id) => {
-        document.getElementById('createStatus').innerText = `Room "${id}" dibuat! Menunggu lawan...`;
-        isHost = true;
-    });
-
-    peer.on('connection', (c) => {
-        // Lawan masuk
-        conn = c;
-        setupConnection();
-    });
-
-    peer.on('error', (err) => {
-        document.getElementById('createStatus').innerText = "Error: Nama room mungkin sudah dipakai.";
-    });
-}
-
-function joinRoom() {
-    const roomName = document.getElementById('joinRoomName').value.trim();
-    if(!roomName) return alert("Isi nama room!");
-
-    document.getElementById('joinStatus').innerText = "Mencari room...";
-    
-    // Joiner tidak butuh ID spesifik, random saja
-    peer = new Peer();
-
-    peer.on('open', (id) => {
-        // Connect ke Host
-        conn = peer.connect(roomName);
-        isHost = false;
-        
-        conn.on('open', () => {
-            setupConnection();
-        });
-
-        conn.on('error', (err) => {
-            document.getElementById('joinStatus').innerText = "Gagal connect ke room.";
-        });
-    });
-
-    peer.on('error', (err) => {
-        document.getElementById('joinStatus').innerText = "Connection Error.";
-    });
-}
-
-function setupConnection() {
-    console.log("Connected!");
-    // Sembunyikan UI lobby, tampilkan game
-    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-    document.getElementById('gameContainer').style.display = 'block';
-    
-    initGame();
-
-    // Handle Data Masuk
-    conn.on('data', (data) => {
-        handleNetworkData(data);
-    });
-}
-
-/* =========================================
-   GAME ENGINE
-   ========================================= */
-
-function resize() {
-    // Membuat arena luas tapi tetap rasio 16:9 agar fair
-    // Kita gunakan viewport window, tapi logic game menganggap area lebih "zoom out"
-    // karena ukuran pistol (CONFIG.pistolScale) kita kecilkan.
-    
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
-    const ratio = 16/9;
-
-    if (winW / winH > ratio) {
-        height = winH;
-        width = height * ratio;
-    } else {
-        width = winW;
-        height = width / ratio;
-    }
-    
-    canvas.width = width;
-    canvas.height = height;
-
-    // Reset posisi spawn
-    if (gameActive && !isHost && player.x === 0) {
-        // Joiner spawn kanan
-        player.x = width * 0.8;
-        player.y = height * 0.5;
-    } else if (gameActive && isHost && player.x === 0) {
-        // Host spawn kiri
-        player.x = width * 0.2;
-        player.y = height * 0.5;
-    }
-}
-
-function initGame() {
-    resize();
-    gameActive = true;
-    
-    // Spawn positions
-    if (isHost) {
-        player.x = width * 0.2;
-        player.y = height * 0.5;
-        player.vx = 2; // Mulai bergerak
-    } else {
-        player.x = width * 0.8;
-        player.y = height * 0.5;
-        player.vx = -2;
-        player.angle = Math.PI; // Hadap kiri
-    }
-    
-    enemy.visible = true;
-    updateHpUI();
-    requestAnimationFrame(gameLoop);
-    
-    // Loop Kirim Data (30fps)
-    setInterval(sendPlayerData, 1000/30);
-}
-
-function update() {
-    if(!gameActive) return;
-
-    // --- PLAYER PHYSICS ---
-    if (isTouching) {
-        // Freeze & Aim
-        player.vx = 0;
-        player.vy = 0;
-    } else {
-        // Spin & Move
-        player.angle += CONFIG.rotationSpeed;
-        player.x += player.vx;
-        player.y += player.vy;
-        
-        // Friction
-        player.vx *= CONFIG.friction;
-        player.vy *= CONFIG.friction;
-    }
-
-    // Wall Bounce
-    const r = 20 * CONFIG.pistolScale;
-    if (player.x < r) { player.x = r; player.vx *= -CONFIG.bounceFactor; }
-    if (player.x > width - r) { player.x = width - r; player.vx *= -CONFIG.bounceFactor; }
-    if (player.y < r) { player.y = r; player.vy *= -CONFIG.bounceFactor; }
-    if (player.y > height - r) { player.y = height - r; player.vy *= -CONFIG.bounceFactor; }
-
-    // --- BULLETS ---
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        b.x += Math.cos(b.angle) * CONFIG.bulletSpeed;
-        b.y += Math.sin(b.angle) * CONFIG.bulletSpeed;
-
-        // Out of bounds
-        if (b.x < 0 || b.x > width || b.y < 0 || b.y > height) {
-            bullets.splice(i, 1);
-            continue;
+            peer.on('error', (err) => {
+                console.error(err);
+                statusEl.innerText = "Error: " + err.type;
+                resetUI();
+            });
         }
 
-        // Collision Logic
-        // Kita hanya mengecek peluru yang KITA tembak kena musuh atau tidak
-        // (Client-side hit detection untuk shooter)
-        if (b.owner === 'me') {
-            const dist = Math.hypot(b.x - enemy.x, b.y - enemy.y);
-            // Hitbox musuh kira-kira 30px
-            if (dist < 30) {
-                // HIT!
-                bullets.splice(i, 1);
-                createExplosion(enemy.x, enemy.y, '#ff0000');
-                
-                // Kirim event HIT ke musuh
-                if(conn && conn.open) {
-                    conn.send({ type: 'hit' });
-                }
-                
-                // Update tampilan HP musuh lokal (hanya visual, sync asli via network)
-                enemy.hp = Math.max(0, enemy.hp - CONFIG.damage);
-                updateHpUI();
-                continue;
+        // 3. Memulai Panggilan (Outgoing)
+        function initiateCall() {
+            const remoteId = remoteIdInput.value.trim();
+            if (!remoteId) return alert("Masukkan ID teman terlebih dahulu!");
+
+            statusEl.innerText = "Meminta akses microphone...";
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((stream) => {
+                    localStream = stream;
+                    statusEl.innerText = "Menghubungkan...";
+                    
+                    const call = peer.call(remoteId, stream);
+                    handleCallStream(call);
+                })
+                .catch((err) => {
+                    console.error('Gagal akses mic:', err);
+                    alert("Aplikasi butuh akses microphone untuk menelpon.");
+                    statusEl.innerText = "Izin mic ditolak.";
+                });
+        }
+
+        // Helper: Menangani Stream Audio (Saat tersambung)
+        function handleCallStream(call) {
+            currentCall = call;
+            
+            // Saat stream dari lawan bicara diterima
+            call.on('stream', (remoteStream) => {
+                statusEl.innerText = "📞 Sedang berbicara";
+                remoteAudio.srcObject = remoteStream;
+                toggleCallUI(true);
+            });
+
+            call.on('close', () => {
+                endCall();
+            });
+        }
+
+        // 4. Mengakhiri Panggilan
+        function endCall() {
+            if (currentCall) currentCall.close();
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            statusEl.innerText = "Panggilan berakhir.";
+            setTimeout(() => {
+                statusEl.innerText = "Siap untuk memanggil.";
+            }, 2000);
+            
+            resetUI();
+        }
+
+        // UI Helpers
+        function toggleCallUI(isCalling) {
+            if (isCalling) {
+                btnCall.classList.add('hidden');
+                inputArea.classList.add('hidden');
+                btnEnd.style.display = 'block';
+                document.querySelector('.phone-card').classList.add('pulse');
+            } else {
+                resetUI();
             }
         }
-    }
 
-    // --- PARTICLES ---
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.05;
-        if (p.life <= 0) particles.splice(i, 1);
-    }
-}
+        function resetUI() {
+            btnCall.classList.remove('hidden');
+            inputArea.classList.remove('hidden');
+            btnEnd.style.display = 'none';
+            document.querySelector('.phone-card').classList.remove('pulse');
+            currentCall = null;
+            localStream = null;
+        }
 
-function draw() {
-    // Clear & Outline Arena
-    ctx.clearRect(0, 0, width, height);
-    
-    // Draw Enemy
-    if (enemy.visible) {
-        drawPistol(ctx, enemy.x, enemy.y, enemy.angle, '#f44336'); // Merah
-    }
+        function copyId() {
+            const idText = myIdEl.innerText;
+            if(idText === '...') return;
+            navigator.clipboard.writeText(idText).then(() => {
+                const originalText = statusEl.innerText;
+                statusEl.innerText = "ID disalin ke clipboard!";
+                setTimeout(() => statusEl.innerText = originalText, 2000);
+            });
+        }
 
-    // Draw Player
-    drawPistol(ctx, player.x, player.y, player.angle, '#333'); // Hitam
+        // Jalankan saat load
+        initPeer();
 
-    // Draw Bullets
-    bullets.forEach(b => {
-        ctx.fillStyle = (b.owner === 'me') ? '#000' : '#f00';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    // Draw Particles
-    particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    });
-}
-
-function drawPistol(ctx, x, y, angle, color) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    
-    // Skala Lebih Kecil sesuai Request
-    const scale = (width * 0.0015) * CONFIG.pistolScale; 
-    ctx.scale(scale, scale);
-
-    // Shadow
-    ctx.shadowColor = 'rgba(0,0,0,0.2)';
-    ctx.shadowBlur = 5;
-
-    // Grip
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(-10, 10);
-    ctx.lineTo(-15, 40);
-    ctx.lineTo(15, 40);
-    ctx.lineTo(10, 10);
-    ctx.fill();
-
-    // Slide/Barrel
-    ctx.fillStyle = color === '#333' ? '#555' : '#e57373'; // Sedikit lebih terang dari body
-    ctx.fillRect(-30, -15, 70, 20);
-    
-    // Detail Slide
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    for(let i=0; i<3; i++) ctx.fillRect(-28 + (i*4), -12, 2, 14);
-
-    // Barrel Hole
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(40, -5, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Center Pivot
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(0, 0, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function updateHpUI() {
-    document.getElementById('myHpBar').style.width = player.hp + "%";
-    document.getElementById('myHpText').innerText = player.hp + "%";
-    
-    document.getElementById('enemyHpBar').style.width = enemy.hp + "%";
-    document.getElementById('enemyHpText').innerText = enemy.hp + "%";
-
-    if(player.hp <= 0) gameOver("YOU LOSE");
-    if(enemy.hp <= 0) gameOver("YOU WIN");
-}
-
-function gameOver(msg) {
-    gameActive = false;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0,0,width,height);
-    ctx.fillStyle = '#fff';
-    ctx.font = '30px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(msg, width/2, height/2);
-    setTimeout(() => {
-        location.reload(); // Reset simple
-    }, 3000);
-}
-
-/* =========================================
-   NETWORKING LOGIC
-   ========================================= */
-
-function sendPlayerData() {
-    if (!conn || !conn.open) return;
-    conn.send({
-        type: 'update',
-        x: player.x,
-        y: player.y,
-        angle: player.angle,
-        hp: player.hp
-    });
-}
-
-function handleNetworkData(data) {
-    if (data.type === 'update') {
-        // Sync posisi musuh
-        enemy.x = data.x; // Bisa ditambahkan interpolasi agar lebih halus
-        enemy.y = data.y;
-        enemy.angle = data.angle;
-        // Enemy HP di-update berdasarkan data yang mereka kirim (source of truth diri sendiri)
-        // Kecuali kita pakai logika shooter-authoritative
-    }
-    else if (data.type === 'shoot') {
-        // Musuh nembak
-        bullets.push({
-            x: data.x,
-            y: data.y,
-            angle: data.angle,
-            owner: 'enemy'
-        });
-        // Muzzle flash di musuh
-        createExplosion(enemy.x + Math.cos(enemy.angle)*30, enemy.y + Math.sin(enemy.angle)*30, '#ffffaa', 3);
-    }
-    else if (data.type === 'hit') {
-        // Kita kena tembak!
-        player.hp -= CONFIG.damage;
-        createExplosion(player.x, player.y, '#ff0000');
-        updateHpUI();
-        // Kirim update HP terbaru kita ke musuh segera
-        sendPlayerData();
-    }
-}
-
-/* =========================================
-   INPUT & SHOOTING
-   ========================================= */
-
-function shoot() {
-    // Posisi ujung laras
-    const barrelLen = (width * 0.0015 * CONFIG.pistolScale) * 40; 
-    const muzzleX = player.x + Math.cos(player.angle) * barrelLen;
-    const muzzleY = player.y + Math.sin(player.angle) * barrelLen;
-
-    // Tambah peluru lokal
-    const bulletAngle = player.angle;
-    bullets.push({
-        x: muzzleX,
-        y: muzzleY,
-        angle: bulletAngle,
-        owner: 'me'
-    });
-
-    // Recoil
-    player.vx -= Math.cos(player.angle) * CONFIG.recoilForce;
-    player.vy -= Math.sin(player.angle) * CONFIG.recoilForce;
-    
-    // FX
-    createExplosion(muzzleX, muzzleY, '#ffffaa', 5);
-
-    // Network: Beritahu musuh kita nembak
-    if(conn && conn.open) {
-        conn.send({
-            type: 'shoot',
-            x: muzzleX,
-            y: muzzleY,
-            angle: bulletAngle
-        });
-    }
-}
-
-function createExplosion(x, y, color, count=10) {
-    for(let i=0; i<count; i++) {
-        particles.push({
-            x: x,
-            y: y,
-            vx: (Math.random() - 0.5) * 5,
-            vy: (Math.random() - 0.5) * 5,
-            life: 1.0,
-            color: color,
-            size: Math.random() * 3
-        });
-    }
-}
-
-function handleStart(e) {
-    if(!gameActive) return;
-    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-    e.preventDefault();
-    isTouching = true;
-}
-
-function handleEnd(e) {
-    if(!gameActive) return;
-    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-    e.preventDefault();
-    if (isTouching) {
-        isTouching = false;
-        shoot();
-    }
-}
-
-function gameLoop() {
-    update();
-    draw();
-    if(gameActive) requestAnimationFrame(gameLoop);
-}
-
-// Events
-window.addEventListener('mousedown', handleStart);
-window.addEventListener('mouseup', handleEnd);
-window.addEventListener('touchstart', handleStart, {passive: false});
-window.addEventListener('touchend', handleEnd, {passive: false});
-window.addEventListener('resize', resize);
-
-</script>
+    </script>
 </body>
 </html>
