@@ -2,276 +2,550 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple WebCall</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR FPS Battle: Mobile</title>
     <style>
-        :root {
-            --primary: #007bff;
-            --success: #28a745;
-            --danger: #dc3545;
-            --bg: #f0f2f5;
-            --card: #ffffff;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+            color: #0ff;
+            user-select: none;
         }
 
-        .phone-card {
-            background: var(--card);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        /* UI LAYERS */
+        #video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 0;
+        }
+
+        #game-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 400px;
-            text-align: center;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
         }
 
-        h2 { margin-top: 0; color: #333; }
-
-        .status {
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 20px;
-            font-weight: 500;
-            min-height: 20px;
+        /* MENU SCREEN */
+        #menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 20, 40, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            pointer-events: auto;
         }
 
-        .id-container {
-            background: #e9ecef;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            word-break: break-all;
-            cursor: pointer;
-            border: 1px dashed #ccc;
-            position: relative;
-        }
-
-        .id-container:active { background: #dde2e6; }
+        h1 { text-transform: uppercase; letter-spacing: 5px; text-shadow: 0 0 10px #0ff; text-align: center;}
         
-        .id-label { font-size: 0.8em; color: #555; display: block; margin-bottom: 5px; }
-        .my-id-text { font-weight: bold; color: var(--primary); font-size: 1.1em; }
-
+        .btn {
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-family: inherit;
+            margin: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+            width: 80%;
+            max-width: 300px;
+        }
+        .btn:active { background: #0ff; color: #000; }
+        
         input {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
+            background: transparent;
+            border: 2px solid #0ff;
+            color: #fff;
+            padding: 10px;
+            font-size: 20px;
             text-align: center;
-            outline: none;
-            transition: border 0.3s;
+            font-family: inherit;
+            margin: 10px;
+            width: 200px;
         }
 
-        input:focus { border-color: var(--primary); }
-
-        .controls {
-            display: grid;
-            gap: 10px;
-        }
-
-        button {
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+        /* HUD */
+        #hud {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            color: white;
+            height: 100%;
+            pointer-events: none;
         }
 
-        button:active { transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-call { background-color: var(--success); }
-        .btn-end { background-color: var(--danger); display: none; }
-        
-        /* Animasi saat menelpon */
-        .pulse {
-            animation: pulse-animation 2s infinite;
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 4px; height: 4px;
+            background: #f00;
+            transform: translate(-50%, -50%);
         }
 
-        @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        #health-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            border: 2px solid #0ff;
         }
+        #health-fill {
+            width: 100%;
+            height: 100%;
+            background: #0f0;
+            transition: width 0.2s;
+        }
+
+        #status-msg {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #ff0;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        #fire-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 0, 0, 0.3);
+            border: 3px solid #f00;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #fff;
+        }
+        #fire-btn:active { background: rgba(255, 0, 0, 0.8); }
 
         .hidden { display: none !important; }
+
+        /* DAMAGE EFFECT */
+        #damage-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 15;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
 
-    <div class="phone-card">
-        <h2>📞 WebCall</h2>
-        <div id="status" class="status">Menghubungkan ke server...</div>
+    <video id="video-bg" autoplay playsinline muted></video>
 
-        <div class="id-container" onclick="copyId()">
-            <span class="id-label">ID Anda (Klik untuk salin):</span>
-            <span id="my-id" class="my-id-text">...</span>
-        </div>
+    <div id="game-layer"></div>
 
-        <div id="call-input-area">
-            <input type="text" id="remote-id" placeholder="Tempel ID Teman disini...">
-        </div>
+    <div id="damage-overlay"></div>
 
-        <div class="controls">
-            <button id="btn-call" class="btn-call" onclick="initiateCall()">Panggil</button>
-            <button id="btn-end" class="btn-end" onclick="endCall()">Akhiri Panggilan</button>
-        </div>
+    <div id="hud">
+        <div id="health-bar"><div id="health-fill"></div></div>
+        <div style="position:absolute; top:45px; left:20px;">ROOM: <span id="room-display">---</span></div>
+        <div class="crosshair"></div>
+        <div id="status-msg">Menunggu lawan...</div>
+        <div id="fire-btn">TEMBAK</div>
     </div>
 
-    <audio id="remote-audio" autoplay></audio>
+    <div id="menu-screen">
+        <h1>AR Cyber<br>Shooter</h1>
+        <p style="font-size: 12px; color: #aaa; text-align:center; max-width:80%;">
+            Pastikan izinkan akses Kamera & Sensor Gerak.<br>Mainkan di Chrome/Safari Mobile.
+        </p>
+        <button class="btn" onclick="game.createRoom()">Buat Room (Host)</button>
+        <div style="display:flex; align-items:center;">
+            <input type="text" id="room-code-input" placeholder="4 Digit Kode" maxlength="4">
+        </div>
+        <button class="btn" onclick="game.joinRoom()">Join Room</button>
+        <div id="menu-status" style="margin-top:20px; color:#f0f;"></div>
+    </div>
 
     <script>
-        let peer = null;
-        let currentCall = null;
-        let localStream = null;
+        /**
+         * AUDIO SYSTEM (Synthesizer - Tanpa aset file)
+         */
+        const AudioSys = {
+            ctx: new (window.AudioContext || window.webkitAudioContext)(),
+            playShoot() {
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playHit() {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+        };
 
-        const statusEl = document.getElementById('status');
-        const myIdEl = document.getElementById('my-id');
-        const remoteIdInput = document.getElementById('remote-id');
-        const btnCall = document.getElementById('btn-call');
-        const btnEnd = document.getElementById('btn-end');
-        const inputArea = document.getElementById('call-input-area');
-        const remoteAudio = document.getElementById('remote-audio');
-
-        // 1. Inisialisasi PeerJS
-        function initPeer() {
-            // Membuat ID random otomatis
-            peer = new Peer(); 
-
-            peer.on('open', (id) => {
-                myIdEl.innerText = id;
-                statusEl.innerText = "Siap untuk memanggil.";
-                console.log('My ID:', id);
-            });
-
-            // 2. Menangani Panggilan Masuk
-            peer.on('call', (call) => {
-                if(confirm("Ada panggilan masuk. Terima?")) {
-                    navigator.mediaDevices.getUserMedia({ audio: true })
-                        .then((stream) => {
-                            localStream = stream;
-                            call.answer(stream); // Jawab panggilan & kirim suara kita
-                            handleCallStream(call);
-                        })
-                        .catch((err) => {
-                            console.error('Gagal akses mic:', err);
-                            statusEl.innerText = "Gagal akses microphone.";
-                        });
-                } else {
-                    // Jika ditolak, tutup koneksi (opsional: implementasi logic tolak)
-                }
-            });
-
-            peer.on('error', (err) => {
-                console.error(err);
-                statusEl.innerText = "Error: " + err.type;
-                resetUI();
-            });
-        }
-
-        // 3. Memulai Panggilan (Outgoing)
-        function initiateCall() {
-            const remoteId = remoteIdInput.value.trim();
-            if (!remoteId) return alert("Masukkan ID teman terlebih dahulu!");
-
-            statusEl.innerText = "Meminta akses microphone...";
+        /**
+         * GAME LOGIC
+         */
+        const game = {
+            peer: null,
+            conn: null,
+            myId: null,
+            isHost: false,
+            health: 100,
             
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then((stream) => {
-                    localStream = stream;
-                    statusEl.innerText = "Menghubungkan...";
-                    
-                    const call = peer.call(remoteId, stream);
-                    handleCallStream(call);
-                })
-                .catch((err) => {
-                    console.error('Gagal akses mic:', err);
-                    alert("Aplikasi butuh akses microphone untuk menelpon.");
-                    statusEl.innerText = "Izin mic ditolak.";
+            // 3D Variables
+            scene: null,
+            camera: null,
+            renderer: null,
+            enemyMesh: null,
+            projectiles: [],
+            
+            // Orientation
+            alphaOffset: 0, // Calibration
+
+            init() {
+                // Generate random ID for simplicity in PeerJS if creating
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('game-layer').appendChild(this.renderer.domElement);
+
+                // Setup Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                this.scene.add(ambientLight);
+                
+                // Create Enemy Marker (Floating Drone Representation)
+                const geometry = new THREE.SphereGeometry(1, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+                this.enemyMesh = new THREE.Mesh(geometry, material);
+                
+                // Add a "ring" to make it look cooler
+                const ringGeo = new THREE.TorusGeometry(1.5, 0.1, 8, 30);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                this.enemyMesh.add(ring);
+
+                this.scene.add(this.enemyMesh);
+                this.enemyMesh.position.set(0, 0, 1000); // Hide initially
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
                 });
-        }
 
-        // Helper: Menangani Stream Audio (Saat tersambung)
-        function handleCallStream(call) {
-            currentCall = call;
+                this.startCamera();
+                this.animate();
+            },
+
+            startCamera() {
+                const video = document.getElementById('video-bg');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                    .then(stream => { video.srcObject = stream; })
+                    .catch(err => console.error("Camera Error:", err));
+                }
+            },
+
+            // --- NETWORKING ---
+
+            createRoom() {
+                this.requestSensors().then(() => {
+                    const code = Math.floor(1000 + Math.random() * 9000).toString();
+                    this.initPeer(code);
+                    this.isHost = true;
+                });
+            },
+
+            joinRoom() {
+                const code = document.getElementById('room-code-input').value;
+                if(code.length !== 4) { alert("Masukkan 4 digit kode!"); return; }
+                
+                this.requestSensors().then(() => {
+                    this.initPeer(null, code); // Pass null as ID, connect to code
+                });
+            },
+
+            initPeer(id, connectToId = null) {
+                document.getElementById('menu-status').innerText = "Connecting to Network...";
+                
+                // We use a prefix 'ar-shooter-' to avoid collision on the public server
+                const myPeerId = id ? `ar-shooter-${id}` : undefined;
+                
+                this.peer = new Peer(myPeerId);
+
+                this.peer.on('open', (peerId) => {
+                    this.myId = peerId;
+                    if(id) {
+                        // I am Host
+                        this.startGameUI(id);
+                        document.getElementById('status-msg').innerText = "Share Code: " + id;
+                    } else if (connectToId) {
+                        // I am Joiner
+                        this.connectToPeer(`ar-shooter-${connectToId}`);
+                    }
+                });
+
+                this.peer.on('connection', (conn) => {
+                    this.setupConnection(conn);
+                });
+                
+                this.peer.on('error', (err) => {
+                    alert("Error: " + err.type);
+                    document.getElementById('menu-status').innerText = "Error";
+                });
+            },
+
+            connectToPeer(remoteId) {
+                const conn = this.peer.connect(remoteId);
+                conn.on('open', () => {
+                    this.setupConnection(conn);
+                    this.startGameUI(remoteId.split('-')[2]); // Extract simple code
+                });
+            },
+
+            setupConnection(conn) {
+                this.conn = conn;
+                document.getElementById('status-msg').innerText = "CONNECTED! Enemy Detected!";
+                
+                // Send init ping
+                this.sendData({ type: 'ping' });
+
+                this.conn.on('data', (data) => {
+                    this.handleData(data);
+                });
+            },
+
+            sendData(data) {
+                if(this.conn && this.conn.open) {
+                    this.conn.send(data);
+                }
+            },
+
+            handleData(data) {
+                if(data.type === 'hit') {
+                    this.takeDamage(data.amount);
+                }
+                else if(data.type === 'position') {
+                    // Update Enemy Position in 3D world based on their relative rotation
+                    // Logic: If enemy rotates 180 deg, they are "behind" us if we are face to face.
+                    // For simplicity in this demo: We create a virtual arena.
+                    // We map the enemy's compass heading to a position around a circle.
+                    this.updateEnemyPosition(data.alpha, data.beta, data.gamma);
+                }
+            },
+
+            // --- GAMEPLAY LOGIC ---
+
+            startGameUI(roomCode) {
+                document.getElementById('menu-screen').classList.add('hidden');
+                document.getElementById('hud').style.display = 'block';
+                document.getElementById('room-display').innerText = roomCode;
+                
+                // Bind Fire Button
+                document.getElementById('fire-btn').addEventListener('touchstart', (e) => {
+                    e.preventDefault(); 
+                    this.shoot(); 
+                });
+                document.getElementById('fire-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.shoot();
+                });
+            },
+
+            shoot() {
+                if(this.health <= 0) return;
+                AudioSys.playShoot();
+                
+                // Visual Recoil
+                document.body.style.transform = "scale(1.02)";
+                setTimeout(() => document.body.style.transform = "scale(1)", 50);
+
+                // Raycast
+                const raycaster = new THREE.Raycaster();
+                // 0,0 is center of screen in normalized coordinates
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+
+                const intersects = raycaster.intersectObject(this.enemyMesh);
+                
+                if (intersects.length > 0) {
+                    // HIT!
+                    document.getElementById('status-msg').innerText = "TARGET HIT!";
+                    document.getElementById('status-msg').style.color = "red";
+                    this.enemyMesh.material.color.setHex(0xffffff); // Flash white
+                    setTimeout(() => this.enemyMesh.material.color.setHex(0xff0000), 100);
+                    
+                    this.sendData({ type: 'hit', amount: 10 });
+                } else {
+                    document.getElementById('status-msg').innerText = "MISSED";
+                    document.getElementById('status-msg').style.color = "yellow";
+                }
+            },
+
+            takeDamage(amount) {
+                this.health -= amount;
+                AudioSys.playHit();
+                
+                // Flash Screen
+                const overlay = document.getElementById('damage-overlay');
+                overlay.style.opacity = 0.6;
+                setTimeout(() => overlay.style.opacity = 0, 300);
+
+                // Update UI
+                const fill = document.getElementById('health-fill');
+                fill.style.width = this.health + "%";
+                if(this.health <= 30) fill.style.background = "red";
+
+                if(this.health <= 0) {
+                    document.getElementById('status-msg').innerText = "GAME OVER";
+                    alert("YOU DIED!");
+                    location.reload();
+                }
+            },
+
+            // --- SENSOR & 3D LOGIC ---
             
-            // Saat stream dari lawan bicara diterima
-            call.on('stream', (remoteStream) => {
-                statusEl.innerText = "📞 Sedang berbicara";
-                remoteAudio.srcObject = remoteStream;
-                toggleCallUI(true);
-            });
+            async requestSensors() {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    try {
+                        const permissionState = await DeviceOrientationEvent.requestPermission();
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', (e) => this.handleOrientation(e));
+                        } else {
+                            alert("Butuh izin Gyroscope untuk bermain!");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                } else {
+                    // Android / Non-iOS 13+
+                    window.addEventListener('deviceorientation', (e) => this.handleOrientation(e));
+                }
+            },
 
-            call.on('close', () => {
-                endCall();
-            });
-        }
+            handleOrientation(event) {
+                // Update Local Camera Rotation
+                // Simple conversion from DeviceOrientation to Three.js camera rotation
+                if(!event.alpha) return;
 
-        // 4. Mengakhiri Panggilan
-        function endCall() {
-            if (currentCall) currentCall.close();
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
+                // Send my orientation to peer (to let them know where I'm looking)
+                // We send data every 100ms roughly to save bandwidth, or every frame
+                if(this.conn && this.conn.open && Math.random() > 0.8) {
+                    this.sendData({
+                        type: 'position',
+                        alpha: event.alpha,
+                        beta: event.beta,
+                        gamma: event.gamma
+                    });
+                }
+
+                const alpha = event.alpha ? THREE.Math.degToRad(event.alpha) : 0; // Z
+                const beta = event.beta ? THREE.Math.degToRad(event.beta) : 0; // X
+                const gamma = event.gamma ? THREE.Math.degToRad(event.gamma) : 0; // Y
+
+                // Note: DeviceOrientation in ThreeJS is tricky manually. 
+                // For this simple game, we map Euler angles directly.
+                // Improving: Use quaternion for better stability, but Euler is readable for single-file.
+                
+                // Adjust for screen orientation
+                const orient = window.screen.orientation ? window.screen.orientation.angle : 0; 
+                
+                // Basic rotation lock
+                this.camera.rotation.x = beta;
+                this.camera.rotation.y = alpha + this.alphaOffset; 
+                // We typically don't roll the camera (z) in FPS as much, or gamma handles it.
+            },
+
+            updateEnemyPosition(remoteAlpha, remoteBeta, remoteGamma) {
+                // IMPORTANT LOGIC:
+                // How do we know where the enemy is WITHOUT GPS?
+                // We simulate it. Let's assume the enemy is always "North" relative to the game world start.
+                // Or better: The enemy is a static object in the world at (0, 0, -10).
+                // As YOU rotate your phone, the camera rotates, and you see or lose sight of the enemy.
+                
+                // To make it multiplayer dynamic:
+                // We can make the enemy move based on THEIR gyro. 
+                // E.g., If they lean left, the drone moves left.
+                
+                const rAlpha = THREE.Math.degToRad(remoteAlpha || 0);
+                
+                // Calculate position on a circle around player
+                // Using their "Alpha" (Compass direction) to place them relative to us?
+                // No, simpler: Enemy is at a fixed world coordinate (0,0,-10). 
+                // But we add slight movement based on their inputs to make them hard to hit.
+                
+                const moveScale = 5;
+                const x = Math.sin(rAlpha) * moveScale;
+                const y = Math.sin(THREE.Math.degToRad(remoteBeta)) * moveScale;
+                
+                // Smooth interpolation could go here
+                this.enemyMesh.position.x = x;
+                this.enemyMesh.position.y = y;
+                this.enemyMesh.rotation.y += 0.05; // Spin effect
+            },
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.renderer.render(this.scene, this.camera);
             }
-            
-            statusEl.innerText = "Panggilan berakhir.";
-            setTimeout(() => {
-                statusEl.innerText = "Siap untuk memanggil.";
-            }, 2000);
-            
-            resetUI();
-        }
+        };
 
-        // UI Helpers
-        function toggleCallUI(isCalling) {
-            if (isCalling) {
-                btnCall.classList.add('hidden');
-                inputArea.classList.add('hidden');
-                btnEnd.style.display = 'block';
-                document.querySelector('.phone-card').classList.add('pulse');
-            } else {
-                resetUI();
-            }
-        }
-
-        function resetUI() {
-            btnCall.classList.remove('hidden');
-            inputArea.classList.remove('hidden');
-            btnEnd.style.display = 'none';
-            document.querySelector('.phone-card').classList.remove('pulse');
-            currentCall = null;
-            localStream = null;
-        }
-
-        function copyId() {
-            const idText = myIdEl.innerText;
-            if(idText === '...') return;
-            navigator.clipboard.writeText(idText).then(() => {
-                const originalText = statusEl.innerText;
-                statusEl.innerText = "ID disalin ke clipboard!";
-                setTimeout(() => statusEl.innerText = originalText, 2000);
-            });
-        }
-
-        // Jalankan saat load
-        initPeer();
+        // Start initialization
+        game.init();
 
     </script>
 </body>
