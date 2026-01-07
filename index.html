@@ -2,679 +2,794 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Beat The Circle 3D - Ultimate</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wizard Duel: Parry & Fire</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #050510;
-            font-family: 'Montserrat', sans-serif;
-            color: white;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        #ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .interactive { pointer-events: auto; }
-
-        .screen {
-            position: absolute; width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            background: rgba(0,0,0,0.95);
-            transition: opacity 0.5s;
-        }
-        .hidden { opacity: 0; pointer-events: none; display: none !important; }
-
-        h1 { font-size: 2.5rem; text-transform: uppercase; letter-spacing: 5px; color: #fff; text-shadow: 0 0 20px #bf00ff; text-align: center; }
-        h2 { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; }
-
-        button {
-            padding: 12px 25px; font-size: 1rem; font-weight: bold;
-            color: white; background: transparent; border: 2px solid #00f;
-            border-radius: 50px; cursor: pointer; margin: 10px;
-            text-transform: uppercase; transition: 0.3s;
-            box-shadow: 0 0 10px #00f;
-        }
-        button:hover { background: #00f; box-shadow: 0 0 30px #00f; }
-        button:disabled { border-color: #555; color: #555; box-shadow: none; cursor: not-allowed; }
-
-        input[type="text"] {
-            padding: 10px; font-size: 1.5rem; text-align: center;
-            background: #111; border: 2px solid #555; color: white;
-            border-radius: 10px; width: 150px; letter-spacing: 5px;
-        }
-        input[type="file"] { display: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        body { background: #1a1a1a; overflow: hidden; font-family: 'Courier New', Courier, monospace; color: white; }
+        canvas { display: block; width: 100%; height: 100%; }
         
-        #score-board {
-            position: absolute; top: 20px; left: 20px;
-            font-size: 1.5rem; font-weight: bold;
-            text-shadow: 0 0 10px white;
+        /* UI Overlay */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* Menu Screen */
+        #menu { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; pointer-events: auto; z-index: 10;
         }
+        input { padding: 10px; font-size: 20px; text-align: center; margin: 10px; width: 200px; border-radius: 5px; border: none; }
+        button { 
+            padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; 
+            background: #6c5ce7; color: white; border: none; border-radius: 8px; font-weight: bold;
+        }
+        button:active { transform: scale(0.95); }
+        .hidden { display: none !important; }
 
-        #split-timer {
-            position: absolute; top: 60px; left: 20px;
-            font-size: 1.2rem; color: #ff00ff; display: none;
-            text-shadow: 0 0 10px #ff00ff;
-        }
+        /* Fullscreen Btn */
+        #fs-btn { position: absolute; bottom: 10px; right: 10px; padding: 5px 10px; background: #333; color: #fff; font-size: 12px; pointer-events: auto; z-index: 20; border: 1px solid #555; }
 
-        #feedback-text {
-            position: absolute; top: 30%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 4rem; font-weight: 900;
-            text-shadow: 0 0 20px rgba(255,255,255,0.5);
-            opacity: 0; text-align: center;
-        }
+        /* Controls Hints */
+        .control-area { position: absolute; bottom: 20px; width: 40%; height: 40%; pointer-events: auto; }
+        #left-zone { left: 0; }
+        #right-zone { right: 0; }
 
-        @keyframes pop {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        /* Right Buttons */
+        #btn-container {
+            position: absolute; bottom: 50px; right: 40px;
+            display: flex; flex-direction: column; gap: 20px; align-items: center;
+            pointer-events: auto;
         }
+        
+        .action-btn {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(255,255,255,0.2); border: 2px solid white;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px black;
+            backdrop-filter: blur(4px);
+            position: relative;
+        }
+        
+        #btn-attack { background: rgba(231, 76, 60, 0.4); }
+        #btn-parry { background: rgba(46, 204, 113, 0.4); width: 60px; height: 60px; font-size: 12px; }
 
-        #orientation-warning {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; color: #fff; display: none;
-            flex-direction: column; justify-content: center; align-items: center;
-            z-index: 9999; text-align: center;
-        }
-        @media (orientation: portrait) { #orientation-warning { display: flex; } }
+        /* Status */
+        #status-msg { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 14px; text-align: center; color: #ffd700; text-shadow: 0 0 5px black; }
+
     </style>
 </head>
 <body>
 
-    <div id="orientation-warning">
-        <h1>PUTAR HP ANDA</h1>
-    </div>
-
-    <div id="game-container"></div>
+    <canvas id="gameCanvas"></canvas>
 
     <div id="ui-layer">
-        <div id="score-board">SKOR: <span id="score-val">0</span></div>
-        <div id="split-timer">⚡ SPLIT MODE: <span id="timer-val">5</span>s</div>
-        <div id="feedback-text">PERFECT</div>
-
-        <div id="screen-lobby" class="screen interactive">
-            <h1>BEAT THE CIRCLE <span style="font-size:1rem; vertical-align:middle; color:#0ff;">3D</span></h1>
-            <p>Co-op Rhythm Game</p>
-            <div>
-                <button onclick="createRoom()">Create Room</button>
-                <button onclick="showJoinInput()">Join Room</button>
-            </div>
-            <div id="join-container" style="display:none; margin-top:20px;">
-                <input type="text" id="room-code-input" placeholder="0000" maxlength="4">
-                <br>
-                <button onclick="joinRoom()">Connect</button>
-                <button onclick="resetLobby()" style="border:none; box-shadow:none;">Back</button>
-            </div>
-            <div id="status-msg" style="margin-top:20px; color: yellow;"></div>
+        <div id="status-msg">Menunggu Koneksi...</div>
+        
+        <div id="btn-container">
+            <div id="btn-parry" class="action-btn">PARRY</div>
+            <div id="btn-attack" class="action-btn">ATK</div>
         </div>
 
-        <div id="screen-host" class="screen interactive hidden">
-            <h1>ROOM: <span id="display-room-code" style="color:#00f">----</span></h1>
-            <h2 id="host-status">Menunggu Player 2...</h2>
-            <div id="host-controls" style="display:none; flex-direction: column; align-items: center;">
-                <input type="file" id="audio-file" accept="audio/*, .mp3" onchange="handleFileUpload(this)">
-                <button onclick="document.getElementById('audio-file').click()">1. Pilih Lagu</button>
-                <p id="file-name" style="font-size: 0.8rem;">Belum ada lagu</p>
-                <button id="btn-play" disabled onclick="startGameHost()">2. START GAME</button>
-            </div>
-        </div>
-
-        <div id="screen-joiner" class="screen interactive hidden">
-            <h1>CONNECTED</h1>
-            <h2>Menunggu Host...</h2>
-            <p style="color:#0ff">Siapkan jari Anda!</p>
-        </div>
+        <button id="fs-btn">Fullscreen</button>
     </div>
 
-    <script>
-        // --- CONFIG ---
-        const CONFIG = {
-            speed: 0.6,
-            spawnZ: -70,
-            hitZ: 0,
-            colors: {
-                perfect: '#00ffff', good: '#00ff00', miss: '#ff0000',
-                p1: '#ff4444', p2: '#4444ff', pShared: '#ffffff'
+    <div id="menu">
+        <h1>WIZARD DUEL</h1>
+        <p style="font-size: 12px; color: #aaa; margin-bottom: 20px;">Top-Down Magic Battle</p>
+        <button id="create-btn">Create Room</button>
+        <div style="display: flex; align-items: center;">
+            <input type="text" id="room-code" placeholder="4-Digit Code" maxlength="4">
+            <button id="join-btn">Join</button>
+        </div>
+        <p id="menu-log" style="margin-top:20px; color: yellow; font-size: 14px;"></p>
+    </div>
+
+<script>
+/**
+ * KONFIGURASI GAME
+ */
+const CONFIG = {
+    HP: 100,
+    DMG_MELEE: 2,
+    DMG_FIRE: 8,
+    SPEED: 4,
+    FIREBALL_SPEED: 9,
+    PARRY_DURATION: 30, // frames
+    CHARGE_TIME: 400, // ms untuk dianggap hold
+    COLOR_P1: '#3498db',
+    COLOR_P2: '#e74c3c'
+};
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+
+// --- STATE MANAGEMENT ---
+let gameState = 'MENU'; // MENU, PLAY, GAMEOVER
+let isHost = false;
+let myId = null;
+let conn = null;
+let peer = null;
+
+// --- INPUTS ---
+const inputs = {
+    move: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null }, // Left Analog
+    attack: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null, startTime: 0, isAiming: false }, // Right Analog/Button
+    parry: false
+};
+
+// --- GAME OBJECTS ---
+const particles = [];
+const fireballs = [];
+
+class Player {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.hp = 100;
+        this.angle = 0; // Radian
+        this.radius = 20;
+        this.isParrying = false;
+        this.parryTimer = 0;
+        this.isCharging = false;
+        this.chargeLevel = 0;
+        
+        // Visual
+        this.staffOffset = 0;
+    }
+
+    update(dt, inputData) {
+        if (this.hp <= 0) return;
+
+        // Movement
+        if (inputData && inputData.moveActive) {
+            this.x += inputData.moveX * CONFIG.SPEED;
+            this.y += inputData.moveY * CONFIG.SPEED;
+            // Update angle based on movement if not aiming
+            if (!this.isCharging) {
+                this.angle = Math.atan2(inputData.moveY, inputData.moveX);
             }
-        };
-
-        // --- STATE ---
-        let state = {
-            score: 0, isPlaying: false, role: null, 
-            peer: null, conn: null,
-            splitMode: false,
-            splitTimer: 0,
-            audioCtx: null, analyser: null, dataArray: null,
-            sphereIdCounter: 0
-        };
-
-        // --- THREE.JS VARS ---
-        let scene, camera, renderer;
-        let ring1, ring2; // Ring 1 (Host/Shared), Ring 2 (Client in split)
-        let spheres = []; // Array of objects
-        let particles = [];
-        let grid;
-
-        // Target Position Mouse/Touch
-        let targetP1 = new THREE.Vector2(0,0);
-        let targetP2 = new THREE.Vector2(0,0);
-
-        // --- INIT THREE ---
-        function initThree() {
-            const container = document.getElementById('game-container');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050510);
-            scene.fog = new THREE.FogExp2(0x050510, 0.02);
-
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 0, 12);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
-
-            // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambient);
-            const point = new THREE.PointLight(0xffffff, 1);
-            point.position.set(0, 10, 10);
-            scene.add(point);
-
-            // Floor (Grid with transparency)
-            grid = new THREE.GridHelper(80, 40, 0x555555, 0x111122);
-            grid.position.y = -4; // Turunkan sedikit
-            grid.material.transparent = true;
-            grid.material.opacity = 0.3;
-            scene.add(grid);
-
-            // Ring 1 (Shared / P1)
-            ring1 = createRing(0xffffff);
-            scene.add(ring1);
-
-            // Ring 2 (P2 - Hidden initially)
-            ring2 = createRing(0x00ffff);
-            ring2.visible = false;
-            scene.add(ring2);
-
-            window.addEventListener('resize', onResize);
-            // Input Handlers
-            const zone = document.body;
-            zone.addEventListener('mousemove', onInput);
-            zone.addEventListener('touchmove', onInput, { passive: false });
-
-            animate();
         }
 
-        function createRing(color) {
-            // Ukuran ring diperkecil (radius dalam 1.3, luar 1.4)
-            const geo = new THREE.RingGeometry(1.3, 1.5, 32);
-            const mat = new THREE.MeshBasicMaterial({ 
-                color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.9 
-            });
-            const mesh = new THREE.Mesh(geo, mat);
-            // Tambahkan glow mesh di belakang
-            const glowGeo = new THREE.RingGeometry(1.2, 1.7, 32);
-            const glowMat = new THREE.MeshBasicMaterial({ 
-                color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending 
-            });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            glow.position.z = -0.1;
-            mesh.add(glow);
-            return mesh;
-        }
+        // Boundary
+        this.x = Math.max(20, Math.min(width - 20, this.x));
+        this.y = Math.max(20, Math.min(height - 20, this.y));
 
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        // Parry Logic
+        if (this.parryTimer > 0) {
+            this.parryTimer--;
+            this.isParrying = true;
+        } else {
+            this.isParrying = false;
         }
+        
+        // Charging Effect
+        if (this.isCharging) {
+            this.chargeLevel += 0.05;
+            spawnParticle(this.x + Math.cos(this.angle)*30, this.y + Math.sin(this.angle)*30, 'orange', 1);
+        } else {
+            this.chargeLevel = 0;
+        }
+    }
 
-        // --- INPUT HANDLING ---
-        function onInput(e) {
-            if (!state.isPlaying) return;
-            e.preventDefault();
+    draw(ctx) {
+        if (this.hp <= 0) return;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // HP Bar
+        ctx.fillStyle = 'black';
+        ctx.fillRect(-25, -45, 50, 8);
+        ctx.fillStyle = this.hp > 30 ? '#2ecc71' : '#e74c3c';
+        ctx.fillRect(-24, -44, 48 * (this.hp / 100), 6);
+
+        // Character Body (Wizard Robe look)
+        ctx.rotate(this.angle);
+        
+        // Feet (Animation)
+        const walkCycle = (Date.now() / 150) % Math.PI;
+        
+        // Shadow
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.ellipse(0, 5, 15, 8, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // Body
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        // Hat
+        ctx.fillStyle = shadeColor(this.color, -20);
+        ctx.beginPath();
+        ctx.moveTo(10, -5);
+        ctx.lineTo(25, 0); // Pointy part front
+        ctx.lineTo(10, 5);
+        ctx.fill();
+
+        // Hands & Staff
+        if (this.isParrying) {
+            // Parry Pose: Hands up, Staff horizontal
+            ctx.fillStyle = '#f1c40f'; // Shield effect
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.arc(15, 0, 30, -Math.PI/2, Math.PI/2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // Staff blocking
+            ctx.strokeStyle = '#8e44ad';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(10, -15);
+            ctx.lineTo(10, 15);
+            ctx.stroke();
+        } else {
+            // Normal / Attack Pose
+            // Staff
+            ctx.strokeStyle = '#5d4037';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 10);
+            ctx.lineTo(30, 15);
+            ctx.stroke();
             
-            let cx, cy;
-            if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; } 
-            else { cx = e.clientX; cy = e.clientY; }
-
-            // Normalize -1 to 1
-            const x = (cx / window.innerWidth) * 2 - 1;
-            const y = -(cy / window.innerHeight) * 2 + 1;
-
-            const rangeX = 8;
-            const rangeY = 5; 
-
-            // LOGIKA KONTROL
-            const valX = x * rangeX;
-            const valY = y * rangeY;
-
-            if (state.role === 'host') {
-                if (state.splitMode) {
-                    // Host control Ring 1 Full
-                    targetP1.x = valX; targetP1.y = valY;
-                    sendData({ type: 'move_host', x: valX, y: valY });
-                } else {
-                    // Host control Y only
-                    targetP1.y = valY;
-                    sendData({ type: 'move_y', val: valY });
-                }
-            } else if (state.role === 'client') {
-                if (state.splitMode) {
-                    // Client control Ring 2 Full
-                    targetP2.x = valX; targetP2.y = valY;
-                    sendData({ type: 'move_client', x: valX, y: valY });
-                } else {
-                    // Client control X only
-                    targetP1.x = valX;
-                    sendData({ type: 'move_x', val: valX });
-                }
-            }
+            // Gem on staff
+            ctx.fillStyle = this.isCharging ? `hsl(${Math.random()*60 + 10}, 100%, 50%)` : '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(30, 15, 4 + (this.isCharging ? Math.random()*3 : 0), 0, Math.PI*2);
+            ctx.fill();
         }
 
-        // --- GAME LOOP ---
-        function animate() {
-            requestAnimationFrame(animate);
+        ctx.restore();
+    }
+}
 
-            // 1. Gerakkan Rings dengan Lerp (Smooth)
-            if (state.splitMode) {
-                // Ring 1 (Host) -> Merah
-                ring1.position.x += (targetP1.x - ring1.position.x) * 0.2;
-                ring1.position.y += (targetP1.y - ring1.position.y) * 0.2;
-                ring1.material.color.setHex(0xff4444);
-                ring1.children[0].material.color.setHex(0xff4444);
+class Fireball {
+    constructor(x, y, angle, ownerId) {
+        this.x = x;
+        this.y = y;
+        this.vx = Math.cos(angle) * CONFIG.FIREBALL_SPEED;
+        this.vy = Math.sin(angle) * CONFIG.FIREBALL_SPEED;
+        this.ownerId = ownerId;
+        this.active = true;
+        this.life = 100;
+    }
+    
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+        
+        // Trail
+        if (Math.random() > 0.3) {
+            spawnParticle(this.x, this.y, 'orange', 2);
+            spawnParticle(this.x, this.y, 'red', 1);
+        }
+        
+        // Bounce off walls
+        if (this.x < 0 || this.x > width) { this.vx *= -1; }
+        if (this.y < 0 || this.y > height) { this.vy *= -1; }
+        
+        if (this.life <= 0) this.active = false;
+    }
+    
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Glow
+        const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, 15);
+        gradient.addColorStop(0, '#ffff00');
+        gradient.addColorStop(0.4, '#ff4500');
+        gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
 
-                // Ring 2 (Client) -> Biru
-                ring2.visible = true;
-                ring2.position.x += (targetP2.x - ring2.position.x) * 0.2;
-                ring2.position.y += (targetP2.y - ring2.position.y) * 0.2;
+// Global Objects
+let p1 = new Player(100, 100, CONFIG.COLOR_P1);
+let p2 = new Player(300, 300, CONFIG.COLOR_P2);
+let myPlayer = p1; // Pointer to local player
+
+// --- NETWORKING (PEERJS) ---
+const menuLog = document.getElementById('menu-log');
+
+function initPeer(id = null) {
+    // Generate 4 digit code if host
+    const peerId = id || Math.floor(1000 + Math.random() * 9000).toString();
+    
+    peer = new Peer(peerId);
+
+    peer.on('open', (id) => {
+        myId = id;
+        console.log('My Peer ID:', id);
+        if (gameState === 'MENU') {
+            document.getElementById('room-code').value = id;
+            if(isHost) menuLog.innerText = `Room Created! Code: ${id}`;
+        }
+    });
+
+    peer.on('connection', (c) => {
+        // Host receives connection
+        conn = c;
+        setupConnection();
+        menuLog.innerText = "Player Connected! Starting...";
+        setTimeout(startGame, 1000);
+    });
+    
+    peer.on('error', (err) => {
+        menuLog.innerText = "Error: " + err.type;
+    });
+}
+
+function joinRoom() {
+    const code = document.getElementById('room-code').value;
+    if (code.length !== 4) return alert("Enter 4-digit code");
+    
+    // Client setup
+    isHost = false;
+    peer = new Peer(); // Auto gen ID for client
+    peer.on('open', () => {
+        conn = peer.connect(code);
+        setupConnection();
+    });
+    peer.on('error', (err) => { menuLog.innerText = "Connection Failed"; });
+}
+
+function setupConnection() {
+    conn.on('open', () => {
+        console.log("Connected");
+        gameState = 'PLAY';
+        document.getElementById('menu').classList.add('hidden');
+        document.getElementById('status-msg').innerText = "FIGHT!";
+        
+        // Assign Players
+        if (isHost) {
+            myPlayer = p1;
+            p1.x = width * 0.2; p1.y = height/2;
+            p2.x = width * 0.8; p2.y = height/2;
+        } else {
+            myPlayer = p2;
+        }
+    });
+
+    conn.on('data', (data) => {
+        handleNetworkData(data);
+    });
+}
+
+function sendData(data) {
+    if (conn && conn.open) {
+        conn.send(data);
+    }
+}
+
+function handleNetworkData(data) {
+    const enemy = isHost ? p2 : p1;
+    
+    if (data.type === 'sync') {
+        enemy.x = data.x;
+        enemy.y = data.y;
+        enemy.angle = data.a;
+        enemy.hp = data.hp;
+        enemy.isParrying = data.parry;
+        enemy.isCharging = data.charge;
+    } else if (data.type === 'fireball') {
+        fireballs.push(new Fireball(data.x, data.y, data.angle, isHost ? 'p2' : 'p1'));
+    } else if (data.type === 'slash') {
+        createSlashEffect(enemy.x, enemy.y, enemy.angle);
+        // Check local hit immediately for responsiveness (Host authority ideally, but trusting client for speed here)
+        if (checkMeleeHit(enemy, myPlayer)) {
+            if (!myPlayer.isParrying) {
+                myPlayer.hp -= CONFIG.DMG_MELEE;
+                spawnParticle(myPlayer.x, myPlayer.y, 'red', 5);
+                shakeScreen(5);
             } else {
-                // Ring 1 (Shared) -> Putih
-                ring1.position.x += (targetP1.x - ring1.position.x) * 0.2;
-                ring1.position.y += (targetP1.y - ring1.position.y) * 0.2;
-                ring1.material.color.setHex(0xffffff);
-                ring1.children[0].material.color.setHex(0xffffff);
+                // Parried melee
+                spawnParticle(myPlayer.x, myPlayer.y, 'gold', 5);
+            }
+        }
+    }
+}
+
+// --- CONTROLS LOGIC ---
+const touchLayer = document.getElementById('ui-layer');
+const btnAttack = document.getElementById('btn-attack');
+const btnParry = document.getElementById('btn-parry');
+
+// Helper to get touch pos relative to canvas
+function getTouchPos(e, touch) {
+    return { x: touch.clientX, y: touch.clientY };
+}
+
+// Left Analog (Invisible Dynamic)
+touchLayer.addEventListener('touchstart', (e) => {
+    // Check touches
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const x = t.clientX;
+        const y = t.clientY;
+        
+        // Left side of screen for movement
+        if (x < width / 2 && !inputs.move.active) {
+            inputs.move.active = true;
+            inputs.move.id = t.identifier;
+            inputs.move.originX = x;
+            inputs.move.originY = y;
+            inputs.move.x = 0;
+            inputs.move.y = 0;
+            continue;
+        }
+    }
+});
+
+touchLayer.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        
+        if (t.identifier === inputs.move.id) {
+            const dx = t.clientX - inputs.move.originX;
+            const dy = t.clientY - inputs.move.originY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const maxDist = 50;
+            
+            // Normalize
+            const angle = Math.atan2(dy, dx);
+            const cappedDist = Math.min(dist, maxDist);
+            
+            inputs.move.x = Math.cos(angle) * (cappedDist / maxDist);
+            inputs.move.y = Math.sin(angle) * (cappedDist / maxDist);
+        }
+        
+        if (t.identifier === inputs.attack.id) {
+            // Dragging attack button
+            const rect = btnAttack.getBoundingClientRect();
+            const centerX = rect.left + rect.width/2;
+            const centerY = rect.top + rect.height/2;
+            
+            const dx = t.clientX - centerX;
+            const dy = t.clientY - centerY;
+            
+            inputs.attack.x = dx;
+            inputs.attack.y = dy;
+            
+            // Logic: if dragged far enough, update aim angle
+            if (Math.sqrt(dx*dx + dy*dy) > 20) {
+                 myPlayer.angle = Math.atan2(dy, dx);
+                 myPlayer.isCharging = true;
+            }
+        }
+    }
+});
+
+touchLayer.addEventListener('touchend', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === inputs.move.id) {
+            inputs.move.active = false;
+            inputs.move.id = null;
+            inputs.move.x = 0;
+            inputs.move.y = 0;
+        }
+        
+        if (t.identifier === inputs.attack.id) {
+            handleAttackRelease();
+            inputs.attack.active = false;
+            inputs.attack.id = null;
+            myPlayer.isCharging = false;
+            btnAttack.style.transform = `translate(0px, 0px)`;
+        }
+    }
+});
+
+// Attack Button Logic
+btnAttack.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    inputs.attack.active = true;
+    inputs.attack.id = t.identifier;
+    inputs.attack.startTime = Date.now();
+    inputs.attack.originX = t.clientX;
+    inputs.attack.originY = t.clientY;
+});
+
+function handleAttackRelease() {
+    const duration = Date.now() - inputs.attack.startTime;
+    const dist = Math.sqrt(inputs.attack.x*inputs.attack.x + inputs.attack.y*inputs.attack.y);
+    
+    if (duration < CONFIG.CHARGE_TIME && dist < 30) {
+        // TAP -> Melee
+        performMelee();
+    } else {
+        // HOLD/DRAG -> Fireball
+        performFireball();
+    }
+    inputs.attack.x = 0;
+    inputs.attack.y = 0;
+}
+
+// Parry Button
+btnParry.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    performParry();
+});
+
+// --- ACTIONS ---
+
+function performMelee() {
+    // Effect
+    createSlashEffect(myPlayer.x, myPlayer.y, myPlayer.angle);
+    sendData({ type: 'slash' });
+    
+    // Check hit on enemy (local prediction)
+    const enemy = isHost ? p2 : p1;
+    if (checkMeleeHit(myPlayer, enemy)) {
+        // We only deal damage if we are the host OR we trust client. 
+        // For simplicity: Send damage event or let enemy calculate hit upon receiving 'slash'
+        // In this architecture, receiver calculates hit to avoid sync lag issues
+    }
+}
+
+function performFireball() {
+    const angle = myPlayer.angle;
+    const offset = 30;
+    const fx = myPlayer.x + Math.cos(angle) * offset;
+    const fy = myPlayer.y + Math.sin(angle) * offset;
+    
+    const fb = new Fireball(fx, fy, angle, isHost ? 'p1' : 'p2');
+    fireballs.push(fb);
+    
+    sendData({ type: 'fireball', x: fx, y: fy, angle: angle });
+}
+
+function performParry() {
+    myPlayer.parryTimer = CONFIG.PARRY_DURATION;
+}
+
+function checkMeleeHit(attacker, victim) {
+    const dx = victim.x - attacker.x;
+    const dy = victim.y - attacker.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const attackRange = 60;
+    
+    // Check if in front (dot product)
+    const ax = Math.cos(attacker.angle);
+    const ay = Math.sin(attacker.angle);
+    const dot = (dx * ax) + (dy * ay);
+    
+    return (dist < attackRange && dot > 0);
+}
+
+// --- VISUAL EFFECTS ---
+
+function createSlashEffect(x, y, angle) {
+    // Add visual slash particle
+    const p = {
+        x: x + Math.cos(angle)*30,
+        y: y + Math.sin(angle)*30,
+        angle: angle,
+        life: 10,
+        type: 'slash'
+    };
+    particles.push(p);
+}
+
+function spawnParticle(x, y, color, count) {
+    for(let i=0; i<count; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random()-0.5)*4,
+            vy: (Math.random()-0.5)*4,
+            life: 20 + Math.random()*10,
+            color: color,
+            type: 'dot'
+        });
+    }
+}
+
+let shake = 0;
+function shakeScreen(amount) {
+    shake = amount;
+}
+
+// --- MAIN LOOP ---
+
+function startGame() {
+    gameState = 'PLAY';
+    resize();
+    loop();
+}
+
+function loop() {
+    requestAnimationFrame(loop);
+    
+    // Clear
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, width, height);
+
+    // Screen Shake
+    if (shake > 0) {
+        ctx.save();
+        ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+        shake *= 0.9;
+        if(shake < 0.5) shake = 0;
+    }
+
+    // Grid Floor
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    const gridSize = 50;
+    ctx.beginPath();
+    for(let x=0; x<width; x+=gridSize) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
+    for(let y=0; y<height; y+=gridSize) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
+    ctx.stroke();
+
+    if (gameState === 'PLAY') {
+        // Logic
+        p1.update(16, isHost ? inputs : null); // Host controls p1
+        p2.update(16, !isHost ? inputs : null); // Client controls p2
+        
+        // Sync Self to Network
+        if(conn && conn.open) {
+            sendData({
+                type: 'sync',
+                x: myPlayer.x, y: myPlayer.y, a: myPlayer.angle,
+                hp: myPlayer.hp,
+                parry: myPlayer.isParrying,
+                charge: myPlayer.isCharging
+            });
+        }
+
+        // Handle Fireballs
+        for (let i = fireballs.length - 1; i >= 0; i--) {
+            let f = fireballs[i];
+            f.update();
+            f.draw(ctx);
+            
+            // Collision with Players
+            [p1, p2].forEach(p => {
+                // Ignore own fireball (initially)
+                const ownerStr = isHost ? 'p1' : 'p2';
+                // Simplified owner check logic: 
+                // We just check collision. If Parry -> Reflect. If Hit -> Damage.
                 
-                ring2.visible = false;
-            }
-
-            if (!state.isPlaying) { renderer.render(scene, camera); return; }
-
-            // 2. Audio Beat Detection (Host Only)
-            if (state.role === 'host' && state.analyser) {
-                detectBeat();
-            }
-
-            // 3. Move Spheres
-            // Kita gerakkan sphere di kedua sisi, tapi Host yang menentukan HIT/MISS
-            for (let i = spheres.length - 1; i >= 0; i--) {
-                let s = spheres[i];
-                s.mesh.position.z += CONFIG.speed;
-                s.mesh.rotation.x += 0.05;
-                s.mesh.rotation.y += 0.05;
-
-                // Host Logic Check
-                if (state.role === 'host' && !s.processed) {
-                    // Cek tabrakan jika sudah dekat Z=0
-                    if (s.mesh.position.z >= CONFIG.hitZ) {
-                        checkHit(s, i);
+                const dx = p.x - f.x;
+                const dy = p.y - f.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < p.radius + 15) {
+                    if (p.isParrying) {
+                        // REFLECT!
+                        // Calculate normal
+                        const normalAngle = Math.atan2(dy, dx);
+                        f.vx = -f.vx * 1.5; // Speed up on reflect
+                        f.vy = -f.vy * 1.5;
+                        f.ownerId = (p === p1) ? 'p1' : 'p2'; // Change owner
+                        spawnParticle(f.x, f.y, 'cyan', 5);
+                        shakeScreen(2);
+                        // Move ball out slightly to prevent stickiness
+                        f.x += f.vx * 2;
+                        f.y += f.vy * 2;
+                    } else if (f.ownerId !== (p === p1 ? 'p1' : 'p2')) {
+                        // Hit!
+                        p.hp -= CONFIG.DMG_FIRE;
+                        spawnParticle(p.x, p.y, 'orange', 10);
+                        shakeScreen(8);
+                        f.active = false;
                     }
                 }
-                
-                // Cleanup jika lewat jauh
-                if (s.mesh.position.z > 5) {
-                    if (state.role === 'host' && !s.processed) {
-                        // Missed by passing camera
-                        sendData({ type: 'result', id: s.id, res: 'L BANGET', score: Math.max(0, state.score-10) });
-                        state.score = Math.max(0, state.score-10);
-                        updateScoreUI();
-                        createParticles(s.mesh.position, 0xff0000);
-                    }
-                    scene.remove(s.mesh);
-                    spheres.splice(i, 1);
-                }
-            }
-
-            // 4. Update Particles
-            updateParticles();
-
-            // 5. Move Grid
-            grid.position.z += CONFIG.speed;
-            if (grid.position.z >= 20) grid.position.z = 0;
-
-            renderer.render(scene, camera);
-        }
-
-        // --- SPAWNING ---
-        function spawnSphere(id, x, y, isPowerUp) {
-            // Ukuran sphere diperkecil: 0.6
-            const geo = new THREE.SphereGeometry(0.6, 16, 16);
-            let color = isPowerUp ? 0xbf00ff : 0x0088ff;
-            let emissive = isPowerUp ? 0x5500aa : 0x0044aa;
-
-            const mat = new THREE.MeshStandardMaterial({
-                color: color,
-                emissive: emissive,
-                emissiveIntensity: 1, // Glowing
-                roughness: 0.1,
-                metalness: 0.5
             });
-
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, y, CONFIG.spawnZ);
-            scene.add(mesh);
-
-            spheres.push({ id: id, mesh: mesh, isPowerUp: isPowerUp, processed: false });
+            
+            if (!f.active) fireballs.splice(i, 1);
         }
 
-        // --- LOGIC: HIT DETECTION (HOST) ---
-        function checkHit(s, idx) {
-            s.processed = true;
-            
-            // Tentukan posisi ring mana yang dipakai
-            let dist = 999;
-            
-            if (state.splitMode) {
-                // Cek jarak ke Ring 1 ATAU Ring 2
-                const d1 = s.mesh.position.distanceTo(new THREE.Vector3(ring1.position.x, ring1.position.y, 0));
-                const d2 = s.mesh.position.distanceTo(new THREE.Vector3(ring2.position.x, ring2.position.y, 0));
-                dist = Math.min(d1, d2);
+        // Draw Players
+        p1.draw(ctx);
+        p2.draw(ctx);
+        
+        // Render Particles
+        for(let i=particles.length-1; i>=0; i--) {
+            let p = particles[i];
+            p.life--;
+            if (p.type === 'slash') {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(200, 200, 255, ${p.life/10})`;
+                ctx.lineWidth = 3;
+                ctx.arc(-20, 0, 40, -Math.PI/3, Math.PI/3);
+                ctx.stroke();
+                ctx.restore();
             } else {
-                dist = s.mesh.position.distanceTo(new THREE.Vector3(ring1.position.x, ring1.position.y, 0));
+                p.x += p.vx;
+                p.y += p.vy;
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 20;
+                ctx.fillRect(p.x, p.y, 3, 3);
             }
-
-            // Threshold hit
-            const HIT_RADIUS = 1.8; // Toleransi
-            let res = "MISS";
-            let color = CONFIG.colors.miss;
-
-            if (dist < HIT_RADIUS) {
-                if (s.isPowerUp) {
-                    res = "POWER UP!";
-                    color = 0xff00ff;
-                    triggerSplitMode();
-                } else {
-                    if (dist < 0.5) { res = "PERFECT"; state.score += 100; color = CONFIG.colors.perfect; }
-                    else { res = "GOOD"; state.score += 50; color = CONFIG.colors.good; }
-                }
-            } else {
-                state.score = Math.max(0, state.score - 10);
-            }
-
-            // Kirim hasil ke client agar visual sinkron
-            sendData({ type: 'result', id: s.id, res: res, score: state.score, colorHex: color });
-
-            // Efek lokal Host
-            showFeedback(res, color);
-            updateScoreUI();
-            createParticles(s.mesh.position, color);
-
-            // Hapus sphere
-            scene.remove(s.mesh);
-            spheres.splice(idx, 1);
+            if(p.life<=0) particles.splice(i, 1);
         }
+        ctx.globalAlpha = 1;
 
-        // --- SPLIT MODE ---
-        function triggerSplitMode() {
-            if (state.splitMode) return; // Sudah aktif
-            state.splitMode = true;
-            state.splitTimer = 5;
-
-            // Info ke UI
-            const timerEl = document.getElementById('split-timer');
-            const valEl = document.getElementById('timer-val');
-            timerEl.style.display = 'block';
+        // Draw Dynamic Joystick (UI on Canvas)
+        if (inputs.move.active) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.arc(inputs.move.originX, inputs.move.originY, 50, 0, Math.PI*2);
+            ctx.stroke();
             
-            // Loop Timer
-            const interval = setInterval(() => {
-                state.splitTimer--;
-                valEl.innerText = state.splitTimer;
-                if (state.splitTimer <= 0) {
-                    clearInterval(interval);
-                    endSplitMode();
-                }
-            }, 1000);
-
-            sendData({ type: 'split_start' });
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.arc(inputs.move.originX + inputs.move.x*50, inputs.move.originY + inputs.move.y*50, 20, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        // Attack Aim Indicator
+        if (myPlayer.isCharging) {
+             ctx.beginPath();
+             ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+             ctx.lineWidth = 1;
+             ctx.setLineDash([5, 5]);
+             ctx.moveTo(myPlayer.x, myPlayer.y);
+             ctx.lineTo(myPlayer.x + Math.cos(myPlayer.angle)*200, myPlayer.y + Math.sin(myPlayer.angle)*200);
+             ctx.stroke();
+             ctx.setLineDash([]);
         }
 
-        function endSplitMode() {
-            state.splitMode = false;
-            document.getElementById('split-timer').style.display = 'none';
-            // Reset posisi ke tengah supaya transisi halus
-            targetP1.x = 0; targetP1.y = 0; targetP2.x = 0; targetP2.y = 0;
-            sendData({ type: 'split_end' });
-        }
+    } // end play state
 
-        // --- AUDIO ANALYSIS ---
-        let lastSpawn = 0;
-        function detectBeat() {
-            state.analyser.getByteFrequencyData(state.dataArray);
-            let sum = 0;
-            for(let i=0; i<5; i++) sum += state.dataArray[i]; // Cek Bass
-            const avg = sum / 5;
-            const now = Date.now();
+    if (shake > 0) ctx.restore();
+}
 
-            // Ambang batas beat
-            if ((avg > 240 && now - lastSpawn > 300) || (now - lastSpawn > 2000)) {
-                // Random Pos
-                // Jaga Y agar tidak menembus lantai (Y > -2.5)
-                const rX = (Math.random() * 16) - 8;
-                const rY = (Math.random() * 6) - 2.5; 
-                
-                // Random PowerUp (10% chance)
-                const isPower = Math.random() < 0.1;
+// Helpers
+function shadeColor(color, percent) {
+    return color; // Simplification for hex
+}
 
-                const id = state.sphereIdCounter++;
-                spawnSphere(id, rX, rY, isPower);
-                
-                // Kirim perintah spawn ke Client
-                sendData({ type: 'spawn', id: id, x: rX, y: rY, isPower: isPower });
-                lastSpawn = now;
-            }
-        }
+function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+}
+window.addEventListener('resize', resize);
+resize();
 
-        // --- PARTICLES ---
-        function createParticles(pos, colorHex) {
-            const count = 15;
-            const geo = new THREE.BufferGeometry();
-            const positions = [];
-            const velocities = [];
+// --- MENU HANDLERS ---
+document.getElementById('create-btn').addEventListener('click', () => {
+    isHost = true;
+    initPeer();
+});
 
-            for(let i=0; i<count; i++){
-                positions.push(pos.x, pos.y, pos.z);
-                velocities.push(
-                    (Math.random()-0.5)*0.5, 
-                    (Math.random()-0.5)*0.5, 
-                    (Math.random()-0.5)*0.5
-                );
-            }
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            
-            const mat = new THREE.PointsMaterial({
-                color: colorHex, size: 0.8, transparent: true, opacity: 1
-            });
-            const pts = new THREE.Points(geo, mat);
-            scene.add(pts);
-            particles.push({ mesh: pts, vels: velocities, age: 0 });
-        }
+document.getElementById('join-btn').addEventListener('click', () => {
+    isHost = false;
+    joinRoom();
+});
 
-        function updateParticles() {
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.age++;
-                const pos = p.mesh.geometry.attributes.position.array;
-                
-                for(let j=0; j<p.vels.length/3; j++) {
-                    pos[j*3] += p.vels[j*3];
-                    pos[j*3+1] += p.vels[j*3+1];
-                    pos[j*3+2] += p.vels[j*3+2];
-                }
-                p.mesh.geometry.attributes.position.needsUpdate = true;
-                p.mesh.material.opacity -= 0.03;
+document.getElementById('fs-btn').addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+});
 
-                if (p.age > 30) {
-                    scene.remove(p.mesh);
-                    particles.splice(i, 1);
-                }
-            }
-        }
+// Init animation loop for menu bg
+loop();
 
-        // --- NETWORK & UI (Standard) ---
-        function showFeedback(text, color) {
-            const el = document.getElementById('feedback-text');
-            el.innerText = text;
-            el.style.color = typeof color === 'number' ? '#' + color.toString(16) : color;
-            el.style.animation = 'none';
-            el.offsetHeight; 
-            el.style.animation = 'pop 0.5s ease-out forwards';
-        }
-
-        function updateScoreUI() {
-            document.getElementById('score-val').innerText = state.score;
-        }
-
-        // PeerJS Helper
-        function generateCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
-        const PRE = "btc-ult-";
-
-        function createRoom() {
-            const code = generateCode();
-            state.peer = new Peer(PRE + code);
-            state.peer.on('open', (id) => {
-                document.getElementById('screen-lobby').classList.add('hidden');
-                document.getElementById('screen-host').classList.remove('hidden');
-                document.getElementById('display-room-code').innerText = code;
-                state.role = 'host';
-            });
-            state.peer.on('connection', (conn) => {
-                state.conn = conn;
-                setupConn();
-                document.getElementById('host-status').innerText = "Player 2 Connected!";
-                document.getElementById('host-status').style.color = "#0f0";
-                document.getElementById('host-controls').style.display = 'flex';
-            });
-        }
-
-        function joinRoom() {
-            const code = document.getElementById('room-code-input').value;
-            const myId = generateCode() + generateCode();
-            state.peer = new Peer(PRE + myId);
-            state.peer.on('open', () => {
-                const conn = state.peer.connect(PRE + code);
-                conn.on('open', () => {
-                    state.conn = conn;
-                    state.role = 'client';
-                    document.getElementById('screen-lobby').classList.add('hidden');
-                    document.getElementById('screen-joiner').classList.remove('hidden');
-                    setupConn();
-                });
-            });
-        }
-
-        function setupConn() {
-            state.conn.on('data', (data) => {
-                if (data.type === 'spawn') {
-                    spawnSphere(data.id, data.x, data.y, data.isPowerUp);
-                }
-                else if (data.type === 'move_y') targetP1.y = data.val;
-                else if (data.type === 'move_x') targetP1.x = data.val;
-                else if (data.type === 'move_host') { targetP1.x = data.x; targetP1.y = data.y; } // Host move p1
-                else if (data.type === 'move_client') { targetP2.x = data.x; targetP2.y = data.y; } // Client move p2
-                else if (data.type === 'result') {
-                    // Cari sphere berdasarkan ID dan hapus
-                    const idx = spheres.findIndex(s => s.id === data.id);
-                    if (idx !== -1) {
-                        createParticles(spheres[idx].mesh.position, data.colorHex);
-                        scene.remove(spheres[idx].mesh);
-                        spheres.splice(idx, 1);
-                    }
-                    showFeedback(data.res, data.colorHex);
-                    state.score = data.score;
-                    updateScoreUI();
-                }
-                else if (data.type === 'start') {
-                    document.getElementById('ui-layer').classList.add('hidden-ui');
-                    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-                    state.isPlaying = true;
-                }
-                else if (data.type === 'split_start') {
-                    state.splitMode = true;
-                    document.getElementById('split-timer').style.display = 'block';
-                    // Mulai timer visual di client (simple countdown)
-                    let t = 5;
-                    const v = document.getElementById('timer-val');
-                    const iv = setInterval(()=>{ t--; v.innerText=t; if(t<=0) clearInterval(iv); }, 1000);
-                }
-                else if (data.type === 'split_end') {
-                    state.splitMode = false;
-                    document.getElementById('split-timer').style.display = 'none';
-                    targetP1.x = 0; targetP1.y = 0;
-                }
-            });
-        }
-
-        function sendData(d) { if(state.conn && state.conn.open) state.conn.send(d); }
-        function resetLobby() { document.getElementById('join-container').style.display='none'; }
-        function showJoinInput() { document.getElementById('join-container').style.display='block'; }
-
-        // --- AUDIO FILE ---
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if(!file) return;
-            document.getElementById('file-name').innerText = file.name;
-            document.getElementById('btn-play').disabled = false;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                state.audioCtx = ctx;
-                ctx.decodeAudioData(e.target.result, function(buffer) {
-                    state.audioBuffer = buffer;
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function startGameHost() {
-            if (!state.audioBuffer) return;
-            sendData({ type: 'start' });
-            
-            // UI Hide
-            document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-            state.isPlaying = true;
-
-            // Audio Play
-            const src = state.audioCtx.createBufferSource();
-            src.buffer = state.audioBuffer;
-            const analyser = state.audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            src.connect(analyser);
-            analyser.connect(state.audioCtx.destination);
-            src.start(0);
-
-            state.analyser = analyser;
-            state.dataArray = new Uint8Array(analyser.frequencyBinCount);
-            state.source = src;
-        }
-
-        initThree();
-
-    </script>
+</script>
 </body>
 </html>
