@@ -18,6 +18,7 @@
             font-family: 'Montserrat', sans-serif;
             color: white;
             user-select: none;
+            -webkit-user-select: none; /* Safari */
         }
 
         /* --- UI Overlay & Containers --- */
@@ -27,7 +28,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Biar klik tembus ke canvas saat main */
+            pointer-events: none;
             z-index: 10;
         }
 
@@ -54,8 +55,8 @@
             display: none !important;
         }
 
-        h1 { font-size: 3rem; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 10px #00f; }
-        h2 { font-size: 1.5rem; color: #aaa; margin-bottom: 30px; }
+        h1 { font-size: 3rem; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 10px #00f; text-align: center; }
+        h2 { font-size: 1.5rem; color: #aaa; margin-bottom: 30px; text-align: center; }
 
         /* --- Buttons & Inputs --- */
         button {
@@ -86,10 +87,17 @@
             letter-spacing: 5px;
             margin-bottom: 20px;
         }
+        
+        /* Input file disembunyikan, dipanggil via tombol label */
         input[type="file"] { display: none; }
-        .file-upload-btn { background: #00f; border-color: #00f; }
+        
+        .file-upload-btn { 
+            background: #00f; 
+            border-color: #00f; 
+            box-shadow: 0 0 15px #00f;
+        }
 
-        /* --- HUD (Heads Up Display) --- */
+        /* --- HUD --- */
         #score-board {
             position: absolute;
             top: 20px;
@@ -108,6 +116,7 @@
             text-shadow: 2px 2px 0 #000;
             opacity: 0;
             transition: transform 0.1s;
+            text-align: center;
         }
 
         #fullscreen-btn {
@@ -141,7 +150,6 @@
             #orientation-warning { display: flex; }
         }
 
-        /* Animations */
         @keyframes pop {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
             50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
@@ -162,9 +170,7 @@
     <div id="ui-layer">
         
         <div id="score-board">SKOR: <span id="score-val">0</span></div>
-        
         <div id="feedback-text">PERFECT</div>
-
         <button id="fullscreen-btn" onclick="toggleFullScreen()">⛶</button>
 
         <div id="screen-lobby" class="screen interactive">
@@ -184,7 +190,7 @@
                 </div>
             </div>
 
-            <div id="status-msg" style="margin-top:20px; color: yellow;"></div>
+            <div id="status-msg" style="margin-top:20px; color: yellow; text-align:center; padding: 0 20px;"></div>
         </div>
 
         <div id="screen-host" class="screen interactive hidden">
@@ -192,11 +198,13 @@
             <h2 id="host-status">Menunggu Player 2...</h2>
             
             <div id="host-controls" style="display:none; flex-direction: column; align-items: center;">
-                <input type="file" id="audio-file" accept="audio/mp3" onchange="handleFileUpload(this)">
+                <input type="file" id="audio-file" accept="audio/*, .mp3" onchange="handleFileUpload(this)">
+                
                 <button class="file-upload-btn" onclick="document.getElementById('audio-file').click()">
                     1. Unggah Lagu (MP3)
                 </button>
-                <p id="file-name" style="font-size: 0.8rem; color: #aaa; margin-bottom: 20px;">Belum ada lagu</p>
+                <p id="file-name" style="font-size: 0.9rem; color: #fff; margin-bottom: 20px; font-weight: bold;">Belum ada lagu</p>
+                <p id="file-status" style="font-size: 0.8rem; color: #aaa; margin-top: -15px; margin-bottom: 20px;"></p>
                 
                 <button id="btn-play" disabled onclick="startGameHost()">2. PLAY GAME</button>
             </div>
@@ -211,16 +219,16 @@
     </div>
 
     <script>
-        // --- Game Config & State ---
+        // --- CONFIG & STATE ---
         const CONFIG = {
             sphereSpeed: 0.5,
             spawnZ: -60,
             hitZ: 0,
             gridSize: 20,
             colors: {
-                perfect: '#bf00ff', // Ungu
-                good: '#00ff00',    // Hijau
-                great: '#aaaaaa',   // Abu
+                perfect: '#bf00ff',
+                good: '#00ff00', 
+                great: '#aaaaaa',
                 miss: '#ff0000'
             }
         };
@@ -228,8 +236,8 @@
         let state = {
             score: 0,
             isPlaying: false,
-            role: null, // 'host' or 'client'
-            myAxis: null, // 'x' or 'y'
+            role: null, 
+            myAxis: null,
             peer: null,
             conn: null,
             audioCtx: null,
@@ -239,56 +247,44 @@
             audioBuffer: null
         };
 
-        // Objects
+        // THREE JS VARS
         let scene, camera, renderer, ring, grid;
-        let spheres = []; // Array of { mesh, id, processed }
-        let raycaster = new THREE.Raycaster();
-        let mouse = new THREE.Vector2();
-        let targetPos = new THREE.Vector2(0, 0); // Posisi target ring (X dari P1, Y dari P2)
+        let spheres = [];
+        let targetPos = new THREE.Vector2(0, 0);
 
         // --- 1. SETUP THREE.JS ---
         function initThree() {
             const container = document.getElementById('game-container');
-            
-            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); // Hitam pekat
-            scene.fog = new THREE.Fog(0x000000, 10, 60); // Kabut biar bola muncul halus
+            scene.background = new THREE.Color(0x000000); 
+            scene.fog = new THREE.Fog(0x000000, 10, 60);
 
-            // Camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 0, 10);
             camera.lookAt(0, 0, 0);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             container.appendChild(renderer.domElement);
 
-            // Lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const pointLight = new THREE.PointLight(0xffffff, 1);
             pointLight.position.set(0, 10, 10);
             scene.add(pointLight);
 
-            // Grid Floor
             grid = new THREE.GridHelper(50, 20, 0x444444, 0x222222);
             grid.position.y = -5;
             scene.add(grid);
 
-            // Player Ring (Outline Circle)
             const geometry = new THREE.RingGeometry(2.8, 3, 32);
             const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
             ring = new THREE.Mesh(geometry, material);
             ring.position.z = CONFIG.hitZ;
             scene.add(ring);
 
-            // Listener Resize
             window.addEventListener('resize', onWindowResize, false);
-            
-            // Input Listeners (Drag)
             document.addEventListener('mousemove', onInputMove);
             document.addEventListener('touchmove', onInputMove, { passive: false });
             
@@ -301,9 +297,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- 2. LOGIC GAMEPLAY & RENDER LOOP ---
-
-        // Input Handling (Drag)
         function onInputMove(e) {
             if (!state.isPlaying) return;
             e.preventDefault();
@@ -317,12 +310,9 @@
                 clientY = e.clientY;
             }
 
-            // Normalisasi mouse ke -1 s/d 1
             const xNorm = (clientX / window.innerWidth) * 2 - 1;
             const yNorm = -(clientY / window.innerHeight) * 2 + 1;
 
-            // Map ke posisi dunia (kurang lebih range -15 sampai 15 untuk X, -10 sampai 10 untuk Y)
-            // Kita batasi area gerak
             const rangeX = 12;
             const rangeY = 8;
 
@@ -330,17 +320,14 @@
             if (state.myAxis === 'x') {
                 val = xNorm * rangeX;
                 targetPos.x = val;
-                // Kirim ke partner
                 sendData({ type: 'move', val: val });
             } else if (state.myAxis === 'y') {
                 val = yNorm * rangeY;
                 targetPos.y = val;
-                // Kirim ke partner
                 sendData({ type: 'move', val: val });
             }
         }
 
-        // Main Loop
         function animate() {
             requestAnimationFrame(animate);
 
@@ -349,48 +336,37 @@
                 return;
             }
 
-            // Update Ring Position (Smooth lerp)
             ring.position.x += (targetPos.x - ring.position.x) * 0.2;
             ring.position.y += (targetPos.y - ring.position.y) * 0.2;
 
-            // Audio Analysis (HOST Only) untuk Spawn Bola
             if (state.role === 'host' && state.analyser) {
                 detectBeat();
             }
 
-            // Update Spheres
             for (let i = spheres.length - 1; i >= 0; i--) {
                 const s = spheres[i];
                 s.mesh.position.z += CONFIG.sphereSpeed;
-
-                // Rotasi sedikit biar dinamis
                 s.mesh.rotation.x += 0.01;
                 s.mesh.rotation.y += 0.01;
 
-                // Cek Collision (Hanya Host yang hitung skor untuk sinkronisasi)
                 if (state.role === 'host' && !s.processed) {
-                    // Jika melewati ring (z > 0)
                     if (s.mesh.position.z >= CONFIG.hitZ) {
                         checkHit(s, i);
                     }
                 } else if (state.role === 'client' && s.mesh.position.z > 5) {
-                    // Cleanup visual di client
                     scene.remove(s.mesh);
                     spheres.splice(i, 1);
                 }
             }
 
-            // Gerakan Grid agar terasa maju
             grid.position.z += CONFIG.sphereSpeed;
             if (grid.position.z >= CONFIG.gridSize) grid.position.z = 0;
 
             renderer.render(scene, camera);
         }
 
-        // Spawn Sphere Logic
         function spawnSphere(x, y) {
             const geometry = new THREE.SphereGeometry(1.5, 32, 32);
-            // Warna Biru (0x0000ff) + Emissive biar nyala
             const material = new THREE.MeshStandardMaterial({ 
                 color: 0x0055ff, 
                 emissive: 0x0000aa,
@@ -398,32 +374,26 @@
                 roughness: 0.1
             });
             const mesh = new THREE.Mesh(geometry, material);
-            
             mesh.position.set(x, y, CONFIG.spawnZ);
             scene.add(mesh);
             spheres.push({ mesh: mesh, processed: false });
         }
 
-        // Logic Beat Detection Sederhana
         let lastSpawnTime = 0;
         function detectBeat() {
             state.analyser.getByteFrequencyData(state.dataArray);
-            
-            // Ambil rata-rata frekuensi rendah (Bass)
             let sum = 0;
             const bassCount = 10; 
             for(let i = 0; i < bassCount; i++) {
                 sum += state.dataArray[i];
             }
             const average = sum / bassCount;
-
             const now = Date.now();
-            // Threshold sensitivitas dan cooldown min 400ms
+            
             if (average > 230 && now - lastSpawnTime > 400) { 
                 triggerSpawn();
                 lastSpawnTime = now;
             }
-            // Fallback: Jika lagu sepi, spawn random sesekali
             else if (now - lastSpawnTime > 2000) {
                 triggerSpawn();
                 lastSpawnTime = now;
@@ -431,21 +401,14 @@
         }
 
         function triggerSpawn() {
-            // Posisi random dalam jangkauan layar
             const rX = (Math.random() * 20) - 10;
             const rY = (Math.random() * 12) - 6;
-            
-            // Spawn lokal
             spawnSphere(rX, rY);
-            // Kirim perintah spawn ke client
             sendData({ type: 'spawn', x: rX, y: rY });
         }
 
-        // Hit Detection (Host Only)
         function checkHit(s, index) {
             s.processed = true;
-            
-            // Jarak antara tengah bola dan tengah ring
             const dx = s.mesh.position.x - ring.position.x;
             const dy = s.mesh.position.y - ring.position.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -453,7 +416,7 @@
             let result = "MISS";
             let color = CONFIG.colors.miss;
 
-            if (dist < 1.0) { // Masuk area
+            if (dist < 1.0) { 
                 if (dist < 0.3) {
                     result = "PERFECT";
                     color = CONFIG.colors.perfect;
@@ -468,29 +431,23 @@
                     state.score += 20;
                 }
             } else {
-                // Miss
                 state.score = Math.max(0, state.score - 10);
             }
 
-            // Hapus bola visual
             scene.remove(s.mesh);
             spheres.splice(index, 1);
 
-            // Update UI & Broadcast
             showFeedback(result, color);
             updateScoreUI();
             sendData({ type: 'result', text: result, color: color, score: state.score });
         }
 
-        // --- 3. UI & FEEDBACK ---
         function showFeedback(text, colorStr) {
             const el = document.getElementById('feedback-text');
             el.innerText = text;
             el.style.color = colorStr;
-            
-            // Trigger animation CSS
             el.style.animation = 'none';
-            el.offsetHeight; /* trigger reflow */
+            el.offsetHeight; 
             el.style.animation = 'pop 0.5s ease-out forwards';
         }
 
@@ -500,7 +457,9 @@
 
         function toggleFullScreen() {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
@@ -508,43 +467,32 @@
             }
         }
 
-        // --- 4. PEER JS & MULTIPLAYER LOGIC ---
-        
-        // Helper: Generate 4 digit code
+        // --- PEER JS ---
         function generateRoomCode() {
             return Math.floor(1000 + Math.random() * 9000).toString();
         }
-        
-        // Prefix agar ID unik di server publik peerjs
         const ID_PREFIX = "btc-game-v1-"; 
 
         function initPeer(id) {
             state.peer = new Peer(ID_PREFIX + id);
-            
-            state.peer.on('open', (id) => {
-                console.log('My ID: ' + id);
-            });
-
+            state.peer.on('open', (id) => { console.log('My ID: ' + id); });
             state.peer.on('error', (err) => {
                 console.error(err);
-                document.getElementById('status-msg').innerText = "Error: ID mungkin sudah dipakai.";
+                document.getElementById('status-msg').innerText = "Koneksi Error. Coba refresh.";
             });
         }
 
-        // HOST FLOW
         function createRoom() {
             const code = generateRoomCode();
             initPeer(code);
-            
             state.role = 'host';
-            state.myAxis = 'x'; // Host control X
-            targetPos.y = 0; // Default
+            state.myAxis = 'x';
+            targetPos.y = 0;
 
             document.getElementById('screen-lobby').classList.add('hidden');
             document.getElementById('screen-host').classList.remove('hidden');
             document.getElementById('display-room-code').innerText = code;
 
-            // Tunggu koneksi
             state.peer.on('connection', (conn) => {
                 state.conn = conn;
                 setupConnectionHandlers();
@@ -552,14 +500,10 @@
                 document.getElementById('host-status').style.color = "#0f0";
                 document.getElementById('host-controls').style.display = 'flex';
                 
-                // Kirim Role ke Client
-                setTimeout(() => {
-                    sendData({ type: 'init', role: 'client' });
-                }, 1000);
+                setTimeout(() => { sendData({ type: 'init', role: 'client' }); }, 1000);
             });
         }
 
-        // CLIENT FLOW
         function showJoinInput() {
             document.getElementById('lobby-buttons').style.display = 'none';
             document.getElementById('join-container').style.display = 'flex';
@@ -572,37 +516,25 @@
 
         function joinRoom() {
             const code = document.getElementById('room-code-input').value;
-            if (code.length !== 4) {
-                alert("Masukkan 4 digit kode!");
-                return;
-            }
+            if (code.length !== 4) return;
 
-            // Client ID random
             const myTempId = generateRoomCode() + generateRoomCode(); 
             initPeer(myTempId);
 
             state.peer.on('open', () => {
-                // Connect ke Host
                 const conn = state.peer.connect(ID_PREFIX + code);
-                
                 conn.on('open', () => {
                     state.conn = conn;
                     state.role = 'client';
-                    state.myAxis = 'y'; // Client control Y
-                    
+                    state.myAxis = 'y';
                     document.getElementById('screen-lobby').classList.add('hidden');
                     document.getElementById('screen-joiner').classList.remove('hidden');
-                    
                     setupConnectionHandlers();
                 });
-
-                conn.on('error', (err) => {
-                    alert("Gagal konek. Cek kode.");
-                });
+                conn.on('error', (err) => { alert("Gagal konek. Cek kode."); });
             });
         }
 
-        // DATA HANDLING
         function setupConnectionHandlers() {
             state.conn.on('data', (data) => {
                 handleData(data);
@@ -610,61 +542,87 @@
         }
 
         function sendData(data) {
-            if (state.conn && state.conn.open) {
-                state.conn.send(data);
-            }
+            if (state.conn && state.conn.open) state.conn.send(data);
         }
 
         function handleData(data) {
             if (data.type === 'move') {
-                // Update posisi lawan
                 if (state.role === 'host') targetPos.y = data.val;
                 if (state.role === 'client') targetPos.x = data.val;
             } 
             else if (data.type === 'start') {
-                // Client mulai game
-                document.getElementById('ui-layer').classList.add('hidden-ui'); // hide menus
-                // Hide semua screen UI
+                document.getElementById('ui-layer').classList.add('hidden-ui'); 
                 document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
                 state.isPlaying = true;
             }
             else if (data.type === 'spawn') {
-                // Client spawn bola visual
                 spawnSphere(data.x, data.y);
             }
             else if (data.type === 'result') {
-                // Tampilkan hasil hitungan host
                 showFeedback(data.text, data.color);
                 state.score = data.score;
                 updateScoreUI();
             }
         }
 
-        // --- 5. AUDIO HANDLING (HOST) ---
+        // --- AUDIO HANDLING (FIXED) ---
         function handleFileUpload(input) {
             const file = input.files[0];
-            if (!file) return;
+            const statusEl = document.getElementById('file-status');
+            
+            if (!file) {
+                statusEl.innerText = "Pembatalan pilih file.";
+                return;
+            }
 
+            // UI Feedback Loading
             document.getElementById('file-name').innerText = file.name;
-            document.getElementById('btn-play').disabled = false;
-            document.getElementById('btn-play').style.borderColor = "#0f0";
-            document.getElementById('btn-play').style.color = "#0f0";
-
+            statusEl.innerText = "Sedang memproses audio...";
+            
             const reader = new FileReader();
+            
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
+                // Inisialisasi context
                 state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
                 state.audioCtx.decodeAudioData(arrayBuffer, function(buffer) {
                     state.audioBuffer = buffer;
+                    // Sukses
+                    statusEl.innerText = "Audio SIAP!";
+                    statusEl.style.color = "#0f0";
+                    
+                    const btn = document.getElementById('btn-play');
+                    btn.disabled = false;
+                    btn.style.borderColor = "#0f0";
+                    btn.style.color = "#0f0";
+                    btn.style.boxShadow = "0 0 20px #0f0";
+                    
+                }, function(e) {
+                    // Error Decode
+                    console.error(e);
+                    statusEl.innerText = "Gagal membaca format file ini. Coba MP3 lain.";
+                    statusEl.style.color = "red";
+                    alert("Gagal membaca file audio. Pastikan file tidak corrupt.");
                 });
             };
+            
+            reader.onerror = function() {
+                statusEl.innerText = "Error saat upload.";
+                statusEl.style.color = "red";
+            };
+
             reader.readAsArrayBuffer(file);
         }
 
         function startGameHost() {
             if (!state.audioBuffer) return;
 
-            // Setup Audio Graph
+            // Pastikan context resume (Browser policy)
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+
             state.source = state.audioCtx.createBufferSource();
             state.source.buffer = state.audioBuffer;
             
@@ -677,24 +635,17 @@
 
             state.source.start(0);
 
-            // Hide UI
             document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-            
             state.isPlaying = true;
-            
-            // Beritahu Client untuk mulai
             sendData({ type: 'start' });
 
-            // Handle lagu selesai
             state.source.onended = () => {
                 alert("Game Selesai! Skor Akhir: " + state.score);
                 location.reload();
             };
         }
 
-        // --- INIT ---
         initThree();
-
     </script>
 </body>
 </html>
