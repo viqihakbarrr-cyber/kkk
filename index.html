@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wizard Duel: Parry & Fire</title>
+    <title>Wizard Duel: Fixed Controls</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
         body { background: #1a1a1a; overflow: hidden; font-family: 'Courier New', Courier, monospace; color: white; }
-        canvas { display: block; width: 100%; height: 100%; }
+        canvas { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* UI Overlay */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        /* UI Overlay - Z-Index lebih tinggi dari canvas */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         
         /* Menu Screen */
         #menu { 
@@ -30,16 +30,11 @@
         /* Fullscreen Btn */
         #fs-btn { position: absolute; bottom: 10px; right: 10px; padding: 5px 10px; background: #333; color: #fff; font-size: 12px; pointer-events: auto; z-index: 20; border: 1px solid #555; }
 
-        /* Controls Hints */
-        .control-area { position: absolute; bottom: 20px; width: 40%; height: 40%; pointer-events: auto; }
-        #left-zone { left: 0; }
-        #right-zone { right: 0; }
-
         /* Right Buttons */
         #btn-container {
             position: absolute; bottom: 50px; right: 40px;
             display: flex; flex-direction: column; gap: 20px; align-items: center;
-            pointer-events: auto;
+            pointer-events: auto; /* Penting: agar tombol bisa dipencet */
         }
         
         .action-btn {
@@ -106,7 +101,7 @@ const ctx = canvas.getContext('2d');
 let width, height;
 
 // --- STATE MANAGEMENT ---
-let gameState = 'MENU'; // MENU, PLAY, GAMEOVER
+let gameState = 'MENU';
 let isHost = false;
 let myId = null;
 let conn = null;
@@ -114,8 +109,8 @@ let peer = null;
 
 // --- INPUTS ---
 const inputs = {
-    move: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null }, // Left Analog
-    attack: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null, startTime: 0, isAiming: false }, // Right Analog/Button
+    move: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null }, 
+    attack: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null, startTime: 0 }, 
     parry: false
 };
 
@@ -125,19 +120,10 @@ const fireballs = [];
 
 class Player {
     constructor(x, y, color) {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.hp = 100;
-        this.angle = 0; // Radian
-        this.radius = 20;
-        this.isParrying = false;
-        this.parryTimer = 0;
-        this.isCharging = false;
-        this.chargeLevel = 0;
-        
-        // Visual
-        this.staffOffset = 0;
+        this.x = x; this.y = y; this.color = color;
+        this.hp = 100; this.angle = 0; this.radius = 20;
+        this.isParrying = false; this.parryTimer = 0;
+        this.isCharging = false; this.chargeLevel = 0;
     }
 
     update(dt, inputData) {
@@ -147,7 +133,6 @@ class Player {
         if (inputData && inputData.moveActive) {
             this.x += inputData.moveX * CONFIG.SPEED;
             this.y += inputData.moveY * CONFIG.SPEED;
-            // Update angle based on movement if not aiming
             if (!this.isCharging) {
                 this.angle = Math.atan2(inputData.moveY, inputData.moveX);
             }
@@ -181,246 +166,143 @@ class Player {
         ctx.translate(this.x, this.y);
         
         // HP Bar
-        ctx.fillStyle = 'black';
-        ctx.fillRect(-25, -45, 50, 8);
+        ctx.fillStyle = 'black'; ctx.fillRect(-25, -45, 50, 8);
         ctx.fillStyle = this.hp > 30 ? '#2ecc71' : '#e74c3c';
         ctx.fillRect(-24, -44, 48 * (this.hp / 100), 6);
 
-        // Character Body (Wizard Robe look)
         ctx.rotate(this.angle);
         
-        // Feet (Animation)
-        const walkCycle = (Date.now() / 150) % Math.PI;
-        
         // Shadow
-        ctx.beginPath();
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.ellipse(0, 5, 15, 8, 0, 0, Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.ellipse(0, 5, 15, 8, 0, 0, Math.PI*2); ctx.fill();
 
         // Body
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
         // Hat
-        ctx.fillStyle = shadeColor(this.color, -20);
-        ctx.beginPath();
-        ctx.moveTo(10, -5);
-        ctx.lineTo(25, 0); // Pointy part front
-        ctx.lineTo(10, 5);
-        ctx.fill();
+        ctx.fillStyle = shadeColor(this.color); ctx.beginPath();
+        ctx.moveTo(10, -5); ctx.lineTo(25, 0); ctx.lineTo(10, 5); ctx.fill();
 
         // Hands & Staff
         if (this.isParrying) {
-            // Parry Pose: Hands up, Staff horizontal
-            ctx.fillStyle = '#f1c40f'; // Shield effect
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.arc(15, 0, 30, -Math.PI/2, Math.PI/2);
-            ctx.fill();
+            ctx.fillStyle = '#f1c40f'; ctx.globalAlpha = 0.4;
+            ctx.beginPath(); ctx.arc(15, 0, 30, -Math.PI/2, Math.PI/2); ctx.fill();
             ctx.globalAlpha = 1.0;
-
-            // Staff blocking
-            ctx.strokeStyle = '#8e44ad';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(10, -15);
-            ctx.lineTo(10, 15);
-            ctx.stroke();
+            ctx.strokeStyle = '#8e44ad'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(10, -15); ctx.lineTo(10, 15); ctx.stroke();
         } else {
-            // Normal / Attack Pose
-            // Staff
-            ctx.strokeStyle = '#5d4037';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(0, 10);
-            ctx.lineTo(30, 15);
-            ctx.stroke();
-            
-            // Gem on staff
+            ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(30, 15); ctx.stroke();
             ctx.fillStyle = this.isCharging ? `hsl(${Math.random()*60 + 10}, 100%, 50%)` : '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(30, 15, 4 + (this.isCharging ? Math.random()*3 : 0), 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(30, 15, 4 + (this.isCharging ? Math.random()*3 : 0), 0, Math.PI*2); ctx.fill();
         }
-
         ctx.restore();
     }
 }
 
 class Fireball {
     constructor(x, y, angle, ownerId) {
-        this.x = x;
-        this.y = y;
+        this.x = x; this.y = y;
         this.vx = Math.cos(angle) * CONFIG.FIREBALL_SPEED;
         this.vy = Math.sin(angle) * CONFIG.FIREBALL_SPEED;
         this.ownerId = ownerId;
         this.active = true;
         this.life = 100;
     }
-    
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life--;
-        
-        // Trail
-        if (Math.random() > 0.3) {
-            spawnParticle(this.x, this.y, 'orange', 2);
-            spawnParticle(this.x, this.y, 'red', 1);
-        }
-        
-        // Bounce off walls
+        this.x += this.vx; this.y += this.vy; this.life--;
+        if (Math.random() > 0.3) { spawnParticle(this.x, this.y, 'orange', 2); spawnParticle(this.x, this.y, 'red', 1); }
         if (this.x < 0 || this.x > width) { this.vx *= -1; }
         if (this.y < 0 || this.y > height) { this.vy *= -1; }
-        
         if (this.life <= 0) this.active = false;
     }
-    
     draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        
-        // Glow
+        ctx.save(); ctx.translate(this.x, this.y);
         const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, 15);
-        gradient.addColorStop(0, '#ffff00');
-        gradient.addColorStop(0.4, '#ff4500');
-        gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, 15, 0, Math.PI*2);
-        ctx.fill();
+        gradient.addColorStop(0, '#ffff00'); gradient.addColorStop(0.4, '#ff4500'); gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+        ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
         ctx.restore();
     }
 }
 
-// Global Objects
 let p1 = new Player(100, 100, CONFIG.COLOR_P1);
 let p2 = new Player(300, 300, CONFIG.COLOR_P2);
-let myPlayer = p1; // Pointer to local player
+let myPlayer = p1;
 
-// --- NETWORKING (PEERJS) ---
+// --- NETWORKING (Simple PeerJS) ---
 const menuLog = document.getElementById('menu-log');
 
 function initPeer(id = null) {
-    // Generate 4 digit code if host
     const peerId = id || Math.floor(1000 + Math.random() * 9000).toString();
-    
     peer = new Peer(peerId);
-
     peer.on('open', (id) => {
-        myId = id;
-        console.log('My Peer ID:', id);
+        myId = id; console.log('My ID:', id);
         if (gameState === 'MENU') {
             document.getElementById('room-code').value = id;
             if(isHost) menuLog.innerText = `Room Created! Code: ${id}`;
         }
     });
-
     peer.on('connection', (c) => {
-        // Host receives connection
-        conn = c;
-        setupConnection();
+        conn = c; setupConnection();
         menuLog.innerText = "Player Connected! Starting...";
         setTimeout(startGame, 1000);
-    });
-    
-    peer.on('error', (err) => {
-        menuLog.innerText = "Error: " + err.type;
     });
 }
 
 function joinRoom() {
     const code = document.getElementById('room-code').value;
     if (code.length !== 4) return alert("Enter 4-digit code");
-    
-    // Client setup
     isHost = false;
-    peer = new Peer(); // Auto gen ID for client
-    peer.on('open', () => {
-        conn = peer.connect(code);
-        setupConnection();
-    });
-    peer.on('error', (err) => { menuLog.innerText = "Connection Failed"; });
+    peer = new Peer();
+    peer.on('open', () => { conn = peer.connect(code); setupConnection(); });
 }
 
 function setupConnection() {
     conn.on('open', () => {
-        console.log("Connected");
         gameState = 'PLAY';
         document.getElementById('menu').classList.add('hidden');
         document.getElementById('status-msg').innerText = "FIGHT!";
-        
-        // Assign Players
         if (isHost) {
-            myPlayer = p1;
-            p1.x = width * 0.2; p1.y = height/2;
-            p2.x = width * 0.8; p2.y = height/2;
-        } else {
-            myPlayer = p2;
-        }
+            myPlayer = p1; p1.x = width * 0.2; p1.y = height/2; p2.x = width * 0.8; p2.y = height/2;
+        } else { myPlayer = p2; }
     });
-
-    conn.on('data', (data) => {
-        handleNetworkData(data);
-    });
+    conn.on('data', (data) => handleNetworkData(data));
 }
 
-function sendData(data) {
-    if (conn && conn.open) {
-        conn.send(data);
-    }
-}
+function sendData(data) { if (conn && conn.open) conn.send(data); }
 
 function handleNetworkData(data) {
     const enemy = isHost ? p2 : p1;
-    
     if (data.type === 'sync') {
-        enemy.x = data.x;
-        enemy.y = data.y;
-        enemy.angle = data.a;
-        enemy.hp = data.hp;
-        enemy.isParrying = data.parry;
-        enemy.isCharging = data.charge;
+        enemy.x = data.x; enemy.y = data.y; enemy.angle = data.a;
+        enemy.hp = data.hp; enemy.isParrying = data.parry; enemy.isCharging = data.charge;
     } else if (data.type === 'fireball') {
         fireballs.push(new Fireball(data.x, data.y, data.angle, isHost ? 'p2' : 'p1'));
     } else if (data.type === 'slash') {
         createSlashEffect(enemy.x, enemy.y, enemy.angle);
-        // Check local hit immediately for responsiveness (Host authority ideally, but trusting client for speed here)
-        if (checkMeleeHit(enemy, myPlayer)) {
-            if (!myPlayer.isParrying) {
-                myPlayer.hp -= CONFIG.DMG_MELEE;
-                spawnParticle(myPlayer.x, myPlayer.y, 'red', 5);
-                shakeScreen(5);
-            } else {
-                // Parried melee
-                spawnParticle(myPlayer.x, myPlayer.y, 'gold', 5);
-            }
+        if (checkMeleeHit(enemy, myPlayer) && !myPlayer.isParrying) {
+            myPlayer.hp -= CONFIG.DMG_MELEE; spawnParticle(myPlayer.x, myPlayer.y, 'red', 5); shakeScreen(5);
         }
     }
 }
 
-// --- CONTROLS LOGIC ---
-const touchLayer = document.getElementById('ui-layer');
+// --- PERBAIKAN KONTROL SENTUH ---
+// Kita attach listener ke 'window' atau 'canvas' agar bisa mendeteksi sentuhan menembus overlay
+const touchTarget = document.getElementById('gameCanvas'); // Canvas adalah layer terbawah yang menerima input
 const btnAttack = document.getElementById('btn-attack');
 const btnParry = document.getElementById('btn-parry');
 
-// Helper to get touch pos relative to canvas
-function getTouchPos(e, touch) {
-    return { x: touch.clientX, y: touch.clientY };
-}
+// Mencegah scroll/zoom default
+document.body.addEventListener('touchstart', (e) => { if(e.target == canvas) e.preventDefault(); }, {passive: false});
+document.body.addEventListener('touchmove', (e) => { if(e.target == canvas) e.preventDefault(); }, {passive: false});
 
-// Left Analog (Invisible Dynamic)
-touchLayer.addEventListener('touchstart', (e) => {
-    // Check touches
+// Handler untuk Canvas (Joystick Kiri)
+touchTarget.addEventListener('touchstart', (e) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         const x = t.clientX;
         const y = t.clientY;
         
-        // Left side of screen for movement
+        // Hanya aktifkan joystick jika sentuhan di sisi kiri layar
         if (x < width / 2 && !inputs.move.active) {
             inputs.move.active = true;
             inputs.move.id = t.identifier;
@@ -428,23 +310,21 @@ touchLayer.addEventListener('touchstart', (e) => {
             inputs.move.originY = y;
             inputs.move.x = 0;
             inputs.move.y = 0;
-            continue;
         }
     }
-});
+}, {passive: false});
 
-touchLayer.addEventListener('touchmove', (e) => {
-    e.preventDefault();
+touchTarget.addEventListener('touchmove', (e) => {
+    e.preventDefault(); // Stop scrolling
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         
+        // Logic Joystick Kiri
         if (t.identifier === inputs.move.id) {
             const dx = t.clientX - inputs.move.originX;
             const dy = t.clientY - inputs.move.originY;
             const dist = Math.sqrt(dx*dx + dy*dy);
             const maxDist = 50;
-            
-            // Normalize
             const angle = Math.atan2(dy, dx);
             const cappedDist = Math.min(dist, maxDist);
             
@@ -452,8 +332,8 @@ touchLayer.addEventListener('touchmove', (e) => {
             inputs.move.y = Math.sin(angle) * (cappedDist / maxDist);
         }
         
+        // Logic Tombol Attack (Drag Aiming)
         if (t.identifier === inputs.attack.id) {
-            // Dragging attack button
             const rect = btnAttack.getBoundingClientRect();
             const centerX = rect.left + rect.width/2;
             const centerY = rect.top + rect.height/2;
@@ -464,36 +344,31 @@ touchLayer.addEventListener('touchmove', (e) => {
             inputs.attack.x = dx;
             inputs.attack.y = dy;
             
-            // Logic: if dragged far enough, update aim angle
+            // Update arah karakter saat aiming
             if (Math.sqrt(dx*dx + dy*dy) > 20) {
                  myPlayer.angle = Math.atan2(dy, dx);
                  myPlayer.isCharging = true;
             }
         }
     }
-});
+}, {passive: false});
 
-touchLayer.addEventListener('touchend', (e) => {
+touchTarget.addEventListener('touchend', (e) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         if (t.identifier === inputs.move.id) {
             inputs.move.active = false;
             inputs.move.id = null;
-            inputs.move.x = 0;
-            inputs.move.y = 0;
+            inputs.move.x = 0; inputs.move.y = 0;
         }
-        
+        // Jika jari aiming dilepas (tapi aslinya trigger dari btnAttack, ini safety net)
         if (t.identifier === inputs.attack.id) {
             handleAttackRelease();
-            inputs.attack.active = false;
-            inputs.attack.id = null;
-            myPlayer.isCharging = false;
-            btnAttack.style.transform = `translate(0px, 0px)`;
         }
     }
 });
 
-// Attack Button Logic
+// Handler Tombol Attack
 btnAttack.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const t = e.changedTouches[0];
@@ -503,42 +378,36 @@ btnAttack.addEventListener('touchstart', (e) => {
     inputs.attack.originX = t.clientX;
     inputs.attack.originY = t.clientY;
 });
+btnAttack.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    handleAttackRelease();
+});
 
 function handleAttackRelease() {
+    if (!inputs.attack.active) return;
+    
     const duration = Date.now() - inputs.attack.startTime;
     const dist = Math.sqrt(inputs.attack.x*inputs.attack.x + inputs.attack.y*inputs.attack.y);
     
     if (duration < CONFIG.CHARGE_TIME && dist < 30) {
-        // TAP -> Melee
         performMelee();
     } else {
-        // HOLD/DRAG -> Fireball
         performFireball();
     }
-    inputs.attack.x = 0;
-    inputs.attack.y = 0;
+    
+    inputs.attack.active = false;
+    inputs.attack.id = null;
+    inputs.attack.x = 0; inputs.attack.y = 0;
+    myPlayer.isCharging = false;
 }
 
-// Parry Button
-btnParry.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    performParry();
-});
+btnParry.addEventListener('touchstart', (e) => { e.preventDefault(); performParry(); });
 
-// --- ACTIONS ---
+// --- ACTIONS & EFFECTS ---
 
 function performMelee() {
-    // Effect
     createSlashEffect(myPlayer.x, myPlayer.y, myPlayer.angle);
     sendData({ type: 'slash' });
-    
-    // Check hit on enemy (local prediction)
-    const enemy = isHost ? p2 : p1;
-    if (checkMeleeHit(myPlayer, enemy)) {
-        // We only deal damage if we are the host OR we trust client. 
-        // For simplicity: Send damage event or let enemy calculate hit upon receiving 'slash'
-        // In this architecture, receiver calculates hit to avoid sync lag issues
-    }
 }
 
 function performFireball() {
@@ -546,250 +415,117 @@ function performFireball() {
     const offset = 30;
     const fx = myPlayer.x + Math.cos(angle) * offset;
     const fy = myPlayer.y + Math.sin(angle) * offset;
-    
     const fb = new Fireball(fx, fy, angle, isHost ? 'p1' : 'p2');
     fireballs.push(fb);
-    
     sendData({ type: 'fireball', x: fx, y: fy, angle: angle });
 }
 
-function performParry() {
-    myPlayer.parryTimer = CONFIG.PARRY_DURATION;
-}
+function performParry() { myPlayer.parryTimer = CONFIG.PARRY_DURATION; }
 
 function checkMeleeHit(attacker, victim) {
-    const dx = victim.x - attacker.x;
-    const dy = victim.y - attacker.y;
+    const dx = victim.x - attacker.x; const dy = victim.y - attacker.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
-    const attackRange = 60;
-    
-    // Check if in front (dot product)
-    const ax = Math.cos(attacker.angle);
-    const ay = Math.sin(attacker.angle);
-    const dot = (dx * ax) + (dy * ay);
-    
-    return (dist < attackRange && dot > 0);
+    const ax = Math.cos(attacker.angle); const ay = Math.sin(attacker.angle);
+    return (dist < 60 && ((dx * ax) + (dy * ay)) > 0);
 }
 
-// --- VISUAL EFFECTS ---
-
 function createSlashEffect(x, y, angle) {
-    // Add visual slash particle
-    const p = {
-        x: x + Math.cos(angle)*30,
-        y: y + Math.sin(angle)*30,
-        angle: angle,
-        life: 10,
-        type: 'slash'
-    };
-    particles.push(p);
+    particles.push({ x: x + Math.cos(angle)*30, y: y + Math.sin(angle)*30, angle: angle, life: 10, type: 'slash' });
 }
 
 function spawnParticle(x, y, color, count) {
     for(let i=0; i<count; i++) {
-        particles.push({
-            x: x, y: y,
-            vx: (Math.random()-0.5)*4,
-            vy: (Math.random()-0.5)*4,
-            life: 20 + Math.random()*10,
-            color: color,
-            type: 'dot'
-        });
+        particles.push({ x: x, y: y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 20+Math.random()*10, color: color, type: 'dot' });
     }
 }
 
-let shake = 0;
-function shakeScreen(amount) {
-    shake = amount;
-}
+let shake = 0; function shakeScreen(n) { shake = n; }
+function shadeColor(c){return c;}
 
-// --- MAIN LOOP ---
-
-function startGame() {
-    gameState = 'PLAY';
-    resize();
-    loop();
-}
+// --- LOOP ---
+function startGame() { gameState = 'PLAY'; resize(); loop(); }
 
 function loop() {
     requestAnimationFrame(loop);
     
-    // Clear
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#222'; ctx.fillRect(0, 0, width, height);
+    if (shake > 0) { ctx.save(); ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake); shake *= 0.9; if(shake<0.5)shake=0; }
 
-    // Screen Shake
-    if (shake > 0) {
-        ctx.save();
-        ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
-        shake *= 0.9;
-        if(shake < 0.5) shake = 0;
-    }
-
-    // Grid Floor
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    const gridSize = 50;
-    ctx.beginPath();
-    for(let x=0; x<width; x+=gridSize) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
-    for(let y=0; y<height; y+=gridSize) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
+    // Grid
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.beginPath();
+    for(let x=0; x<width; x+=50) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
+    for(let y=0; y<height; y+=50) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
     ctx.stroke();
 
     if (gameState === 'PLAY') {
-        // Logic
-        p1.update(16, isHost ? inputs : null); // Host controls p1
-        p2.update(16, !isHost ? inputs : null); // Client controls p2
+        p1.update(16, isHost ? {moveActive:inputs.move.active, moveX:inputs.move.x, moveY:inputs.move.y} : null);
+        p2.update(16, !isHost ? {moveActive:inputs.move.active, moveX:inputs.move.x, moveY:inputs.move.y} : null);
         
-        // Sync Self to Network
         if(conn && conn.open) {
-            sendData({
-                type: 'sync',
-                x: myPlayer.x, y: myPlayer.y, a: myPlayer.angle,
-                hp: myPlayer.hp,
-                parry: myPlayer.isParrying,
-                charge: myPlayer.isCharging
-            });
+            sendData({ type: 'sync', x: myPlayer.x, y: myPlayer.y, a: myPlayer.angle, hp: myPlayer.hp, parry: myPlayer.isParrying, charge: myPlayer.isCharging });
         }
 
-        // Handle Fireballs
         for (let i = fireballs.length - 1; i >= 0; i--) {
-            let f = fireballs[i];
-            f.update();
-            f.draw(ctx);
-            
-            // Collision with Players
+            let f = fireballs[i]; f.update(); f.draw(ctx);
             [p1, p2].forEach(p => {
-                // Ignore own fireball (initially)
-                const ownerStr = isHost ? 'p1' : 'p2';
-                // Simplified owner check logic: 
-                // We just check collision. If Parry -> Reflect. If Hit -> Damage.
-                
-                const dx = p.x - f.x;
-                const dy = p.y - f.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < p.radius + 15) {
+                const dx = p.x - f.x; const dy = p.y - f.y;
+                if (Math.sqrt(dx*dx + dy*dy) < p.radius + 15) {
                     if (p.isParrying) {
-                        // REFLECT!
-                        // Calculate normal
-                        const normalAngle = Math.atan2(dy, dx);
-                        f.vx = -f.vx * 1.5; // Speed up on reflect
-                        f.vy = -f.vy * 1.5;
-                        f.ownerId = (p === p1) ? 'p1' : 'p2'; // Change owner
-                        spawnParticle(f.x, f.y, 'cyan', 5);
-                        shakeScreen(2);
-                        // Move ball out slightly to prevent stickiness
-                        f.x += f.vx * 2;
-                        f.y += f.vy * 2;
+                         f.vx = -f.vx * 1.5; f.vy = -f.vy * 1.5; f.ownerId = (p === p1) ? 'p1' : 'p2';
+                         spawnParticle(f.x, f.y, 'cyan', 5); f.x += f.vx*2; f.y += f.vy*2;
                     } else if (f.ownerId !== (p === p1 ? 'p1' : 'p2')) {
-                        // Hit!
-                        p.hp -= CONFIG.DMG_FIRE;
-                        spawnParticle(p.x, p.y, 'orange', 10);
-                        shakeScreen(8);
-                        f.active = false;
+                        p.hp -= CONFIG.DMG_FIRE; spawnParticle(p.x, p.y, 'orange', 10); shakeScreen(8); f.active = false;
                     }
                 }
             });
-            
             if (!f.active) fireballs.splice(i, 1);
         }
 
-        // Draw Players
-        p1.draw(ctx);
-        p2.draw(ctx);
+        p1.draw(ctx); p2.draw(ctx);
         
-        // Render Particles
+        // Particles
         for(let i=particles.length-1; i>=0; i--) {
-            let p = particles[i];
-            p.life--;
+            let p = particles[i]; p.life--;
             if (p.type === 'slash') {
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.angle);
-                ctx.beginPath();
-                ctx.strokeStyle = `rgba(200, 200, 255, ${p.life/10})`;
-                ctx.lineWidth = 3;
-                ctx.arc(-20, 0, 40, -Math.PI/3, Math.PI/3);
-                ctx.stroke();
-                ctx.restore();
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+                ctx.beginPath(); ctx.strokeStyle = `rgba(200, 200, 255, ${p.life/10})`; ctx.lineWidth = 3; ctx.arc(-20, 0, 40, -Math.PI/3, Math.PI/3); ctx.stroke(); ctx.restore();
             } else {
-                p.x += p.vx;
-                p.y += p.vy;
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life / 20;
-                ctx.fillRect(p.x, p.y, 3, 3);
+                p.x += p.vx; p.y += p.vy; ctx.fillStyle = p.color; ctx.globalAlpha = p.life/20; ctx.fillRect(p.x, p.y, 3, 3);
             }
             if(p.life<=0) particles.splice(i, 1);
         }
         ctx.globalAlpha = 1;
 
-        // Draw Dynamic Joystick (UI on Canvas)
+        // Draw Joystick
         if (inputs.move.active) {
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 2;
-            ctx.arc(inputs.move.originX, inputs.move.originY, 50, 0, Math.PI*2);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.arc(inputs.move.originX + inputs.move.x*50, inputs.move.originY + inputs.move.y*50, 20, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+            ctx.arc(inputs.move.originX, inputs.move.originY, 50, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.arc(inputs.move.originX + inputs.move.x*50, inputs.move.originY + inputs.move.y*50, 20, 0, Math.PI*2); ctx.fill();
         }
         
-        // Attack Aim Indicator
+        // Aim Line
         if (myPlayer.isCharging) {
-             ctx.beginPath();
-             ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-             ctx.lineWidth = 1;
-             ctx.setLineDash([5, 5]);
+             ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
              ctx.moveTo(myPlayer.x, myPlayer.y);
              ctx.lineTo(myPlayer.x + Math.cos(myPlayer.angle)*200, myPlayer.y + Math.sin(myPlayer.angle)*200);
-             ctx.stroke();
-             ctx.setLineDash([]);
+             ctx.stroke(); ctx.setLineDash([]);
         }
-
-    } // end play state
-
+    }
     if (shake > 0) ctx.restore();
 }
 
-// Helpers
-function shadeColor(color, percent) {
-    return color; // Simplification for hex
-}
-
-function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
-}
+function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
 window.addEventListener('resize', resize);
 resize();
 
-// --- MENU HANDLERS ---
-document.getElementById('create-btn').addEventListener('click', () => {
-    isHost = true;
-    initPeer();
-});
-
-document.getElementById('join-btn').addEventListener('click', () => {
-    isHost = false;
-    joinRoom();
-});
-
+// Menu Listeners
+document.getElementById('create-btn').addEventListener('click', () => { isHost = true; initPeer(); });
+document.getElementById('join-btn').addEventListener('click', () => { isHost = false; joinRoom(); });
 document.getElementById('fs-btn').addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen();
 });
-
-// Init animation loop for menu bg
 loop();
-
 </script>
 </body>
 </html>
