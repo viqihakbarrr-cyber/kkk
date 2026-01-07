@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Beat The Circle 3D</title>
+    <title>Beat The Circle 3D - Ultimate</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -14,140 +14,68 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #000;
+            background-color: #050510;
             font-family: 'Montserrat', sans-serif;
             color: white;
             user-select: none;
-            -webkit-user-select: none; /* Safari */
+            -webkit-user-select: none;
         }
 
-        /* --- UI Overlay & Containers --- */
         #ui-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 10;
         }
+        .interactive { pointer-events: auto; }
 
-        .interactive {
-            pointer-events: auto;
-        }
-
-        /* --- Screens --- */
         .screen {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,0.9);
+            position: absolute; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.95);
             transition: opacity 0.5s;
         }
+        .hidden { opacity: 0; pointer-events: none; display: none !important; }
 
-        .hidden {
-            opacity: 0;
-            pointer-events: none;
-            display: none !important;
-        }
+        h1 { font-size: 2.5rem; text-transform: uppercase; letter-spacing: 5px; color: #fff; text-shadow: 0 0 20px #bf00ff; text-align: center; }
+        h2 { font-size: 1.2rem; color: #aaa; margin-bottom: 20px; }
 
-        h1 { font-size: 3rem; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 10px #00f; text-align: center; }
-        h2 { font-size: 1.5rem; color: #aaa; margin-bottom: 30px; text-align: center; }
-
-        /* --- Buttons & Inputs --- */
         button {
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            background: transparent;
-            border: 2px solid white;
-            border-radius: 50px;
-            cursor: pointer;
-            margin: 10px;
-            text-transform: uppercase;
-            transition: all 0.3s;
+            padding: 12px 25px; font-size: 1rem; font-weight: bold;
+            color: white; background: transparent; border: 2px solid #00f;
+            border-radius: 50px; cursor: pointer; margin: 10px;
+            text-transform: uppercase; transition: 0.3s;
+            box-shadow: 0 0 10px #00f;
         }
-        button:hover { background: white; color: black; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
-        button:disabled { border-color: #555; color: #555; cursor: not-allowed; background: transparent; box-shadow: none; }
+        button:hover { background: #00f; box-shadow: 0 0 30px #00f; }
+        button:disabled { border-color: #555; color: #555; box-shadow: none; cursor: not-allowed; }
 
         input[type="text"] {
-            padding: 15px;
-            font-size: 1.5rem;
-            text-align: center;
-            background: #222;
-            border: 2px solid #555;
-            color: white;
-            border-radius: 10px;
-            width: 200px;
-            letter-spacing: 5px;
-            margin-bottom: 20px;
+            padding: 10px; font-size: 1.5rem; text-align: center;
+            background: #111; border: 2px solid #555; color: white;
+            border-radius: 10px; width: 150px; letter-spacing: 5px;
         }
-        
-        /* Input file disembunyikan, dipanggil via tombol label */
         input[type="file"] { display: none; }
         
-        .file-upload-btn { 
-            background: #00f; 
-            border-color: #00f; 
-            box-shadow: 0 0 15px #00f;
+        #score-board {
+            position: absolute; top: 20px; left: 20px;
+            font-size: 1.5rem; font-weight: bold;
+            text-shadow: 0 0 10px white;
         }
 
-        /* --- HUD --- */
-        #score-board {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
+        #split-timer {
+            position: absolute; top: 60px; left: 20px;
+            font-size: 1.2rem; color: #ff00ff; display: none;
+            text-shadow: 0 0 10px #ff00ff;
         }
 
         #feedback-text {
-            position: absolute;
-            top: 30%;
-            left: 50%;
+            position: absolute; top: 30%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 4rem;
-            font-weight: 900;
-            text-shadow: 2px 2px 0 #000;
-            opacity: 0;
-            transition: transform 0.1s;
-            text-align: center;
-        }
-
-        #fullscreen-btn {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px;
-            border: 1px solid white;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            cursor: pointer;
-            z-index: 100;
-            pointer-events: auto;
-        }
-
-        /* --- Orientation Warning --- */
-        #orientation-warning {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            color: #fff;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            text-align: center;
-        }
-        
-        @media (orientation: portrait) {
-            #orientation-warning { display: flex; }
+            font-size: 4rem; font-weight: 900;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+            opacity: 0; text-align: center;
         }
 
         @keyframes pop {
@@ -155,297 +83,463 @@
             50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
             100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
         }
+
+        #orientation-warning {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #fff; display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999; text-align: center;
+        }
+        @media (orientation: portrait) { #orientation-warning { display: flex; } }
     </style>
 </head>
 <body>
 
     <div id="orientation-warning">
-        <div style="font-size: 3rem;">⚠️</div>
         <h1>PUTAR HP ANDA</h1>
-        <p>Game ini hanya bisa dimainkan dalam mode Landscape.</p>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-layer">
-        
         <div id="score-board">SKOR: <span id="score-val">0</span></div>
+        <div id="split-timer">⚡ SPLIT MODE: <span id="timer-val">5</span>s</div>
         <div id="feedback-text">PERFECT</div>
-        <button id="fullscreen-btn" onclick="toggleFullScreen()">⛶</button>
 
         <div id="screen-lobby" class="screen interactive">
-            <h1>BEAT THE CIRCLE</h1>
-            <p style="margin-bottom: 40px; color: #888;">Co-op Rhythm Game</p>
-            
-            <div id="lobby-buttons">
+            <h1>BEAT THE CIRCLE <span style="font-size:1rem; vertical-align:middle; color:#0ff;">3D</span></h1>
+            <p>Co-op Rhythm Game</p>
+            <div>
                 <button onclick="createRoom()">Create Room</button>
                 <button onclick="showJoinInput()">Join Room</button>
             </div>
-
-            <div id="join-container" style="display:none; flex-direction: column; align-items: center;">
+            <div id="join-container" style="display:none; margin-top:20px;">
                 <input type="text" id="room-code-input" placeholder="0000" maxlength="4">
-                <div>
-                    <button onclick="joinRoom()">Connect</button>
-                    <button onclick="resetLobby()" style="font-size: 0.8rem; border: none;">Cancel</button>
-                </div>
+                <br>
+                <button onclick="joinRoom()">Connect</button>
+                <button onclick="resetLobby()" style="border:none; box-shadow:none;">Back</button>
             </div>
-
-            <div id="status-msg" style="margin-top:20px; color: yellow; text-align:center; padding: 0 20px;"></div>
+            <div id="status-msg" style="margin-top:20px; color: yellow;"></div>
         </div>
 
         <div id="screen-host" class="screen interactive hidden">
             <h1>ROOM: <span id="display-room-code" style="color:#00f">----</span></h1>
             <h2 id="host-status">Menunggu Player 2...</h2>
-            
             <div id="host-controls" style="display:none; flex-direction: column; align-items: center;">
                 <input type="file" id="audio-file" accept="audio/*, .mp3" onchange="handleFileUpload(this)">
-                
-                <button class="file-upload-btn" onclick="document.getElementById('audio-file').click()">
-                    1. Unggah Lagu (MP3)
-                </button>
-                <p id="file-name" style="font-size: 0.9rem; color: #fff; margin-bottom: 20px; font-weight: bold;">Belum ada lagu</p>
-                <p id="file-status" style="font-size: 0.8rem; color: #aaa; margin-top: -15px; margin-bottom: 20px;"></p>
-                
-                <button id="btn-play" disabled onclick="startGameHost()">2. PLAY GAME</button>
+                <button onclick="document.getElementById('audio-file').click()">1. Pilih Lagu</button>
+                <p id="file-name" style="font-size: 0.8rem;">Belum ada lagu</p>
+                <button id="btn-play" disabled onclick="startGameHost()">2. START GAME</button>
             </div>
         </div>
 
         <div id="screen-joiner" class="screen interactive hidden">
             <h1>CONNECTED</h1>
-            <h2>Menunggu Host memulai game...</h2>
-            <p>Tugas Anda: Kontrol Vertikal (Atas/Bawah)</p>
+            <h2>Menunggu Host...</h2>
+            <p style="color:#0ff">Siapkan jari Anda!</p>
         </div>
-
     </div>
 
     <script>
-        // --- CONFIG & STATE ---
+        // --- CONFIG ---
         const CONFIG = {
-            sphereSpeed: 0.5,
-            spawnZ: -60,
+            speed: 0.6,
+            spawnZ: -70,
             hitZ: 0,
-            gridSize: 20,
             colors: {
-                perfect: '#bf00ff',
-                good: '#00ff00', 
-                great: '#aaaaaa',
-                miss: '#ff0000'
+                perfect: '#00ffff', good: '#00ff00', miss: '#ff0000',
+                p1: '#ff4444', p2: '#4444ff', pShared: '#ffffff'
             }
         };
 
+        // --- STATE ---
         let state = {
-            score: 0,
-            isPlaying: false,
-            role: null, 
-            myAxis: null,
-            peer: null,
-            conn: null,
-            audioCtx: null,
-            analyser: null,
-            dataArray: null,
-            source: null,
-            audioBuffer: null
+            score: 0, isPlaying: false, role: null, 
+            peer: null, conn: null,
+            splitMode: false,
+            splitTimer: 0,
+            audioCtx: null, analyser: null, dataArray: null,
+            sphereIdCounter: 0
         };
 
-        // THREE JS VARS
-        let scene, camera, renderer, ring, grid;
-        let spheres = [];
-        let targetPos = new THREE.Vector2(0, 0);
+        // --- THREE.JS VARS ---
+        let scene, camera, renderer;
+        let ring1, ring2; // Ring 1 (Host/Shared), Ring 2 (Client in split)
+        let spheres = []; // Array of objects
+        let particles = [];
+        let grid;
 
-        // --- 1. SETUP THREE.JS ---
+        // Target Position Mouse/Touch
+        let targetP1 = new THREE.Vector2(0,0);
+        let targetP2 = new THREE.Vector2(0,0);
+
+        // --- INIT THREE ---
         function initThree() {
             const container = document.getElementById('game-container');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); 
-            scene.fog = new THREE.Fog(0x000000, 10, 60);
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.FogExp2(0x050510, 0.02);
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 0, 10);
-            camera.lookAt(0, 0, 0);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 12);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-            const pointLight = new THREE.PointLight(0xffffff, 1);
-            pointLight.position.set(0, 10, 10);
-            scene.add(pointLight);
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            const point = new THREE.PointLight(0xffffff, 1);
+            point.position.set(0, 10, 10);
+            scene.add(point);
 
-            grid = new THREE.GridHelper(50, 20, 0x444444, 0x222222);
-            grid.position.y = -5;
+            // Floor (Grid with transparency)
+            grid = new THREE.GridHelper(80, 40, 0x555555, 0x111122);
+            grid.position.y = -4; // Turunkan sedikit
+            grid.material.transparent = true;
+            grid.material.opacity = 0.3;
             scene.add(grid);
 
-            const geometry = new THREE.RingGeometry(2.8, 3, 32);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-            ring = new THREE.Mesh(geometry, material);
-            ring.position.z = CONFIG.hitZ;
-            scene.add(ring);
+            // Ring 1 (Shared / P1)
+            ring1 = createRing(0xffffff);
+            scene.add(ring1);
 
-            window.addEventListener('resize', onWindowResize, false);
-            document.addEventListener('mousemove', onInputMove);
-            document.addEventListener('touchmove', onInputMove, { passive: false });
-            
+            // Ring 2 (P2 - Hidden initially)
+            ring2 = createRing(0x00ffff);
+            ring2.visible = false;
+            scene.add(ring2);
+
+            window.addEventListener('resize', onResize);
+            // Input Handlers
+            const zone = document.body;
+            zone.addEventListener('mousemove', onInput);
+            zone.addEventListener('touchmove', onInput, { passive: false });
+
             animate();
         }
 
-        function onWindowResize() {
+        function createRing(color) {
+            // Ukuran ring diperkecil (radius dalam 1.3, luar 1.4)
+            const geo = new THREE.RingGeometry(1.3, 1.5, 32);
+            const mat = new THREE.MeshBasicMaterial({ 
+                color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.9 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            // Tambahkan glow mesh di belakang
+            const glowGeo = new THREE.RingGeometry(1.2, 1.7, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ 
+                color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending 
+            });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.z = -0.1;
+            mesh.add(glow);
+            return mesh;
+        }
+
+        function onResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function onInputMove(e) {
+        // --- INPUT HANDLING ---
+        function onInput(e) {
             if (!state.isPlaying) return;
             e.preventDefault();
+            
+            let cx, cy;
+            if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; } 
+            else { cx = e.clientX; cy = e.clientY; }
 
-            let clientX, clientY;
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
+            // Normalize -1 to 1
+            const x = (cx / window.innerWidth) * 2 - 1;
+            const y = -(cy / window.innerHeight) * 2 + 1;
 
-            const xNorm = (clientX / window.innerWidth) * 2 - 1;
-            const yNorm = -(clientY / window.innerHeight) * 2 + 1;
+            const rangeX = 8;
+            const rangeY = 5; 
 
-            const rangeX = 12;
-            const rangeY = 8;
+            // LOGIKA KONTROL
+            const valX = x * rangeX;
+            const valY = y * rangeY;
 
-            let val = 0;
-            if (state.myAxis === 'x') {
-                val = xNorm * rangeX;
-                targetPos.x = val;
-                sendData({ type: 'move', val: val });
-            } else if (state.myAxis === 'y') {
-                val = yNorm * rangeY;
-                targetPos.y = val;
-                sendData({ type: 'move', val: val });
+            if (state.role === 'host') {
+                if (state.splitMode) {
+                    // Host control Ring 1 Full
+                    targetP1.x = valX; targetP1.y = valY;
+                    sendData({ type: 'move_host', x: valX, y: valY });
+                } else {
+                    // Host control Y only
+                    targetP1.y = valY;
+                    sendData({ type: 'move_y', val: valY });
+                }
+            } else if (state.role === 'client') {
+                if (state.splitMode) {
+                    // Client control Ring 2 Full
+                    targetP2.x = valX; targetP2.y = valY;
+                    sendData({ type: 'move_client', x: valX, y: valY });
+                } else {
+                    // Client control X only
+                    targetP1.x = valX;
+                    sendData({ type: 'move_x', val: valX });
+                }
             }
         }
 
+        // --- GAME LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
-            if (!state.isPlaying) {
-                renderer.render(scene, camera);
-                return;
+            // 1. Gerakkan Rings dengan Lerp (Smooth)
+            if (state.splitMode) {
+                // Ring 1 (Host) -> Merah
+                ring1.position.x += (targetP1.x - ring1.position.x) * 0.2;
+                ring1.position.y += (targetP1.y - ring1.position.y) * 0.2;
+                ring1.material.color.setHex(0xff4444);
+                ring1.children[0].material.color.setHex(0xff4444);
+
+                // Ring 2 (Client) -> Biru
+                ring2.visible = true;
+                ring2.position.x += (targetP2.x - ring2.position.x) * 0.2;
+                ring2.position.y += (targetP2.y - ring2.position.y) * 0.2;
+            } else {
+                // Ring 1 (Shared) -> Putih
+                ring1.position.x += (targetP1.x - ring1.position.x) * 0.2;
+                ring1.position.y += (targetP1.y - ring1.position.y) * 0.2;
+                ring1.material.color.setHex(0xffffff);
+                ring1.children[0].material.color.setHex(0xffffff);
+                
+                ring2.visible = false;
             }
 
-            ring.position.x += (targetPos.x - ring.position.x) * 0.2;
-            ring.position.y += (targetPos.y - ring.position.y) * 0.2;
+            if (!state.isPlaying) { renderer.render(scene, camera); return; }
 
+            // 2. Audio Beat Detection (Host Only)
             if (state.role === 'host' && state.analyser) {
                 detectBeat();
             }
 
+            // 3. Move Spheres
+            // Kita gerakkan sphere di kedua sisi, tapi Host yang menentukan HIT/MISS
             for (let i = spheres.length - 1; i >= 0; i--) {
-                const s = spheres[i];
-                s.mesh.position.z += CONFIG.sphereSpeed;
-                s.mesh.rotation.x += 0.01;
-                s.mesh.rotation.y += 0.01;
+                let s = spheres[i];
+                s.mesh.position.z += CONFIG.speed;
+                s.mesh.rotation.x += 0.05;
+                s.mesh.rotation.y += 0.05;
 
+                // Host Logic Check
                 if (state.role === 'host' && !s.processed) {
+                    // Cek tabrakan jika sudah dekat Z=0
                     if (s.mesh.position.z >= CONFIG.hitZ) {
                         checkHit(s, i);
                     }
-                } else if (state.role === 'client' && s.mesh.position.z > 5) {
+                }
+                
+                // Cleanup jika lewat jauh
+                if (s.mesh.position.z > 5) {
+                    if (state.role === 'host' && !s.processed) {
+                        // Missed by passing camera
+                        sendData({ type: 'result', id: s.id, res: 'MISS', score: Math.max(0, state.score-10) });
+                        state.score = Math.max(0, state.score-10);
+                        updateScoreUI();
+                        createParticles(s.mesh.position, 0xff0000);
+                    }
                     scene.remove(s.mesh);
                     spheres.splice(i, 1);
                 }
             }
 
-            grid.position.z += CONFIG.sphereSpeed;
-            if (grid.position.z >= CONFIG.gridSize) grid.position.z = 0;
+            // 4. Update Particles
+            updateParticles();
+
+            // 5. Move Grid
+            grid.position.z += CONFIG.speed;
+            if (grid.position.z >= 20) grid.position.z = 0;
 
             renderer.render(scene, camera);
         }
 
-        function spawnSphere(x, y) {
-            const geometry = new THREE.SphereGeometry(1.5, 32, 32);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x0055ff, 
-                emissive: 0x0000aa,
-                emissiveIntensity: 0.5,
-                roughness: 0.1
+        // --- SPAWNING ---
+        function spawnSphere(id, x, y, isPowerUp) {
+            // Ukuran sphere diperkecil: 0.6
+            const geo = new THREE.SphereGeometry(0.6, 16, 16);
+            let color = isPowerUp ? 0xbf00ff : 0x0088ff;
+            let emissive = isPowerUp ? 0x5500aa : 0x0044aa;
+
+            const mat = new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: emissive,
+                emissiveIntensity: 1, // Glowing
+                roughness: 0.1,
+                metalness: 0.5
             });
-            const mesh = new THREE.Mesh(geometry, material);
+
+            const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, CONFIG.spawnZ);
             scene.add(mesh);
-            spheres.push({ mesh: mesh, processed: false });
+
+            spheres.push({ id: id, mesh: mesh, isPowerUp: isPowerUp, processed: false });
         }
 
-        let lastSpawnTime = 0;
-        function detectBeat() {
-            state.analyser.getByteFrequencyData(state.dataArray);
-            let sum = 0;
-            const bassCount = 10; 
-            for(let i = 0; i < bassCount; i++) {
-                sum += state.dataArray[i];
-            }
-            const average = sum / bassCount;
-            const now = Date.now();
-            
-            if (average > 230 && now - lastSpawnTime > 400) { 
-                triggerSpawn();
-                lastSpawnTime = now;
-            }
-            else if (now - lastSpawnTime > 2000) {
-                triggerSpawn();
-                lastSpawnTime = now;
-            }
-        }
-
-        function triggerSpawn() {
-            const rX = (Math.random() * 20) - 10;
-            const rY = (Math.random() * 12) - 6;
-            spawnSphere(rX, rY);
-            sendData({ type: 'spawn', x: rX, y: rY });
-        }
-
-        function checkHit(s, index) {
+        // --- LOGIC: HIT DETECTION (HOST) ---
+        function checkHit(s, idx) {
             s.processed = true;
-            const dx = s.mesh.position.x - ring.position.x;
-            const dy = s.mesh.position.y - ring.position.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            // Tentukan posisi ring mana yang dipakai
+            let dist = 999;
+            
+            if (state.splitMode) {
+                // Cek jarak ke Ring 1 ATAU Ring 2
+                const d1 = s.mesh.position.distanceTo(new THREE.Vector3(ring1.position.x, ring1.position.y, 0));
+                const d2 = s.mesh.position.distanceTo(new THREE.Vector3(ring2.position.x, ring2.position.y, 0));
+                dist = Math.min(d1, d2);
+            } else {
+                dist = s.mesh.position.distanceTo(new THREE.Vector3(ring1.position.x, ring1.position.y, 0));
+            }
 
-            let result = "MISS";
+            // Threshold hit
+            const HIT_RADIUS = 1.8; // Toleransi
+            let res = "MISS";
             let color = CONFIG.colors.miss;
 
-            if (dist < 1.0) { 
-                if (dist < 0.3) {
-                    result = "PERFECT";
-                    color = CONFIG.colors.perfect;
-                    state.score += 100;
-                } else if (dist < 1.5) {
-                    result = "GOOD";
-                    color = CONFIG.colors.good;
-                    state.score += 50;
+            if (dist < HIT_RADIUS) {
+                if (s.isPowerUp) {
+                    res = "POWER UP!";
+                    color = 0xff00ff;
+                    triggerSplitMode();
                 } else {
-                    result = "GREAT";
-                    color = CONFIG.colors.great;
-                    state.score += 20;
+                    if (dist < 0.5) { res = "PERFECT"; state.score += 100; color = CONFIG.colors.perfect; }
+                    else { res = "GOOD"; state.score += 50; color = CONFIG.colors.good; }
                 }
             } else {
                 state.score = Math.max(0, state.score - 10);
             }
 
-            scene.remove(s.mesh);
-            spheres.splice(index, 1);
+            // Kirim hasil ke client agar visual sinkron
+            sendData({ type: 'result', id: s.id, res: res, score: state.score, colorHex: color });
 
-            showFeedback(result, color);
+            // Efek lokal Host
+            showFeedback(res, color);
             updateScoreUI();
-            sendData({ type: 'result', text: result, color: color, score: state.score });
+            createParticles(s.mesh.position, color);
+
+            // Hapus sphere
+            scene.remove(s.mesh);
+            spheres.splice(idx, 1);
         }
 
-        function showFeedback(text, colorStr) {
+        // --- SPLIT MODE ---
+        function triggerSplitMode() {
+            if (state.splitMode) return; // Sudah aktif
+            state.splitMode = true;
+            state.splitTimer = 5;
+
+            // Info ke UI
+            const timerEl = document.getElementById('split-timer');
+            const valEl = document.getElementById('timer-val');
+            timerEl.style.display = 'block';
+            
+            // Loop Timer
+            const interval = setInterval(() => {
+                state.splitTimer--;
+                valEl.innerText = state.splitTimer;
+                if (state.splitTimer <= 0) {
+                    clearInterval(interval);
+                    endSplitMode();
+                }
+            }, 1000);
+
+            sendData({ type: 'split_start' });
+        }
+
+        function endSplitMode() {
+            state.splitMode = false;
+            document.getElementById('split-timer').style.display = 'none';
+            // Reset posisi ke tengah supaya transisi halus
+            targetP1.x = 0; targetP1.y = 0; targetP2.x = 0; targetP2.y = 0;
+            sendData({ type: 'split_end' });
+        }
+
+        // --- AUDIO ANALYSIS ---
+        let lastSpawn = 0;
+        function detectBeat() {
+            state.analyser.getByteFrequencyData(state.dataArray);
+            let sum = 0;
+            for(let i=0; i<5; i++) sum += state.dataArray[i]; // Cek Bass
+            const avg = sum / 5;
+            const now = Date.now();
+
+            // Ambang batas beat
+            if ((avg > 240 && now - lastSpawn > 300) || (now - lastSpawn > 2000)) {
+                // Random Pos
+                // Jaga Y agar tidak menembus lantai (Y > -2.5)
+                const rX = (Math.random() * 16) - 8;
+                const rY = (Math.random() * 6) - 2.5; 
+                
+                // Random PowerUp (10% chance)
+                const isPower = Math.random() < 0.1;
+
+                const id = state.sphereIdCounter++;
+                spawnSphere(id, rX, rY, isPower);
+                
+                // Kirim perintah spawn ke Client
+                sendData({ type: 'spawn', id: id, x: rX, y: rY, isPower: isPower });
+                lastSpawn = now;
+            }
+        }
+
+        // --- PARTICLES ---
+        function createParticles(pos, colorHex) {
+            const count = 15;
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            const velocities = [];
+
+            for(let i=0; i<count; i++){
+                positions.push(pos.x, pos.y, pos.z);
+                velocities.push(
+                    (Math.random()-0.5)*0.5, 
+                    (Math.random()-0.5)*0.5, 
+                    (Math.random()-0.5)*0.5
+                );
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            
+            const mat = new THREE.PointsMaterial({
+                color: colorHex, size: 0.8, transparent: true, opacity: 1
+            });
+            const pts = new THREE.Points(geo, mat);
+            scene.add(pts);
+            particles.push({ mesh: pts, vels: velocities, age: 0 });
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.age++;
+                const pos = p.mesh.geometry.attributes.position.array;
+                
+                for(let j=0; j<p.vels.length/3; j++) {
+                    pos[j*3] += p.vels[j*3];
+                    pos[j*3+1] += p.vels[j*3+1];
+                    pos[j*3+2] += p.vels[j*3+2];
+                }
+                p.mesh.geometry.attributes.position.needsUpdate = true;
+                p.mesh.material.opacity -= 0.03;
+
+                if (p.age > 30) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // --- NETWORK & UI (Standard) ---
+        function showFeedback(text, color) {
             const el = document.getElementById('feedback-text');
             el.innerText = text;
-            el.style.color = colorStr;
+            el.style.color = typeof color === 'number' ? '#' + color.toString(16) : color;
             el.style.animation = 'none';
             el.offsetHeight; 
             el.style.animation = 'pop 0.5s ease-out forwards';
@@ -455,197 +549,132 @@
             document.getElementById('score-val').innerText = state.score;
         }
 
-        function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
-
-        // --- PEER JS ---
-        function generateRoomCode() {
-            return Math.floor(1000 + Math.random() * 9000).toString();
-        }
-        const ID_PREFIX = "btc-game-v1-"; 
-
-        function initPeer(id) {
-            state.peer = new Peer(ID_PREFIX + id);
-            state.peer.on('open', (id) => { console.log('My ID: ' + id); });
-            state.peer.on('error', (err) => {
-                console.error(err);
-                document.getElementById('status-msg').innerText = "Koneksi Error. Coba refresh.";
-            });
-        }
+        // PeerJS Helper
+        function generateCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+        const PRE = "btc-ult-";
 
         function createRoom() {
-            const code = generateRoomCode();
-            initPeer(code);
-            state.role = 'host';
-            state.myAxis = 'x';
-            targetPos.y = 0;
-
-            document.getElementById('screen-lobby').classList.add('hidden');
-            document.getElementById('screen-host').classList.remove('hidden');
-            document.getElementById('display-room-code').innerText = code;
-
+            const code = generateCode();
+            state.peer = new Peer(PRE + code);
+            state.peer.on('open', (id) => {
+                document.getElementById('screen-lobby').classList.add('hidden');
+                document.getElementById('screen-host').classList.remove('hidden');
+                document.getElementById('display-room-code').innerText = code;
+                state.role = 'host';
+            });
             state.peer.on('connection', (conn) => {
                 state.conn = conn;
-                setupConnectionHandlers();
-                document.getElementById('host-status').innerText = "Player 2 Terhubung!";
+                setupConn();
+                document.getElementById('host-status').innerText = "Player 2 Connected!";
                 document.getElementById('host-status').style.color = "#0f0";
                 document.getElementById('host-controls').style.display = 'flex';
-                
-                setTimeout(() => { sendData({ type: 'init', role: 'client' }); }, 1000);
             });
-        }
-
-        function showJoinInput() {
-            document.getElementById('lobby-buttons').style.display = 'none';
-            document.getElementById('join-container').style.display = 'flex';
-        }
-
-        function resetLobby() {
-            document.getElementById('lobby-buttons').style.display = 'block';
-            document.getElementById('join-container').style.display = 'none';
         }
 
         function joinRoom() {
             const code = document.getElementById('room-code-input').value;
-            if (code.length !== 4) return;
-
-            const myTempId = generateRoomCode() + generateRoomCode(); 
-            initPeer(myTempId);
-
+            const myId = generateCode() + generateCode();
+            state.peer = new Peer(PRE + myId);
             state.peer.on('open', () => {
-                const conn = state.peer.connect(ID_PREFIX + code);
+                const conn = state.peer.connect(PRE + code);
                 conn.on('open', () => {
                     state.conn = conn;
                     state.role = 'client';
-                    state.myAxis = 'y';
                     document.getElementById('screen-lobby').classList.add('hidden');
                     document.getElementById('screen-joiner').classList.remove('hidden');
-                    setupConnectionHandlers();
+                    setupConn();
                 });
-                conn.on('error', (err) => { alert("Gagal konek. Cek kode."); });
             });
         }
 
-        function setupConnectionHandlers() {
+        function setupConn() {
             state.conn.on('data', (data) => {
-                handleData(data);
+                if (data.type === 'spawn') {
+                    spawnSphere(data.id, data.x, data.y, data.isPowerUp);
+                }
+                else if (data.type === 'move_y') targetP1.y = data.val;
+                else if (data.type === 'move_x') targetP1.x = data.val;
+                else if (data.type === 'move_host') { targetP1.x = data.x; targetP1.y = data.y; } // Host move p1
+                else if (data.type === 'move_client') { targetP2.x = data.x; targetP2.y = data.y; } // Client move p2
+                else if (data.type === 'result') {
+                    // Cari sphere berdasarkan ID dan hapus
+                    const idx = spheres.findIndex(s => s.id === data.id);
+                    if (idx !== -1) {
+                        createParticles(spheres[idx].mesh.position, data.colorHex);
+                        scene.remove(spheres[idx].mesh);
+                        spheres.splice(idx, 1);
+                    }
+                    showFeedback(data.res, data.colorHex);
+                    state.score = data.score;
+                    updateScoreUI();
+                }
+                else if (data.type === 'start') {
+                    document.getElementById('ui-layer').classList.add('hidden-ui');
+                    document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+                    state.isPlaying = true;
+                }
+                else if (data.type === 'split_start') {
+                    state.splitMode = true;
+                    document.getElementById('split-timer').style.display = 'block';
+                    // Mulai timer visual di client (simple countdown)
+                    let t = 5;
+                    const v = document.getElementById('timer-val');
+                    const iv = setInterval(()=>{ t--; v.innerText=t; if(t<=0) clearInterval(iv); }, 1000);
+                }
+                else if (data.type === 'split_end') {
+                    state.splitMode = false;
+                    document.getElementById('split-timer').style.display = 'none';
+                    targetP1.x = 0; targetP1.y = 0;
+                }
             });
         }
 
-        function sendData(data) {
-            if (state.conn && state.conn.open) state.conn.send(data);
-        }
+        function sendData(d) { if(state.conn && state.conn.open) state.conn.send(d); }
+        function resetLobby() { document.getElementById('join-container').style.display='none'; }
+        function showJoinInput() { document.getElementById('join-container').style.display='block'; }
 
-        function handleData(data) {
-            if (data.type === 'move') {
-                if (state.role === 'host') targetPos.y = data.val;
-                if (state.role === 'client') targetPos.x = data.val;
-            } 
-            else if (data.type === 'start') {
-                document.getElementById('ui-layer').classList.add('hidden-ui'); 
-                document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-                state.isPlaying = true;
-            }
-            else if (data.type === 'spawn') {
-                spawnSphere(data.x, data.y);
-            }
-            else if (data.type === 'result') {
-                showFeedback(data.text, data.color);
-                state.score = data.score;
-                updateScoreUI();
-            }
-        }
-
-        // --- AUDIO HANDLING (FIXED) ---
+        // --- AUDIO FILE ---
         function handleFileUpload(input) {
             const file = input.files[0];
-            const statusEl = document.getElementById('file-status');
-            
-            if (!file) {
-                statusEl.innerText = "Pembatalan pilih file.";
-                return;
-            }
-
-            // UI Feedback Loading
+            if(!file) return;
             document.getElementById('file-name').innerText = file.name;
-            statusEl.innerText = "Sedang memproses audio...";
-            
+            document.getElementById('btn-play').disabled = false;
+
             const reader = new FileReader();
-            
             reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                // Inisialisasi context
-                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                state.audioCtx.decodeAudioData(arrayBuffer, function(buffer) {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                state.audioCtx = ctx;
+                ctx.decodeAudioData(e.target.result, function(buffer) {
                     state.audioBuffer = buffer;
-                    // Sukses
-                    statusEl.innerText = "Audio SIAP!";
-                    statusEl.style.color = "#0f0";
-                    
-                    const btn = document.getElementById('btn-play');
-                    btn.disabled = false;
-                    btn.style.borderColor = "#0f0";
-                    btn.style.color = "#0f0";
-                    btn.style.boxShadow = "0 0 20px #0f0";
-                    
-                }, function(e) {
-                    // Error Decode
-                    console.error(e);
-                    statusEl.innerText = "Gagal membaca format file ini. Coba MP3 lain.";
-                    statusEl.style.color = "red";
-                    alert("Gagal membaca file audio. Pastikan file tidak corrupt.");
                 });
             };
-            
-            reader.onerror = function() {
-                statusEl.innerText = "Error saat upload.";
-                statusEl.style.color = "red";
-            };
-
             reader.readAsArrayBuffer(file);
         }
 
         function startGameHost() {
             if (!state.audioBuffer) return;
-
-            // Pastikan context resume (Browser policy)
-            if (state.audioCtx.state === 'suspended') {
-                state.audioCtx.resume();
-            }
-
-            state.source = state.audioCtx.createBufferSource();
-            state.source.buffer = state.audioBuffer;
+            sendData({ type: 'start' });
             
-            state.analyser = state.audioCtx.createAnalyser();
-            state.analyser.fftSize = 256;
-            state.source.connect(state.analyser);
-            state.analyser.connect(state.audioCtx.destination);
-            
-            state.dataArray = new Uint8Array(state.analyser.frequencyBinCount);
-
-            state.source.start(0);
-
+            // UI Hide
             document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
             state.isPlaying = true;
-            sendData({ type: 'start' });
 
-            state.source.onended = () => {
-                alert("Game Selesai! Skor Akhir: " + state.score);
-                location.reload();
-            };
+            // Audio Play
+            const src = state.audioCtx.createBufferSource();
+            src.buffer = state.audioBuffer;
+            const analyser = state.audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            src.connect(analyser);
+            analyser.connect(state.audioCtx.destination);
+            src.start(0);
+
+            state.analyser = analyser;
+            state.dataArray = new Uint8Array(analyser.frequencyBinCount);
+            state.source = src;
         }
 
         initThree();
+
     </script>
 </body>
 </html>
