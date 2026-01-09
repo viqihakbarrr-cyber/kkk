@@ -3,138 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO: ECLIPSE UPDATE</title>
+    <title>ELUNO: MOON ECLIPSE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
         body {
-            margin: 0; overflow: hidden; background-color: #050505;
-            font-family: 'Orbitron', sans-serif; touch-action: none;
-            user-select: none; -webkit-user-select: none;
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Orbitron', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #gameCanvas {
-            display: block; width: 100%; height: 100vh;
+            display: block;
+            width: 100%;
+            height: 100vh;
             background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
-            transition: filter 0.5s;
         }
-        
-        /* Eclipse Effect */
-        body.eclipse-mode #gameCanvas { filter: brightness(0.3) contrast(1.2); }
 
         /* UI Layers */
-        #ui-layer, #start-screen, #lobby-screen, #loading-layer, #color-picker-modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        #ui-layer, #start-screen, #lobby-screen, #loading-layer, #moon-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             pointer-events: none;
         }
 
-        #start-screen, #lobby-screen, #game-over, #color-picker-modal { pointer-events: auto; }
-        #start-screen, #lobby-screen { background: rgba(0, 0, 0, 0.9); z-index: 200; backdrop-filter: blur(5px); }
-        #loading-layer { background: rgba(0,0,0,0.8); z-index: 300; display: none; }
+        /* Interactive Layers */
+        #start-screen, #lobby-screen, #game-over {
+            pointer-events: auto;
+        }
+
+        #start-screen, #lobby-screen {
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Loading Layer */
+        #loading-layer {
+            background: rgba(0,0,0,0.8);
+            z-index: 300;
+            display: none;
+        }
+
+        /* MOON ECLIPSE OVERLAY (Visual Only, Logic in Canvas) */
+        #moon-overlay {
+            background: rgba(0, 0, 0, 0.96); /* Gelap Pekat */
+            z-index: 50; /* Di atas canvas background, di bawah UI */
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            display: flex;
+            justify-content: flex-start;
+            padding-top: 100px;
+        }
         
-        /* Color Picker for Wild Card */
-        #color-picker-modal { background: rgba(0,0,0,0.85); z-index: 250; display: none; }
-        
+        #moon-overlay.active {
+            opacity: 1;
+        }
+
+        #moon-msg {
+            color: #b19cd9;
+            font-size: 24px;
+            text-shadow: 0 0 10px #b19cd9;
+            margin-top: 20%;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
         .spinner {
-            width: 50px; height: 50px; border: 5px solid #333;
-            border-top: 5px solid #00CC44; border-radius: 50%;
+            width: 50px; height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #00CC44;
+            border-radius: 50%;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { color: white; margin-top: 20px; font-size: 16px; letter-spacing: 2px; }
 
         .modal-box {
-            background: #fff; padding: 40px; border-radius: 15px;
-            text-align: center; box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
-            border: 4px solid #333; max-width: 90%; width: 400px;
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+            border: 4px solid #333;
+            max-width: 90%;
+            width: 400px;
         }
-
-        /* Element Buttons for Wild Card */
-        .element-btn {
-            width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff;
-            margin: 10px; cursor: pointer; transition: transform 0.2s; display: inline-block;
-        }
-        .element-btn:hover { transform: scale(1.1); }
-        .btn-fire { background: #FF2222; box-shadow: 0 0 15px #FF2222; }
-        .btn-water { background: #0088FF; box-shadow: 0 0 15px #0088FF; }
-        .btn-leaf { background: #00CC44; box-shadow: 0 0 15px #00CC44; }
 
         h1 { margin: 0 0 20px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
         h2 { margin: 0 0 15px 0; color: #333; font-size: 18px; }
         
         .checkbox-container {
-            margin: 20px 0; font-size: 16px; color: #333;
-            display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+            margin: 20px 0;
+            font-size: 16px;
+            color: #333;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            cursor: pointer;
         }
-        input[type="checkbox"] { transform: scale(1.5); cursor: pointer; accent-color: #000; }
+
+        input[type="checkbox"] {
+            transform: scale(1.5);
+            cursor: pointer;
+            accent-color: #000;
+        }
+
+        /* Inputs & Buttons */
         .input-group { margin-bottom: 20px; }
         input[type="number"] {
             padding: 10px; font-family: 'Orbitron'; font-size: 24px; text-align: center;
             border: 2px solid #333; border-radius: 10px; width: 150px; outline: none;
         }
-        
-        .room-code-display { font-size: 36px; font-weight: bold; color: #0088FF; margin: 20px 0; letter-spacing: 5px; }
-        button.main-btn {
-            padding: 15px 30px; background: #000; border: none; color: white;
-            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
-            cursor: pointer; border-radius: 50px; transition: all 0.2s; margin: 10px; min-width: 150px;
+        input[type="number"]:focus { border-color: #0088FF; }
+
+        .room-code-display {
+            font-size: 36px; font-weight: bold; color: #0088FF; margin: 20px 0;
+            letter-spacing: 5px;
         }
+
+        button.main-btn {
+            padding: 15px 30px;
+            background: #000;
+            border: none; color: white;
+            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
+            cursor: pointer; border-radius: 50px;
+            transition: all 0.2s;
+            margin: 10px;
+            min-width: 150px;
+        }
+
         button.main-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         button.main-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,136,255,0.5); }
         button.main-btn.active { background: linear-gradient(45deg, #0088FF, #00CC44); }
+
         .btn-secondary { background: #555 !important; }
 
+        /* Game Over Screen */
         #game-over {
-            display: none; background: rgba(255, 255, 255, 0.95);
-            padding: 40px; border-radius: 20px; text-align: center; border: 3px solid #333;
-            pointer-events: auto; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px; border-radius: 20px;
+            text-align: center; border: 3px solid #333;
+            pointer-events: auto;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 500;
         }
-        
-        /* Reaction Alert */
-        #reaction-alert {
-            position: absolute; top: 20%; width: 100%; text-align: center;
-            font-size: 30px; color: #FF0000; text-shadow: 0 0 10px #FF0000;
-            display: none; pointer-events: none; animation: pulse 0.5s infinite;
-        }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
         .hidden { display: none !important; }
+
     </style>
 </head>
 <body>
 
+    <div id="moon-overlay">
+        <div id="moon-msg">DARKNESS FALLS<br><span style="font-size:14px; color:#fff">Match the hidden element!</span></div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
-    
-    <div id="reaction-alert">⚠ CRITICAL HIT! USE MIRROR! ⚠</div>
 
     <div id="loading-layer">
         <div class="spinner"></div>
         <div class="loading-text" id="loading-msg">CONNECTING...</div>
     </div>
 
-    <div id="color-picker-modal">
-        <div class="modal-box">
-            <h2>SOLAR ECLIPSE</h2>
-            <p>Choose next element:</p>
-            <div>
-                <div class="element-btn btn-fire" onclick="resolveWildCard('fire')"></div>
-                <div class="element-btn btn-water" onclick="resolveWildCard('water')"></div>
-                <div class="element-btn btn-leaf" onclick="resolveWildCard('leaf')"></div>
-            </div>
-        </div>
-    </div>
-
     <div id="start-screen">
         <div class="modal-box">
             <h1>ELUNO</h1>
-            <p style="color:#666; font-size:14px;">ECLIPSE EDITION</p>
+            <p style="color:#666; font-size:14px;">MOON ECLIPSE EDITION</p>
+            
             <label class="checkbox-container">
-                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()"> Enable Fullscreen
+                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
+                Enable Fullscreen
             </label>
+
             <button id="start-btn" class="main-btn" disabled onclick="goToLobby()">ENTER LOBBY</button>
         </div>
     </div>
@@ -142,22 +192,27 @@
     <div id="lobby-screen" class="hidden">
         <div class="modal-box" id="lobby-main">
             <h1>MULTIPLAYER</h1>
-            <button class="main-btn active" onclick="createRoom()">CREATE ROOM</button><br>
+            <button class="main-btn active" onclick="createRoom()">CREATE ROOM</button>
+            <br>
             <button class="main-btn btn-secondary" onclick="showJoinUI()">JOIN ROOM</button>
         </div>
+
         <div class="modal-box hidden" id="lobby-wait">
             <h2>ROOM CODE</h2>
             <div class="room-code-display" id="host-room-code">----</div>
             <p>Waiting for opponent...</p>
-            <div class="spinner" style="width:30px; height:30px; margin: 0 auto;"></div><br>
+            <div class="spinner" style="width:30px; height:30px; margin: 0 auto;"></div>
+            <br>
             <button class="main-btn btn-secondary" onclick="resetLobby()">CANCEL</button>
         </div>
+
         <div class="modal-box hidden" id="lobby-join">
             <h2>ENTER CODE</h2>
             <div class="input-group">
                 <input type="number" id="join-code-input" placeholder="0000" maxlength="4">
             </div>
-            <button class="main-btn active" onclick="joinRoom()">JOIN</button><br>
+            <button class="main-btn active" onclick="joinRoom()">JOIN</button>
+            <br>
             <button class="main-btn btn-secondary" onclick="resetLobby()">BACK</button>
         </div>
     </div>
@@ -171,35 +226,48 @@
     </div>
 
 <script>
-// --- KONFIGURASI PEERJS ---
-let peer = null, conn = null, myPeerID = null, isHost = false;
-const ID_PREFIX = "eluno-evo-v1-";
+// --- KONFIGURASI PEERJS & NETWORK ---
+let peer = null;
+let conn = null;
+let myPeerID = null;
+let isHost = false;
+const ID_PREFIX = "eluno-moon-v1-";
 
-// --- CANVAS & GAME CONFIG ---
+// --- KONFIGURASI CANVAS & GAME ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let width, height;
-let particles = [], floatingTexts = [];
+let particles = [];
+let floatingTexts = [];
 
 // Game Constants
-const SUITS = ['fire', 'water', 'leaf'];
+const SUITS = ['fire', 'water', 'leaf', 'moon']; // Added MOON
 const COLORS = {
-    fire: '#FF2222', water: '#0088FF', leaf: '#00CC44',
-    'fire-water': ['#FF2222', '#0088FF'], 
-    'water-leaf': ['#0088FF', '#00CC44'],
-    'leaf-fire': ['#00CC44', '#FF2222'],
-    wild: '#000000', mirror: '#C0C0C0',
-    cardBg: '#FFFFFF', cardBack: '#1a1a1a', cardBackOutline: '#00FFFF'
+    fire: '#FF2222',
+    water: '#0088FF',
+    leaf: '#00CC44',
+    moon: '#9D8CC2', // Purple for Moon
+    cardBg: '#FFFFFF',
+    cardBack: '#1a1a1a',
+    cardBackOutline: '#00FFFF'
 };
-const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
+const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire', moon: 'none' };
 
 // Game State
-let deck = [], discardPile = [], myHand = [], opponentHand = []; 
-let turn = '', gameState = 'MENU', isAnimating = false;
-let pendingPenalty = false, reactionTimer = null;
-let currentWildCardIdx = -1; // Temp index for wild card selection
+let deck = [];
+let discardPile = [];
+let myHand = [];
+let opponentHand = []; 
+let turn = ''; 
+let gameState = 'MENU'; 
+let isAnimating = false; 
 
-// Audio
+// MOON SPECIAL STATE
+let waitingForCombo = false; // Is player selecting the 2nd card?
+let moonEffectActive = false; // Is the screen dark for me?
+let hiddenTargetSuit = null; // The suit I need to guess
+
+// Audio Context
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -220,14 +288,27 @@ function playSound(type) {
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
         osc.start(); osc.stop(t + 0.3);
-    } else if (type === 'mirror') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(1200, t + 0.5);
-        gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t + 0.5);
-        osc.start(); osc.stop(t + 0.5);
+    } else if (type === 'moon_activate') {
+        // Eerie Sound
+        osc.type = 'sine'; 
+        osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 1.5);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t + 1.5);
+        osc.start(); osc.stop(t + 1.5);
+    } else if (type === 'moon_break') {
+        // Glass shatter-ish
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'bounce') {
+        // Boing
+        osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(300, t + 0.1); osc.frequency.linearRampToValueAtTime(200, t + 0.2);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.2);
+        osc.start(); osc.stop(t + 0.2);
     }
 }
 
-// --- CLASS CARD ---
+// --- CLASS DEFINITIONS ---
 class Card {
     constructor(suit, value) {
         this.suit = suit; this.value = value;
@@ -236,13 +317,13 @@ class Card {
         this.targetX = width / 2; this.targetY = height / 2;
         this.width = 0; this.height = 0;
         this.isHovered = false;
-        // Visual props for wild/mirror
-        this.displaySuit = suit; // Can change for Wild cards
+        this.rotation = 0;
     }
 
     draw(ctx, isFaceUp, x, y, w, h) {
         this.x += (this.targetX - this.x) * 0.15;
         this.y += (this.targetY - this.y) * 0.15;
+
         const drawX = x !== undefined ? x : this.x;
         const drawY = y !== undefined ? y : this.y;
         const drawW = w || this.width;
@@ -253,64 +334,43 @@ class Card {
         ctx.translate(drawX, drawY);
 
         if (isFaceUp) {
-            // -- BACKGROUND --
-            if (this.suit.includes('-')) {
-                // Hybrid Gradient
-                let colors = COLORS[this.suit];
-                let grad = ctx.createLinearGradient(-drawW/2, -drawH/2, drawW/2, drawH/2);
-                grad.addColorStop(0, colors[0]);
-                grad.addColorStop(1, colors[1]);
-                ctx.fillStyle = grad;
-                ctx.strokeStyle = '#fff';
-            } else if (this.suit === 'wild') {
-                ctx.fillStyle = '#111';
-                ctx.strokeStyle = '#a020f0'; // Purple cosmic glow
-                ctx.shadowColor = '#a020f0';
-                ctx.shadowBlur = 15;
-            } else if (this.suit === 'mirror') {
-                let grad = ctx.createLinearGradient(-drawW/2, -drawH/2, drawW/2, drawH/2);
-                grad.addColorStop(0, '#ccc'); grad.addColorStop(0.5, '#fff'); grad.addColorStop(1, '#999');
-                ctx.fillStyle = grad;
-                ctx.strokeStyle = '#000';
-            } else {
-                ctx.fillStyle = COLORS.cardBg;
-                ctx.strokeStyle = COLORS[this.displaySuit];
-                ctx.shadowColor = 'rgba(0,0,0,0.3)';
-                ctx.shadowBlur = this.isHovered ? 20 : 5;
-            }
+            ctx.fillStyle = COLORS.cardBg;
+            ctx.strokeStyle = COLORS[this.suit];
+            ctx.lineWidth = this.suit === 'moon' ? 4 : 2; // Thicker border for moon
+            ctx.shadowColor = this.suit === 'moon' ? 'rgba(157, 140, 194, 0.8)' : 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = this.isHovered ? 20 : (this.suit === 'moon' ? 15 : 5);
+            ctx.shadowOffsetY = 3;
 
-            ctx.lineWidth = 2;
             roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
             ctx.fill(); ctx.stroke();
-            ctx.shadowBlur = 0; 
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            // -- ICON --
-            drawElementIcon(ctx, this.displaySuit, 0, 0, drawW * 0.35);
+            drawElementIcon(ctx, this.suit, 0, 0, drawW * 0.35);
 
-            // -- TEXT --
-            ctx.fillStyle = (this.suit === 'wild' || this.suit.includes('-')) ? '#fff' : COLORS[this.displaySuit];
-            if(this.suit === 'mirror') ctx.fillStyle = '#000';
-            
+            ctx.fillStyle = COLORS[this.suit];
             ctx.font = `bold ${drawW * 0.25}px Orbitron`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            let txt = this.value;
-            if(this.suit === 'wild') txt = '☾';
-            if(this.suit === 'mirror') txt = 'M';
             
-            ctx.fillText(txt, drawW/2 - 20, -drawH/2 + 25);
-            ctx.fillText(txt, -drawW/2 + 20, drawH/2 - 25);
+            if (this.suit !== 'moon') {
+                ctx.fillText(this.value, drawW/2 - 20, -drawH/2 + 25);
+                ctx.fillText(this.value, -drawW/2 + 20, drawH/2 - 25);
+            } else {
+                ctx.font = `bold ${drawW * 0.15}px Orbitron`;
+                ctx.fillText("ECLIPSE", 0, -drawH/2 + 20);
+                ctx.fillText("COMBO", 0, drawH/2 - 20);
+            }
 
         } else {
-            // Card Back
             ctx.fillStyle = COLORS.cardBack;
             ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
             roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
             ctx.fill(); ctx.stroke();
-            ctx.strokeStyle = COLORS.cardBackOutline;
+            ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
             ctx.beginPath();
             let pad = 8;
             ctx.roundRect(-drawW/2 + pad, -drawH/2 + pad, drawW - pad*2, drawH - pad*2, r/2);
             ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-10, -10); ctx.lineTo(10, 10); ctx.moveTo(10, -10); ctx.lineTo(-10, 10); ctx.stroke();
         }
         ctx.restore();
     }
@@ -336,189 +396,226 @@ class Particle {
     }
 }
 
-// --- NETWORK HANDLERS ---
+// --- FUNGSI LOBBY & NETWORK ---
+
+function showLoading(msg) {
+    document.getElementById('loading-layer').style.display = 'flex';
+    document.getElementById('loading-msg').innerText = msg;
+}
+function hideLoading() {
+    document.getElementById('loading-layer').style.display = 'none';
+}
+
+function checkFullscreenRequirement() {
+    const chk = document.getElementById('fs-check');
+    const btn = document.getElementById('start-btn');
+    if(chk.checked) {
+        btn.classList.add('active');
+        btn.disabled = false;
+    } else {
+        btn.classList.remove('active');
+        btn.disabled = true;
+    }
+}
+
+function goToLobby() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => {});
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('lobby-screen').classList.remove('hidden');
+}
+
+function createRoom() {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const fullID = ID_PREFIX + code;
+    showLoading("CREATING ROOM...");
+    peer = new Peer(fullID);
+    
+    peer.on('open', (id) => {
+        hideLoading();
+        isHost = true;
+        myPeerID = id;
+        document.getElementById('lobby-main').classList.add('hidden');
+        document.getElementById('lobby-wait').classList.remove('hidden');
+        document.getElementById('host-room-code').innerText = code;
+    });
+
+    peer.on('connection', (c) => {
+        conn = c;
+        setupConnection();
+        showFloatingText("PLAYER JOINED!", width/2, height/2, "#0f0");
+        setTimeout(startMultiplayerGame, 1000);
+    });
+
+    peer.on('error', (err) => {
+        hideLoading();
+        alert("Error creating room: " + err);
+        resetLobby();
+    });
+}
+
+function showJoinUI() {
+    document.getElementById('lobby-main').classList.add('hidden');
+    document.getElementById('lobby-join').classList.remove('hidden');
+}
+
+function joinRoom() {
+    const input = document.getElementById('join-code-input').value;
+    if (input.length !== 4) { alert("Enter 4 digits code!"); return; }
+    showLoading("JOINING ROOM...");
+    const targetID = ID_PREFIX + input;
+    peer = new Peer(); 
+    peer.on('open', () => {
+        conn = peer.connect(targetID);
+        setupConnection();
+    });
+    peer.on('error', (err) => {
+        hideLoading();
+        alert("Room not found!");
+        resetLobby();
+    });
+}
+
+function resetLobby() {
+    if(peer) peer.destroy();
+    peer = null; conn = null;
+    document.getElementById('lobby-main').classList.remove('hidden');
+    document.getElementById('lobby-wait').classList.add('hidden');
+    document.getElementById('lobby-join').classList.add('hidden');
+    hideLoading();
+}
+
+function setupConnection() {
+    conn.on('open', () => { console.log("Connected"); });
+    conn.on('data', (data) => { handleNetworkData(data); });
+    conn.on('close', () => { endGame("DISCONNECTED", "Opponent left the game"); });
+}
+
+// --- NETWORK DATA HANDLING ---
 function handleNetworkData(data) {
     if (data.type === 'START_GAME') {
         document.getElementById('lobby-screen').classList.add('hidden');
         hideLoading();
         gameState = 'PLAYING';
+        
         turn = data.turn === 'p2' ? 'me' : 'opponent';
 
         let myStartCards = data.p2Hand.map(c => new Card(c.suit, c.value));
+        let oppStartCount = data.p1HandCount;
         let topCard = new Card(data.topDiscard.suit, data.topDiscard.value);
-        topCard.displaySuit = data.topDiscard.displaySuit || data.topDiscard.suit;
-        
-        playDealAnimation(myStartCards, data.p1HandCount, topCard);
+
+        playDealAnimation(myStartCards, oppStartCount, topCard);
     
     } else if (data.type === 'OPPONENT_MOVE') {
-        let card = new Card(data.card.suit, data.card.value);
-        card.displaySuit = data.card.displaySuit || data.card.suit;
-
-        if(opponentHand.length > 0) opponentHand.pop();
-        
-        card.x = width/2; card.y = -100;
-        card.targetX = width/2; card.targetY = height/2;
-        discardPile.push(card);
-        playSound('play');
-
-        // Apply visual effects from opponent
-        if(card.suit === 'wild') {
-             showFloatingText("ECLIPSE: " + data.wildColor.toUpperCase(), width/2, height/2-80, COLORS[data.wildColor]);
-             document.body.classList.add('eclipse-mode');
-             setTimeout(() => document.body.classList.remove('eclipse-mode'), 2000);
-             card.displaySuit = data.wildColor; // Change the visual of top card
-        }
-
-        if (data.isCrit) {
-            playSound('crit');
-            showFloatingText("CRITICAL ATTACK!", width/2, height/2 - 50, "red");
-            
-            // Masuk mode interupsi (Beri kesempatan pakai Mirror)
-            triggerInterruptionPhase();
-        } else {
-            // Normal turn switch
-            checkWinCondition();
-            turn = 'me';
-        }
-
+        processOpponentMove(data.card, data.isCrit);
+    
     } else if (data.type === 'OPPONENT_DRAW') {
-        opponentHand.push(new Card('fire', 1));
+        let c = new Card('fire', 1);
+        c.x = 60; c.y = height/2;
+        opponentHand.push(c);
         playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         turn = 'me';
+        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
 
     } else if (data.type === 'EXTRA_CARD') {
-        // Menerima penalti (Bisa dari Crit biasa atau pantulan Mirror)
         let c = data.card;
         let nc = new Card(c.suit, c.value);
-        nc.x = 60; nc.y = height/2; nc.targetX = width/2; nc.targetY = height-100;
+        nc.x = 60; nc.y = height/2;
+        nc.targetX = width/2; nc.targetY = -200;
         myHand.push(nc);
         playSound('deal');
         showFloatingText("Penalty!", width/2, height/2+50, "red");
 
     } else if (data.type === 'PENALTY_SYNC') {
-        opponentHand.push(new Card('fire', 1));
+        let c = new Card('fire', 1);
+        c.x = 60; c.y = height/2;
+        opponentHand.push(c);
         playSound('deal');
-        showFloatingText("Opponent Penalized", width/2, 100, "red");
-    
-    } else if (data.type === 'REFLECTED') {
-        // Lawan pakai Mirror! Serangan saya berbalik ke saya.
-        showFloatingText("REFLECTED!!", width/2, height/2, "#FFF");
-        playSound('mirror');
+        showFloatingText("Opponent Penalized!", width/2, 100, "red");
+
+    } else if (data.type === 'MOON_ATTACK') {
+        // Lawan mengeluarkan Moon + Combo
+        // 1. Kartu Moon
+        let moonCard = new Card('moon', 0);
+        moonCard.x = width/2; moonCard.y = -100;
+        moonCard.targetX = width/2; moonCard.targetY = height/2;
+        discardPile.push(moonCard);
+        if(opponentHand.length > 0) opponentHand.pop();
         
-        // Sebagai penyerang awal (dan sekarang korban), saya yang harus generate kartu penalti untuk diri sendiri
-        // Karena di game ini host/attacker logic yang drive draw.
-        // Simplified: Langsung terima 2 kartu.
-        if(isHost) {
-            drawPenaltyForSelf(2);
-            // Beritahu lawan saya nambah kartu
-            conn.send({ type: 'PENALTY_SYNC' });
-            conn.send({ type: 'PENALTY_SYNC' });
-        } else {
-             // Jika saya bukan host, tapi saya serang host dan dia reflect -> 
-             // Host harusnya kirim EXTRA_CARD ke saya. Tapi logic draw ada di host.
-             // Kita anggap logic EXTRA_CARD handle ini.
-        }
-        turn = 'opponent'; // Giliran selesai karena di-counter
+        // 2. Kartu Combo
+        let comboCard = new Card(data.combo.suit, data.combo.value);
+        comboCard.x = width/2; comboCard.y = -100;
+        // Kartu combo ditumpuk di atas moon
+        setTimeout(() => {
+            comboCard.targetX = width/2; comboCard.targetY = height/2;
+            discardPile.push(comboCard);
+            if(opponentHand.length > 0) opponentHand.pop();
+            playSound('play');
+        }, 300);
+
+        // 3. Efek Eclipse
+        setTimeout(() => {
+            activateMoonEclipse(data.combo.suit);
+        }, 800);
+
+    } else if (data.type === 'MOON_DEFEND_SUCCESS') {
+        // Lawan berhasil menebak
+        let c = new Card(data.card.suit, data.card.value);
+        c.x = width/2; c.y = -100;
+        c.targetX = width/2; c.targetY = height/2;
+        discardPile.push(c);
+        if(opponentHand.length > 0) opponentHand.pop();
+        
+        playSound('moon_break');
+        showFloatingText("DEFENDED!", width/2, 100, "#fff");
+        turn = 'me'; // Kembali ke saya (Host/Caster) setelah defensi sukses?
+                     // Normalnya: Opponent main match -> Turn pindah ke saya.
+        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
+
+    } else if (data.type === 'MOON_DEFEND_FAIL') {
+        // Lawan gagal (kartu memantul secara visual di sisi mereka)
+        // Giliran mereka hangus, kembali ke saya
+        playSound('bounce');
+        showFloatingText("SKIP TURN!", width/2, 100, "#ff00ff");
+        turn = 'me';
+        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
     }
 }
 
-// --- LOGIC: INTERRUPTION & MIRROR ---
-function triggerInterruptionPhase() {
-    pendingPenalty = true;
-    document.getElementById('reaction-alert').style.display = 'block';
-    
-    // Waktu 3 detik untuk bereaksi
-    reactionTimer = setTimeout(() => {
-        if(pendingPenalty) {
-            // Gagal defend
-            applyPendingDamage();
-        }
-    }, 3000);
-}
-
-function applyPendingDamage() {
-    pendingPenalty = false;
-    document.getElementById('reaction-alert').style.display = 'none';
-    
-    // Jika saya Host, saya generate kartu untuk saya sendiri (karena saya diserang)
-    // Jika saya Client, saya tunggu Host kirim kartu (EXTRA_CARD)
-    // TAPI: Logic sebelumnya Host kirim EXTRA_CARD ke Client saat attack.
-    // Jadi jika saya Client, timer habis, saya tidak perlu lakukan apa-apa,
-    // karena Host akan kirim pesan EXTRA_CARD segera (Host logic perlu delay).
-    
-    // Revisi logic agar sync:
-    // Pihak yang diserang hanya melapor "TOOK_DAMAGE" atau "REFLECTED".
-    // Pihak penyerang menunggu laporan itu sebelum membagikan kartu.
-    
-    // Untuk simplifikasi kode ini tanpa mengubah arsitektur total:
-    // Kita gunakan logic "Self-Inflicted" jika Host, dan "Wait for Data" jika Client.
-    // Client di sini hanya visual timer. Kartu sesungguhnya datang via 'EXTRA_CARD'.
-    
-    turn = 'me';
-}
-
-function attemptMirrorDefense(cardIndex) {
-    if(!pendingPenalty) return;
-    
-    clearTimeout(reactionTimer);
-    pendingPenalty = false;
-    document.getElementById('reaction-alert').style.display = 'none';
-
-    // Buang kartu Mirror
-    let card = myHand[cardIndex];
-    myHand.splice(cardIndex, 1);
-    discardPile.push(card);
-    card.targetX = width/2; card.targetY = height/2;
-    playSound('mirror');
-    
-    showFloatingText("MIRROR ACTIVATED!", width/2, height/2, "#fff");
-    
-    // Kirim info ke lawan bahwa serangan dipantulkan
-    conn.send({ type: 'REFLECTED' });
-    
-    turn = 'me'; // Saya selamat, giliran saya (biasanya lanjut atau skip tergantung aturan, kita buat lanjut)
-}
-
-// --- GAME LOGIC ---
+// --- GAME LOGIC & ANIMATION ---
 
 function startMultiplayerGame() {
     document.getElementById('lobby-screen').classList.add('hidden');
     gameState = 'PLAYING';
 
     let realDeck = [];
-    
-    // 1. Basic Cards
-    SUITS.forEach(suit => {
-        for (let i = 1; i <= 7; i++) {
+    // Generate Standard Cards
+    ['fire', 'water', 'leaf'].forEach(suit => {
+        for (let i = 1; i <= 9; i++) {
             realDeck.push({suit, value: i});
-            realDeck.push({suit, value: i});
+            if(i <= 5) realDeck.push({suit, value: i});
         }
     });
-
-    // 2. Hybrid Cards (Fire-Water, Water-Leaf, Leaf-Fire)
-    ['fire-water', 'water-leaf', 'leaf-fire'].forEach(hybrid => {
-        for(let i=0; i<3; i++) realDeck.push({suit: hybrid, value: 'H'});
-    });
-
-    // 3. Solar Eclipse (Wild)
-    for(let i=0; i<4; i++) realDeck.push({suit: 'wild', value: '?'});
-
-    // 4. Mirror
-    for(let i=0; i<3; i++) realDeck.push({suit: 'mirror', value: 'M'});
+    // Add MOON Cards (2 in deck)
+    realDeck.push({suit: 'moon', value: 0});
+    realDeck.push({suit: 'moon', value: 0});
 
     // Shuffle
-    for (let i = realDeck.length - 1; i > 0; i--) { 
-        const j = Math.floor(Math.random() * (i + 1)); 
-        [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; 
+    for (let i = realDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; }
+
+    let p1H = realDeck.splice(0, 6); // Host (Me)
+    let p2H = realDeck.splice(0, 6); // Client
+    
+    // Ensure top card is NOT Moon
+    let top;
+    while(true) {
+        top = realDeck.pop();
+        if(top.suit !== 'moon') break;
+        realDeck.unshift(top);
     }
-
-    // Ensure top card is simple
-    let topIdx = realDeck.findIndex(c => !c.suit.includes('-') && c.suit !== 'wild' && c.suit !== 'mirror');
-    let top = realDeck.splice(topIdx, 1)[0];
-
-    let p1H = realDeck.splice(0, 6);
-    let p2H = realDeck.splice(0, 6);
     
     let myStartCards = p1H.map(c => new Card(c.suit, c.value));
     let topCardObj = new Card(top.suit, top.value);
@@ -527,6 +624,7 @@ function startMultiplayerGame() {
 
     conn.send({
         type: 'START_GAME',
+        deckCount: realDeck.length,
         topDiscard: top,
         p1HandCount: 6,
         p2Hand: p2H, 
@@ -537,9 +635,15 @@ function startMultiplayerGame() {
 }
 
 function playDealAnimation(myCards, oppCount, topCard) {
-    isAnimating = true; myHand = []; opponentHand = []; discardPile = [];
-    let dealSpeed = 100; let totalCards = myCards.length + oppCount; let dealt = 0;
-    
+    isAnimating = true;
+    myHand = [];
+    opponentHand = [];
+    discardPile = [];
+
+    let dealSpeed = 150; 
+    let totalCards = myCards.length + oppCount;
+    let dealt = 0;
+
     let dealInterval = setInterval(() => {
         if (dealt >= totalCards) {
             clearInterval(dealInterval);
@@ -548,200 +652,280 @@ function playDealAnimation(myCards, oppCount, topCard) {
                 discardPile.push(topCard);
                 playSound('play');
                 isAnimating = false;
-                setTimeout(() => showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff"), 500);
+                
+                setTimeout(() => {
+                    showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff");
+                }, 500);
+
             }, 300);
             return;
         }
-        if (dealt % 2 === 0) opponentHand.push(new Card('fire', 1));
-        else if (myCards[Math.floor(dealt/2)]) myHand.push(myCards[Math.floor(dealt/2)]);
-        playSound('deal'); dealt++;
+
+        if (dealt % 2 === 0) {
+            let c = new Card('fire', 1);
+            c.x = 60; c.y = height/2;
+            opponentHand.push(c);
+        } else {
+            let cardIndex = Math.floor(dealt / 2);
+            if (myCards[cardIndex]) {
+                let c = myCards[cardIndex];
+                c.x = 60; c.y = height/2;
+                myHand.push(c);
+            }
+        }
+        playSound('deal');
+        dealt++;
     }, dealSpeed);
 }
 
-// --- MOVES & VALIDATION ---
+// --- MOON LOGIC FUNCTIONS ---
+
+function activateMoonEclipse(targetSuit) {
+    moonEffectActive = true;
+    hiddenTargetSuit = targetSuit;
+    
+    // UI Overlay
+    const ol = document.getElementById('moon-overlay');
+    ol.classList.add('active');
+    document.getElementById('moon-msg').style.opacity = 1;
+    
+    playSound('moon_activate');
+    turn = 'me'; // Technically opponent's turn to defend, but specialized logic handles input
+    showFloatingText("GUESS THE ELEMENT!", width/2, height/2 - 100, "#fff");
+}
+
+function deactivateMoonEclipse() {
+    moonEffectActive = false;
+    hiddenTargetSuit = null;
+    const ol = document.getElementById('moon-overlay');
+    ol.classList.remove('active');
+    document.getElementById('moon-msg').style.opacity = 0;
+}
+
+// --- INPUT & MOVE LOGIC ---
 
 function isValidMove(card, topCard) {
-    if (card.suit === 'mirror') return false; // Mirror hanya aktif via interupsi atau passif (disini kita buat interupsi saja)
-    if (card.suit === 'wild') return true;
-    
-    // Check Top Card Display Suit (karena Wild mengubah warna visual top card)
-    let targetSuit = topCard.displaySuit || topCard.suit;
-
-    // Logic Hybrid (Card)
-    if (card.suit.includes('-')) {
-        let parts = card.suit.split('-');
-        return parts.includes(targetSuit);
-    }
-    
-    // Logic Hybrid (Top Card is Hybrid)
-    if (targetSuit.includes('-')) {
-        let parts = targetSuit.split('-');
-        return parts.includes(card.suit) || card.suit === targetSuit; // Strict or partial match
-    }
-
-    return card.suit === targetSuit || (card.value === topCard.value && card.value !== 'H');
+    if (card.suit === 'moon') return true; // Moon always playable
+    if (topCard.suit === 'moon') return true; // Logic handled elsewhere actually, but safe
+    return card.suit === topCard.suit || card.value === topCard.value;
 }
 
 function playerInput(cardIndex) {
     if (gameState !== 'PLAYING' || isAnimating) return;
-    
-    // LOGIKA DEFENSE (MIRROR)
-    if (pendingPenalty) {
-        if(myHand[cardIndex].suit === 'mirror') {
-            attemptMirrorDefense(cardIndex);
+    if (turn !== 'me' && !moonEffectActive) return; // Allow input during moon defense
+
+    let card = myHand[cardIndex];
+
+    // --- CASE 1: SEDANG BERTAHAN DARI MOON (ECLIPSE) ---
+    if (moonEffectActive) {
+        // Logika One-Shot
+        if (card.suit === hiddenTargetSuit) {
+            // MATCH!
+            myHand.splice(cardIndex, 1);
+            discardPile.push(card);
+            card.targetX = width/2; card.targetY = height/2;
+            playSound('moon_break');
+            
+            conn.send({ type: 'MOON_DEFEND_SUCCESS', card: {suit: card.suit, value: card.value} });
+            deactivateMoonEclipse();
+            
+            // Turn passes to opponent normally
+            turn = 'opponent';
         } else {
-            showFloatingText("Must use Mirror!", myHand[cardIndex].x, myHand[cardIndex].y - 50, "red");
+            // WRONG! Bounce back
+            card.targetY = height - 200; // Fly up
+            playSound('bounce');
+            setTimeout(() => { card.targetY = height - (width < 600 ? 65*0.7 : 100*0.7); }, 300); // Return
+            
+            showFloatingText("WRONG!", card.x, card.y - 100, "red");
+            
+            conn.send({ type: 'MOON_DEFEND_FAIL' });
+            deactivateMoonEclipse();
+            
+            // Turn skipped, back to opponent
+            turn = 'opponent';
         }
         return;
     }
 
-    if (turn !== 'me') return;
+    // --- CASE 2: NORMAL PLAY / ATTACKING ---
+    if (waitingForCombo) {
+        // Player just played Moon, must select Basic
+        if (['fire', 'water', 'leaf'].includes(card.suit)) {
+            // Execute Combo
+            let moonIdx = myHand.findIndex(c => c.suit === 'moon');
+            if (moonIdx === -1) { waitingForCombo = false; return; } // Safety
+            
+            let moonC = myHand[moonIdx];
+            
+            // Remove both
+            // Need to handle index shift carefully
+            if (moonIdx > cardIndex) {
+                myHand.splice(moonIdx, 1);
+                myHand.splice(cardIndex, 1);
+            } else {
+                myHand.splice(cardIndex, 1);
+                myHand.splice(moonIdx, 1);
+            }
+            
+            // Animasi Moon
+            discardPile.push(moonC);
+            moonC.targetX = width/2; moonC.targetY = height/2;
+            
+            // Animasi Combo Card (delay dikit)
+            setTimeout(() => {
+                discardPile.push(card);
+                card.targetX = width/2; card.targetY = height/2;
+                playSound('play');
+            }, 200);
 
-    let card = myHand[cardIndex];
+            waitingForCombo = false;
+            
+            conn.send({ 
+                type: 'MOON_ATTACK', 
+                combo: {suit: card.suit, value: card.value} 
+            });
+            
+            turn = 'opponent'; // Menunggu respon
+            showFloatingText("ECLIPSE CAST!", width/2, height/2 - 50, "#9D8CC2");
+            playSound('moon_activate');
+            
+            // Check win condition
+            if(myHand.length === 0) endGame("YOU WIN!", "Moon Finisher");
+
+        } else {
+            // Invalid combo card
+             card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
+             showFloatingText("Must be Basic!", card.x, card.y - 50, "red");
+        }
+        return;
+    }
+
+    // Normal Move Logic
     let top = discardPile[discardPile.length - 1];
 
-    // Jika Wild Card dipilih
-    if (card.suit === 'wild') {
-        currentWildCardIdx = cardIndex;
-        document.getElementById('color-picker-modal').style.display = 'flex';
+    if (card.suit === 'moon') {
+        // Trigger Combo Phase
+        waitingForCombo = true;
+        playSound('play');
+        showFloatingText("CHAIN ELEMENT!", width/2, height/2, "#fff");
+        // Visual feedback: Highlight card or lift it
+        card.targetY -= 20; 
         return;
     }
 
     if (isValidMove(card, top)) {
-        executeMove(cardIndex);
+        myHand.splice(cardIndex, 1);
+        discardPile.push(card);
+        card.targetX = width/2; card.targetY = height/2;
+        playSound('play');
+
+        let isCrit = COUNTER_MAP[card.suit] === top.suit;
+        
+        if(isCrit) {
+            playSound('crit');
+            showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
+            if(isHost) {
+                for(let i=0; i<2; i++) {
+                    let penalty = drawCardFromDeckLogic(); 
+                    if(penalty) {
+                        setTimeout(() => {
+                            conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
+                            opponentHand.push(new Card('fire',1));
+                        }, i * 200); 
+                    }
+                }
+            }
+        }
+
+        conn.send({
+            type: 'OPPONENT_MOVE',
+            card: { suit: card.suit, value: card.value },
+            isCrit: isCrit
+        });
+
+        if(myHand.length === 0) {
+            endGame("YOU WIN!", "Victory Achieved");
+            return;
+        }
+
+        turn = 'opponent';
     } else {
         card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
         showFloatingText("Invalid Move", card.x, card.y - 50, "red");
     }
 }
 
-function resolveWildCard(chosenColor) {
-    document.getElementById('color-picker-modal').style.display = 'none';
-    let card = myHand[currentWildCardIdx];
+function processOpponentMove(cardData, isCrit) {
+    let card = new Card(cardData.suit, cardData.value);
+    if(opponentHand.length > 0) opponentHand.pop(); 
     
-    // Execute move spesial untuk Wild
-    myHand.splice(currentWildCardIdx, 1);
-    discardPile.push(card);
+    card.x = width/2; card.y = -100;
     card.targetX = width/2; card.targetY = height/2;
-    card.displaySuit = chosenColor; // Ubah warna visual kartu di discard pile
     
-    playSound('play');
-    document.body.classList.add('eclipse-mode');
-    setTimeout(() => document.body.classList.remove('eclipse-mode'), 2000);
-
-    conn.send({
-        type: 'OPPONENT_MOVE',
-        card: { suit: 'wild', value: '?' },
-        isCrit: false,
-        wildColor: chosenColor
-    });
-
-    checkWinCondition();
-    turn = 'opponent';
-}
-
-function executeMove(cardIndex) {
-    let card = myHand[cardIndex];
-    let top = discardPile[discardPile.length - 1];
-    let targetSuit = top.displaySuit || top.suit;
-
-    myHand.splice(cardIndex, 1);
     discardPile.push(card);
-    card.targetX = width/2; card.targetY = height/2;
     playSound('play');
 
-    // Cek Critical (Elemen mengalahkan elemen)
-    // Hybrid tidak bisa crit
-    let isCrit = false;
-    if(!card.suit.includes('-') && !targetSuit.includes('-')) {
-        isCrit = COUNTER_MAP[card.suit] === targetSuit;
-    }
-
-    // Handle Attack Logic
     if(isCrit) {
         playSound('crit');
-        showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
-        
-        // Host menghandle draw logic, tapi kita beri delay agar lawan bisa Mirror
+        showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
         if(isHost) {
-            // Kita tidak kirim kartu langsung. Kita kirim 'MOVE' dengan flag crit.
-            // Nanti jika lawan gagal mirror (timeout), kita kirim kartu.
-            // Untuk simplifikasi di versi P2P tanpa server otoritatif: 
-            // Kita kirim kartu dengan DELAY. Jika lawan kirim REFLECTED sebelum delay, kita batalkan.
-            
-            let attackID = setTimeout(() => {
-                sendPenaltyToOpponent(2);
-            }, 3500); // 3.5s delay (3s reaction + 0.5 buffer)
-            
-            // Simpan attackID di global agar bisa di-cancel jika terima 'REFLECTED'
-            // (Fitur advance, untuk sekarang biarkan logic simple: 
-            // Lawan akan terima visual 'EXTRA_CARD', kalau dia Mirror, visual itu batal? 
-            // Agak rumit. Kita pakai cara: Kirim kartu, Client yang putuskan terima atau pantul.)
-            
-            // REVISI PENDEKATAN: Kirim saja kartunya. Client logic yang menahan masuk ke hand.
             for(let i=0; i<2; i++) {
-                 let p = drawCardLogic();
-                 conn.send({ type: 'EXTRA_CARD', card: {suit:p.suit, value:p.value} });
-                 opponentHand.push(new Card('fire',1)); 
+                let penalty = drawCardFromDeckLogic();
+                if(penalty) {
+                    setTimeout(() => {
+                        penalty.x = 60; penalty.y = height/2; 
+                        myHand.push(penalty);
+                        playSound('deal');
+                        showFloatingText("+1 Card", width/2, height/2+50, "red");
+                        conn.send({ type: 'PENALTY_SYNC' });
+                    }, i * 200);
+                }
             }
         }
     }
 
-    conn.send({
-        type: 'OPPONENT_MOVE',
-        card: { suit: card.suit, value: card.value, displaySuit: card.suit },
-        isCrit: isCrit
-    });
+    setTimeout(() => {
+        if(opponentHand.length === 0) {
+            endGame("YOU LOSE", "Opponent cleared their hand");
+        }
+    }, 500);
 
-    if(checkWinCondition()) return;
-    turn = 'opponent';
-}
-
-function drawCardLogic() {
-    let s = SUITS[Math.floor(Math.random()*3)];
-    let v = Math.floor(Math.random()*9)+1;
-    return {suit: s, value: v};
-}
-
-function drawPenaltyForSelf(count) {
-    for(let i=0; i<count; i++) {
-        let p = drawCardLogic();
-        let c = new Card(p.suit, p.value);
-        c.x = width/2; c.y = -100;
-        myHand.push(c);
-    }
-    showFloatingText(`Hit by own attack! +${count}`, width/2, height/2, "red");
-}
-
-function sendPenaltyToOpponent(count) {
-    for(let i=0; i<count; i++) {
-        let p = drawCardLogic();
-        conn.send({ type: 'EXTRA_CARD', card: p });
-        opponentHand.push(new Card('fire',1));
-    }
+    turn = 'me';
 }
 
 function requestDraw() {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating || pendingPenalty) return;
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating || moonEffectActive) return;
 
-    let newCard = new Card(SUITS[Math.floor(Math.random()*3)], Math.floor(Math.random()*9)+1);
-    newCard.x = 60; newCard.y = height/2;
-    myHand.push(newCard);
-    playSound('deal');
-    conn.send({ type: 'OPPONENT_DRAW' });
-    turn = 'opponent'; 
+    let newCard;
+    if(isHost) {
+        newCard = drawCardFromDeckLogic();
+    } else {
+        // Basic randomness for client local prediction (will be synced if needed but simple games ok)
+        // Ideally Host should auth deck draws, but for simple peerjs this is fine
+        let r = Math.random();
+        let s = r > 0.9 ? 'moon' : SUITS[Math.floor(Math.random()*3)]; // Small chance for Moon
+        let v = s === 'moon' ? 0 : Math.floor(Math.random()*9)+1;
+        newCard = new Card(s, v);
+    }
+
+    if(newCard) {
+        newCard.x = 60; newCard.y = height/2;
+        myHand.push(newCard);
+        playSound('deal');
+        
+        conn.send({ type: 'OPPONENT_DRAW' });
+        
+        turn = 'opponent'; 
+        showFloatingText("Turn Ended", width/2, height/2, "#aaa");
+    }
 }
 
-function checkWinCondition() {
-    if(myHand.length === 0) {
-        endGame("YOU WIN!", "Victory Achieved");
-        return true;
-    }
-    if(opponentHand.length === 0) {
-        endGame("YOU LOSE", "Opponent cleared their hand");
-        return true;
-    }
-    return false;
+function drawCardFromDeckLogic() {
+    let r = Math.random();
+    let s = r > 0.95 ? 'moon' : SUITS[Math.floor(Math.random()*3)];
+    let v = s === 'moon' ? 0 : Math.floor(Math.random()*9)+1;
+    return new Card(s, v);
 }
 
 function endGame(title, subtitle) {
@@ -749,66 +933,20 @@ function endGame(title, subtitle) {
     document.getElementById('winner-text').innerText = title;
     document.getElementById('sub-winner-text').innerText = subtitle;
     document.getElementById('game-over').style.display = 'block';
+    deactivateMoonEclipse();
     setTimeout(()=> { if(peer) peer.destroy(); }, 2000);
 }
 
-// --- UTILS & RENDER ---
-function showLoading(msg) { document.getElementById('loading-layer').style.display = 'flex'; document.getElementById('loading-msg').innerText = msg; }
-function hideLoading() { document.getElementById('loading-layer').style.display = 'none'; }
-function checkFullscreenRequirement() {
-    const chk = document.getElementById('fs-check');
-    document.getElementById('start-btn').disabled = !chk.checked;
-    if(chk.checked) document.getElementById('start-btn').classList.add('active');
-    else document.getElementById('start-btn').classList.remove('active');
-}
-function goToLobby() {
-    document.documentElement.requestFullscreen().catch(()=>{});
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('lobby-screen').classList.remove('hidden');
-}
-function createRoom() {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    showLoading("CREATING ROOM...");
-    peer = new Peer(ID_PREFIX + code);
-    peer.on('open', (id) => {
-        hideLoading(); isHost = true; myPeerID = id;
-        document.getElementById('lobby-main').classList.add('hidden');
-        document.getElementById('lobby-wait').classList.remove('hidden');
-        document.getElementById('host-room-code').innerText = code;
-    });
-    peer.on('connection', (c) => {
-        conn = c; setupConnection();
-        showFloatingText("PLAYER JOINED!", width/2, height/2, "#0f0");
-        setTimeout(startMultiplayerGame, 1000);
-    });
-}
-function showJoinUI() {
-    document.getElementById('lobby-main').classList.add('hidden');
-    document.getElementById('lobby-join').classList.remove('hidden');
-}
-function joinRoom() {
-    const input = document.getElementById('join-code-input').value;
-    if (input.length !== 4) return;
-    showLoading("JOINING...");
-    peer = new Peer();
-    peer.on('open', () => { conn = peer.connect(ID_PREFIX + input); setupConnection(); });
-}
-function resetLobby() {
-    if(peer) peer.destroy();
-    document.getElementById('lobby-main').classList.remove('hidden');
-    document.getElementById('lobby-wait').classList.add('hidden');
-    document.getElementById('lobby-join').classList.add('hidden');
-    hideLoading();
-}
-function setupConnection() {
-    conn.on('data', handleNetworkData);
-    conn.on('close', () => endGame("DISCONNECTED", "Opponent left"));
-}
+
+// --- RENDER LOOP ---
 
 function draw() {
     ctx.clearRect(0, 0, width, height);
-    let cardW = width < 600 ? 65 : 100; let cardH = cardW * 1.4;
+    
+    let cardW = width < 600 ? 65 : 100;
+    let cardH = cardW * 1.4;
 
+    // 1. BACKGROUND ELEMENTS (Deck, Discard, Opponent)
     // Deck
     let deckX = 60; let deckY = height / 2;
     for(let i=0; i<3; i++) {
@@ -816,67 +954,124 @@ function draw() {
         roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
         ctx.fill(); ctx.stroke();
     }
+    // Deck Top
+    ctx.fillStyle = COLORS.cardBack; ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
+    // Dim deck if moon active
+    if(moonEffectActive) ctx.fillStyle = '#000';
+    
+    roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - 6, cardW, cardH, 10);
+    ctx.fill(); ctx.stroke();
     
     // Discard Pile
     if (discardPile.length > 0) {
         let startIdx = Math.max(0, discardPile.length - 3);
         for(let i = startIdx; i < discardPile.length; i++) {
             let c = discardPile[i];
-            if(!isAnimating && Math.abs(c.x - width/2) < 2) { c.x = width/2; c.y = height/2; }
+            if(!isAnimating && Math.abs(c.x - width/2) < 2) c.x = width/2;
+            if(!isAnimating && Math.abs(c.y - height/2) < 2) c.y = height/2;
             c.draw(ctx, true, undefined, undefined, cardW, cardH);
         }
     }
 
-    // Hands
+    // Opponent Hand
     let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
     let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
-    opponentHand.forEach((c, i) => { c.targetX = oppStart + i * oppSpread; c.targetY = -cardH * 0.4; c.draw(ctx, false, undefined, undefined, cardW, cardH); });
-
-    let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
-    let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
-    myHand.forEach((c, i) => { 
-        c.targetX = pStart + i * pSpread; 
-        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
-        c.width = cardW; c.height = cardH;
-        c.draw(ctx, true); 
+    opponentHand.forEach((c, i) => {
+        c.targetX = oppStart + i * oppSpread;
+        c.targetY = -cardH * 0.4;
+        c.draw(ctx, false, undefined, undefined, cardW, cardH);
     });
 
+    // 2. DARKNESS OVERLAY (Logic Render)
+    // Kita menggambar semi-transparan hitam di atas canvas jika Moon Active
+    // TAPI kita akan menggambar Hand (Tangan Kita) SETELAH ini agar tetap menyala
+    if (moonEffectActive) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    // 3. MY HAND (Always Visible / Glowing in Dark)
+    let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
+    let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
+    myHand.forEach((c, i) => {
+        c.targetX = pStart + i * pSpread;
+        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
+        c.width = cardW; c.height = cardH;
+        
+        // Add Glow if Moon Active
+        if(moonEffectActive) {
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 20;
+        }
+
+        c.draw(ctx, true);
+        ctx.shadowBlur = 0; // Reset
+    });
+
+    // 4. UI & TEXTS
     particles.forEach(p => p.draw(ctx));
     floatingTexts.forEach(t => t.draw(ctx));
 
-    if(gameState === 'PLAYING' && !isAnimating) {
-        ctx.font = "bold 16px Orbitron"; ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888'; ctx.textAlign = 'center';
-        ctx.fillText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + cardH/2 + 40);
+    if(gameState === 'PLAYING' && !isAnimating && !moonEffectActive) {
+        ctx.font = "bold 16px Orbitron"; 
+        ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888';
+        ctx.textAlign = 'center';
+        let txt = turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN";
+        if(waitingForCombo) txt = "SELECT ELEMENT TO COMBINE!";
+        ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
     }
 }
 
 function update() {
-    for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1); }
-    for (let i = floatingTexts.length - 1; i >= 0; i--) { floatingTexts[i].update(); if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1); }
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        floatingTexts[i].update();
+        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+    }
 }
+
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
 // --- INPUTS ---
 function handleInput(x, y) {
     if (gameState !== 'PLAYING' || isAnimating) return;
+
+    // Check Hand First (Interaction always allowed)
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
-        if (x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) {
+        if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
+            y > c.y - c.height/2 && y < c.y + c.height/2) {
             playerInput(i); return;
         }
     }
-    // Draw Deck Click
-    let deckX = 60; let w = width < 600 ? 65 : 100;
-    if (turn === 'me' && x > deckX - w/2 - 20 && x < deckX + w/2 + 20 && y > height/2 - w*1.4/2 - 20 && y < height/2 + w*1.4/2 + 20) requestDraw();
+
+    // If Moon Active, BLOCK Deck Click
+    if (moonEffectActive) return;
+    if (turn !== 'me') return;
+
+    let deckX = 60; let deckY = height/2;
+    let w = width < 600 ? 65 : 100; let h = w*1.4;
+    if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
+        y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
+        requestDraw();
+    }
 }
+
 function handleHover(x, y) {
     let hovered = false;
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
-        if (!hovered && x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) { c.isHovered = true; hovered = true; } else c.isHovered = false;
+        if (!hovered && x > c.x - c.width/2 && x < c.x + c.width/2 && 
+            y > c.y - c.height/2 && y < c.y + c.height/2) {
+            c.isHovered = true; hovered = true;
+        } else c.isHovered = false;
     }
 }
 
+// --- UTILS ---
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
 function showFloatingText(txt, x, y, c) { 
     floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
@@ -886,11 +1081,16 @@ function showFloatingText(txt, x, y, c) {
 }
 function drawElementIcon(ctx, type, x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.beginPath();
-    if (type === 'fire' || type.includes('fire')) { ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s); }
-    else if (type === 'water' || type.includes('water')) { ctx.arc(0, 0, s*0.8, 0, Math.PI*2); }
-    else if (type === 'leaf' || type.includes('leaf')) { ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s); }
-    else if (type === 'wild') { ctx.arc(0,0,s*0.7, 0, Math.PI*2); ctx.stroke(); }
-    else if (type === 'mirror') { ctx.rect(-s/2,-s/2,s,s); }
+    if (type === 'fire') {
+        ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s);
+    } else if (type === 'water') {
+        ctx.arc(0, 0, s*0.8, 0, Math.PI*2);
+    } else if (type === 'leaf') {
+        ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s);
+    } else if (type === 'moon') {
+        ctx.arc(0, 0, s, 0.25 * Math.PI, 1.25 * Math.PI, false);
+        ctx.arc(-s * 0.4, -s * 0.4, s * 0.8, 1.25 * Math.PI, 0.25 * Math.PI, true);
+    }
     ctx.fill(); ctx.restore();
 }
 
@@ -900,7 +1100,8 @@ canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
 canvas.addEventListener('mousemove', e => handleHover(e.clientX, e.clientY));
 canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
 
-resize(); loop();
+resize();
+loop();
 </script>
 </body>
 </html>
