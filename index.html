@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO: MOON ECLIPSE</title>
+    <title>ELUNO - MOON UPDATE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -26,7 +26,7 @@
         }
 
         /* UI Layers */
-        #ui-layer, #start-screen, #lobby-screen, #loading-layer, #moon-overlay {
+        #ui-layer, #start-screen, #lobby-screen, #loading-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column;
@@ -51,35 +51,11 @@
             z-index: 300;
             display: none;
         }
-
-        /* MOON ECLIPSE UI TEXT ONLY (Visual darkening is now in Canvas) */
-        #moon-overlay {
-            z-index: 50; 
-            opacity: 0;
-            transition: opacity 0.5s ease;
-            display: flex;
-            justify-content: flex-start;
-            padding-top: 100px;
-        }
         
-        #moon-overlay.active {
-            opacity: 1;
-        }
-
-        #moon-msg {
-            color: #b19cd9;
-            font-size: 24px;
-            text-shadow: 0 0 10px #b19cd9;
-            margin-top: 20%;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-
         .spinner {
             width: 50px; height: 50px;
             border: 5px solid #333;
-            border-top: 5px solid #00CC44;
+            border-top: 5px solid #9933FF; /* Purple tint for Moon update */
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -91,7 +67,7 @@
             padding: 40px;
             border-radius: 15px;
             text-align: center;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 40px rgba(153, 51, 255, 0.3);
             border: 4px solid #333;
             max-width: 90%;
             width: 400px;
@@ -114,16 +90,15 @@
             accent-color: #000;
         }
 
-        /* Inputs & Buttons */
         .input-group { margin-bottom: 20px; }
         input[type="number"] {
             padding: 10px; font-family: 'Orbitron'; font-size: 24px; text-align: center;
             border: 2px solid #333; border-radius: 10px; width: 150px; outline: none;
         }
-        input[type="number"]:focus { border-color: #0088FF; }
+        input[type="number"]:focus { border-color: #9933FF; }
 
         .room-code-display {
-            font-size: 36px; font-weight: bold; color: #0088FF; margin: 20px 0;
+            font-size: 36px; font-weight: bold; color: #9933FF; margin: 20px 0;
             letter-spacing: 5px;
         }
 
@@ -132,20 +107,18 @@
             background: #000;
             border: none; color: white;
             font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
-            cursor: pointer;
-            border-radius: 50px;
+            cursor: pointer; border-radius: 50px;
             transition: all 0.2s;
             margin: 10px;
             min-width: 150px;
         }
 
         button.main-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        button.main-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,136,255,0.5); }
-        button.main-btn.active { background: linear-gradient(45deg, #0088FF, #00CC44); }
+        button.main-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(153, 51, 255, 0.5); }
+        button.main-btn.active { background: linear-gradient(45deg, #7700FF, #CC44FF); }
 
         .btn-secondary { background: #555 !important; }
 
-        /* Game Over Screen */
         #game-over {
             display: none;
             background: rgba(255, 255, 255, 0.95);
@@ -155,7 +128,6 @@
             box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 500;
         }
 
         .hidden { display: none !important; }
@@ -163,10 +135,6 @@
     </style>
 </head>
 <body>
-
-    <div id="moon-overlay">
-        <div id="moon-msg">DARKNESS FALLS<br><span style="font-size:14px; color:#fff">Match the hidden element!</span></div>
-    </div>
 
     <canvas id="gameCanvas"></canvas>
 
@@ -178,7 +146,7 @@
     <div id="start-screen">
         <div class="modal-box">
             <h1>ELUNO</h1>
-            <p style="color:#666; font-size:14px;">MOON ECLIPSE EDITION</p>
+            <p style="color:#666; font-size:14px;">MOON EXPANSION</p>
             
             <label class="checkbox-container">
                 <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
@@ -242,16 +210,17 @@ let floatingTexts = [];
 
 // Game Constants
 const SUITS = ['fire', 'water', 'leaf', 'moon'];
+const BASIC_SUITS = ['fire', 'water', 'leaf'];
 const COLORS = {
     fire: '#FF2222',
     water: '#0088FF',
     leaf: '#00CC44',
-    moon: '#9D8CC2', 
+    moon: '#9933FF', // Warna Ungu Moon Card
     cardBg: '#FFFFFF',
     cardBack: '#1a1a1a',
-    cardBackOutline: '#00FFFF'
+    cardBackOutline: '#9933FF' // Ubah jadi ungu dikit
 };
-const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire', moon: 'none' };
+const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
 
 // Game State
 let deck = [];
@@ -262,11 +231,10 @@ let turn = '';
 let gameState = 'MENU'; 
 let isAnimating = false; 
 
-// MOON SPECIAL STATE
-let waitingForCombo = false; 
-let moonEffectActive = false; 
-let moonDarknessAlpha = 0; // Untuk animasi fade-in kegelapan
-let hiddenTargetSuit = null; 
+// Moon & Blind Mode State
+let blindMode = false;
+let blindIntensity = 0; // 0.0 to 1.0
+let mustPlayBasic = false; // Flag untuk pemilik Moon saat extra turn
 
 // Audio Context
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -281,6 +249,12 @@ function playSound(type) {
         osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'moon') {
+        // Suara Moon: Rendah dan bergetar
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 1);
+        gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t + 1);
+        osc.start(); osc.stop(t + 1);
     } else if (type === 'deal') {
         osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t);
         gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.08);
@@ -289,19 +263,9 @@ function playSound(type) {
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
         osc.start(); osc.stop(t + 0.3);
-    } else if (type === 'moon_activate') {
-        osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 1.5);
-        gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t + 1.5);
-        osc.start(); osc.stop(t + 1.5);
-    } else if (type === 'moon_break') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-        gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-        osc.start(); osc.stop(t + 0.1);
-    } else if (type === 'bounce') {
-        osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(300, t + 0.1); osc.frequency.linearRampToValueAtTime(200, t + 0.2);
-        gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.2);
+    } else if (type === 'error') {
+        osc.type = 'square'; osc.frequency.setValueAtTime(150, t); 
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
         osc.start(); osc.stop(t + 0.2);
     }
 }
@@ -315,14 +279,22 @@ class Card {
         this.targetX = width / 2; this.targetY = height / 2;
         this.width = 0; this.height = 0;
         this.isHovered = false;
-        this.rotation = 0;
+        this.shake = 0; // Untuk animasi getar
     }
 
     draw(ctx, isFaceUp, x, y, w, h) {
+        // Movement Logic
         this.x += (this.targetX - this.x) * 0.15;
         this.y += (this.targetY - this.y) * 0.15;
 
-        const drawX = x !== undefined ? x : this.x;
+        // Shake Logic
+        let offsetX = 0;
+        if (this.shake > 0) {
+            offsetX = Math.sin(Date.now() * 0.5) * 5;
+            this.shake -= 1;
+        }
+
+        const drawX = (x !== undefined ? x : this.x) + offsetX;
         const drawY = y !== undefined ? y : this.y;
         const drawW = w || this.width;
         const drawH = h || this.height;
@@ -334,9 +306,9 @@ class Card {
         if (isFaceUp) {
             ctx.fillStyle = COLORS.cardBg;
             ctx.strokeStyle = COLORS[this.suit];
-            ctx.lineWidth = this.suit === 'moon' ? 4 : 2; 
-            ctx.shadowColor = this.suit === 'moon' ? 'rgba(157, 140, 194, 0.8)' : 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = this.isHovered ? 20 : (this.suit === 'moon' ? 15 : 5);
+            ctx.lineWidth = 2;
+            ctx.shadowColor = this.suit === 'moon' ? COLORS.moon : 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = this.suit === 'moon' ? 20 : (this.isHovered ? 20 : 5);
             ctx.shadowOffsetY = 3;
 
             roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
@@ -345,17 +317,12 @@ class Card {
 
             drawElementIcon(ctx, this.suit, 0, 0, drawW * 0.35);
 
-            ctx.fillStyle = COLORS[this.suit];
-            ctx.font = `bold ${drawW * 0.25}px Orbitron`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            
             if (this.suit !== 'moon') {
+                ctx.fillStyle = COLORS[this.suit];
+                ctx.font = `bold ${drawW * 0.25}px Orbitron`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(this.value, drawW/2 - 20, -drawH/2 + 25);
                 ctx.fillText(this.value, -drawW/2 + 20, drawH/2 - 25);
-            } else {
-                ctx.font = `bold ${drawW * 0.15}px Orbitron`;
-                ctx.fillText("ECLIPSE", 0, -drawH/2 + 20);
-                ctx.fillText("COMBO", 0, drawH/2 - 20);
             }
 
         } else {
@@ -375,11 +342,12 @@ class Card {
 }
 
 class Particle {
-    constructor(x, y, color) {
+    constructor(x, y, color, isExplosion) {
         this.x = x; this.y = y; this.color = color;
         this.size = Math.random() * 5 + 2;
-        this.vx = (Math.random() - 0.5) * 15; // Lebih cepat menyebar
-        this.vy = (Math.random() - 0.5) * 15;
+        let speed = isExplosion ? 15 : 10;
+        this.vx = (Math.random() - 0.5) * speed;
+        this.vy = (Math.random() - 0.5) * speed;
         this.life = 1;
     }
     update() {
@@ -491,7 +459,7 @@ function setupConnection() {
     conn.on('close', () => { endGame("DISCONNECTED", "Opponent left the game"); });
 }
 
-// --- NETWORK DATA HANDLING ---
+// --- DATA HANDLING ---
 function handleNetworkData(data) {
     if (data.type === 'START_GAME') {
         document.getElementById('lobby-screen').classList.add('hidden');
@@ -515,10 +483,55 @@ function handleNetworkData(data) {
         opponentHand.push(c);
         playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
+        
         turn = 'me';
-        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
+        // Kalau blind mode aktif, tetap turn 'me' tapi layar masih gelap sampai saya sukses tebak
+        // Namun 'OPPONENT_DRAW' biasanya terjadi kalau dia gak punya kartu valid
+    
+    } else if (data.type === 'MOON_ATTACK') {
+        // Lawan mengeluarkan Moon Card
+        // Hapus visual kartu dari tangan lawan
+        if(opponentHand.length > 0) opponentHand.pop();
 
-    } else if (data.type === 'EXTRA_CARD') {
+        let moonC = new Card('moon', 0);
+        moonC.x = width/2; moonC.y = -100;
+        moonC.targetX = width/2; moonC.targetY = height/2;
+        discardPile.push(moonC);
+
+        // Efek Visual Meledak & Gelap 100%
+        setTimeout(() => {
+            spawnExplosion(width/2, height/2, COLORS.moon);
+            playSound('moon');
+            blindMode = true;
+            blindIntensity = 1.0; // TOTAL DARKNESS
+            showFloatingText("BLINDED!", width/2, height/2, "#FFF");
+        }, 300);
+
+        // Turn tidak pindah ke saya dulu, karena lawan (pemilik moon) dapat extra turn
+        // Nanti setelah lawan jalan extra turn, baru turn pindah ke saya (dalam kondisi buta)
+    
+    } else if (data.type === 'MOON_FOLLOWUP') {
+        // Lawan jalan kartu basic setelah Moon
+        // Blind Mode tetap aktif 100%
+        processOpponentMove(data.card, data.isCrit);
+        showFloatingText("ONE SHOT CHANCE", width/2, height/2 + 50, "red");
+        // Sekarang giliran saya (turn = 'me') tapi buta
+        
+    } else if (data.type === 'BLIND_CLEARED') {
+        // Lawan (yang tadinya buta) berhasil menebak
+        blindMode = false;
+        blindIntensity = 0;
+        showFloatingText("DARKNESS FADED", width/2, height/2, "#FFF");
+        processOpponentMove(data.card, data.isCrit);
+
+    } else if (data.type === 'BLIND_FAIL') {
+        // Lawan gagal tebak, kartu dia getar doang
+        showFloatingText("MISSED!", width/2, 150, "red");
+        turn = 'me'; // Balik ke saya (Pemilik Moon)
+        // Gelap masih ada di lawan, tapi di saya cuma 10%
+    }
+    
+    else if (data.type === 'EXTRA_CARD') {
         let c = data.card;
         let nc = new Card(c.suit, c.value);
         nc.x = 60; nc.y = height/2;
@@ -529,56 +542,10 @@ function handleNetworkData(data) {
 
     } else if (data.type === 'PENALTY_SYNC') {
         let c = new Card('fire', 1);
-        c.x = 60; c.y = height/2;
-        opponentHand.push(c);
+        c.x = 60; c.y = height/2; 
+        opponentHand.push(c); 
         playSound('deal');
         showFloatingText("Opponent Penalized!", width/2, 100, "red");
-
-    } else if (data.type === 'MOON_ATTACK') {
-        // REVISI: Logika Animasi Moon Attack dari Lawan
-        
-        // 1. Kartu Moon Bergerak ke Tengah
-        let moonCard = new Card('moon', 0);
-        moonCard.x = width/2; moonCard.y = -100; // Mulai dari posisi lawan
-        moonCard.targetX = width/2; moonCard.targetY = height/2; // Ke Tengah
-        
-        // 2. Kartu Combo Bergerak ke Tengah (di bawah moon untuk sementara atau menyusul)
-        let comboCard = new Card(data.combo.suit, data.combo.value);
-        comboCard.x = width/2; comboCard.y = -100;
-        
-        discardPile.push(moonCard); 
-        if(opponentHand.length > 0) opponentHand.pop();
-
-        // 3. Tunggu Moon sampai ke tengah, BARU aktifkan kegelapan
-        setTimeout(() => {
-            playSound('play');
-            // Combo masuk
-            comboCard.targetX = width/2; comboCard.targetY = height/2;
-            discardPile.push(comboCard);
-            if(opponentHand.length > 0) opponentHand.pop();
-
-            // TRIGGER GELAP & PARTIKEL DARI TENGAH (Moon Card Position)
-            explodeParticles(width/2, height/2, '#9D8CC2');
-            activateMoonEclipse(data.combo.suit);
-        }, 600); // Delay agar kartu terlihat bergerak dulu
-
-    } else if (data.type === 'MOON_DEFEND_SUCCESS') {
-        let c = new Card(data.card.suit, data.card.value);
-        c.x = width/2; c.y = -100;
-        c.targetX = width/2; c.targetY = height/2;
-        discardPile.push(c);
-        if(opponentHand.length > 0) opponentHand.pop();
-        
-        playSound('moon_break');
-        showFloatingText("DEFENDED!", width/2, 100, "#fff");
-        turn = 'me'; 
-        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
-
-    } else if (data.type === 'MOON_DEFEND_FAIL') {
-        playSound('bounce');
-        showFloatingText("SKIP TURN!", width/2, 100, "#ff00ff");
-        turn = 'me';
-        showFloatingText("YOUR TURN", width/2, height/2 + 100, "#0f0");
     }
 }
 
@@ -589,25 +556,28 @@ function startMultiplayerGame() {
     gameState = 'PLAYING';
 
     let realDeck = [];
-    ['fire', 'water', 'leaf'].forEach(suit => {
+    // Basic Cards
+    BASIC_SUITS.forEach(suit => {
         for (let i = 1; i <= 9; i++) {
             realDeck.push({suit, value: i});
             if(i <= 5) realDeck.push({suit, value: i});
         }
     });
+    // Add 2 Moon Cards
     realDeck.push({suit: 'moon', value: 0});
     realDeck.push({suit: 'moon', value: 0});
 
     for (let i = realDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; }
 
-    let p1H = realDeck.splice(0, 6); 
-    let p2H = realDeck.splice(0, 6); 
+    let p1H = realDeck.splice(0, 6); // Host (Me)
+    let p2H = realDeck.splice(0, 6); // Client
     
+    // Pastikan kartu pertama bukan Moon
     let top;
     while(true) {
         top = realDeck.pop();
         if(top.suit !== 'moon') break;
-        realDeck.unshift(top);
+        realDeck.unshift(top); // balikin ke bawah kalau moon
     }
     
     let myStartCards = p1H.map(c => new Card(c.suit, c.value));
@@ -671,178 +641,135 @@ function playDealAnimation(myCards, oppCount, topCard) {
     }, dealSpeed);
 }
 
-// --- MOON LOGIC FUNCTIONS ---
-
-function explodeParticles(x, y, color) {
-    for(let i=0; i<50; i++) {
-        particles.push(new Particle(x, y, color));
-    }
-}
-
-function activateMoonEclipse(targetSuit) {
-    moonEffectActive = true;
-    moonDarknessAlpha = 0; // Reset alpha untuk efek fade-in
-    hiddenTargetSuit = targetSuit;
-    
-    const ol = document.getElementById('moon-overlay');
-    ol.classList.add('active');
-    document.getElementById('moon-msg').style.opacity = 1;
-    
-    playSound('moon_activate');
-    turn = 'me'; 
-    showFloatingText("GUESS THE ELEMENT!", width/2, height/2 - 100, "#fff");
-}
-
-function deactivateMoonEclipse() {
-    moonEffectActive = false;
-    hiddenTargetSuit = null;
-    const ol = document.getElementById('moon-overlay');
-    ol.classList.remove('active');
-    document.getElementById('moon-msg').style.opacity = 0;
-}
-
-// --- INPUT & MOVE LOGIC ---
+// --- MOVE EXECUTION ---
 
 function isValidMove(card, topCard) {
-    if (card.suit === 'moon') return true; 
-    if (topCard.suit === 'moon') return true; 
+    if (card.suit === 'moon') return true; // Moon is universal
+    if (topCard.suit === 'moon') return true; // Anything can follow a moon (except moon itself? usually color is declared, but here universal)
     return card.suit === topCard.suit || card.value === topCard.value;
 }
 
 function playerInput(cardIndex) {
-    if (gameState !== 'PLAYING' || isAnimating) return;
-    if (turn !== 'me' && !moonEffectActive) return; 
-
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
+    
     let card = myHand[cardIndex];
-
-    if (moonEffectActive) {
-        if (card.suit === hiddenTargetSuit) {
-            myHand.splice(cardIndex, 1);
-            discardPile.push(card);
-            card.targetX = width/2; card.targetY = height/2;
-            playSound('moon_break');
-            
-            conn.send({ type: 'MOON_DEFEND_SUCCESS', card: {suit: card.suit, value: card.value} });
-            deactivateMoonEclipse();
-            
-            turn = 'opponent';
-        } else {
-            card.targetY = height - 200; 
-            playSound('bounce');
-            setTimeout(() => { card.targetY = height - (width < 600 ? 65*0.7 : 100*0.7); }, 300);
-            
-            showFloatingText("WRONG!", card.x, card.y - 100, "red");
-            
-            conn.send({ type: 'MOON_DEFEND_FAIL' });
-            deactivateMoonEclipse();
-            
-            turn = 'opponent';
-        }
-        return;
-    }
-
-    if (waitingForCombo) {
-        if (['fire', 'water', 'leaf'].includes(card.suit)) {
-            let moonIdx = myHand.findIndex(c => c.suit === 'moon');
-            if (moonIdx === -1) { waitingForCombo = false; return; }
-            
-            let moonC = myHand[moonIdx];
-            
-            if (moonIdx > cardIndex) {
-                myHand.splice(moonIdx, 1);
-                myHand.splice(cardIndex, 1);
-            } else {
-                myHand.splice(cardIndex, 1);
-                myHand.splice(moonIdx, 1);
-            }
-            
-            discardPile.push(moonC);
-            moonC.targetX = width/2; moonC.targetY = height/2;
-            
-            setTimeout(() => {
-                discardPile.push(card);
-                card.targetX = width/2; card.targetY = height/2;
-                playSound('play');
-            }, 200);
-
-            waitingForCombo = false;
-            
-            conn.send({ 
-                type: 'MOON_ATTACK', 
-                combo: {suit: card.suit, value: card.value} 
-            });
-            
-            // Player who Casts Moon sees it too
-            // Optional: explodeParticles(width/2, height/2, '#9D8CC2'); 
-            // But usually we want screen to be clear for the caster
-            
-            turn = 'opponent'; 
-            showFloatingText("ECLIPSE CAST!", width/2, height/2 - 50, "#9D8CC2");
-            playSound('moon_activate');
-            
-            if(myHand.length === 0) endGame("YOU WIN!", "Moon Finisher");
-
-        } else {
-             card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
-             showFloatingText("Must be Basic!", card.x, card.y - 50, "red");
-        }
-        return;
-    }
-
     let top = discardPile[discardPile.length - 1];
 
-    if (card.suit === 'moon') {
-        waitingForCombo = true;
-        playSound('play');
-        showFloatingText("CHAIN ELEMENT!", width/2, height/2, "#fff");
-        card.targetY -= 20; 
+    // LOGIKA BLIND MODE (Saat saya buta dan harus nebak)
+    if (blindMode && blindIntensity === 1.0) {
+        if (isValidMove(card, top)) {
+            // BERHASIL TEBAK
+            executeMove(cardIndex, card, top, false); // false = not crit yet check inside
+            blindMode = false;
+            blindIntensity = 0;
+            conn.send({ 
+                type: 'BLIND_CLEARED',
+                card: { suit: card.suit, value: card.value },
+                isCrit: (COUNTER_MAP[card.suit] === top.suit)
+            });
+        } else {
+            // SALAH TEBAK
+            card.shake = 30; // Animasi getar
+            playSound('error');
+            showFloatingText("WRONG CARD!", card.x, card.y - 70, "red");
+            turn = 'opponent'; // Giliran balik ke pemilik Moon
+            conn.send({ type: 'BLIND_FAIL' });
+        }
         return;
     }
 
-    if (isValidMove(card, top)) {
-        myHand.splice(cardIndex, 1);
-        discardPile.push(card);
-        card.targetX = width/2; card.targetY = height/2;
-        playSound('play');
+    // LOGIKA EXTRA TURN PEMILIK MOON (Wajib Basic)
+    if (mustPlayBasic) {
+        if (card.suit === 'moon') {
+            card.shake = 20;
+            showFloatingText("Basic Card Only!", card.x, card.y - 70, "red");
+            return;
+        }
+        if (!BASIC_SUITS.includes(card.suit)) return; // Safety
+    }
 
-        let isCrit = COUNTER_MAP[card.suit] === top.suit;
-        
-        if(isCrit) {
-            playSound('crit');
-            showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
-            if(isHost) {
-                for(let i=0; i<2; i++) {
-                    let penalty = drawCardFromDeckLogic(); 
-                    if(penalty) {
-                        setTimeout(() => {
-                            conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
-                            opponentHand.push(new Card('fire',1));
-                        }, i * 200); 
-                    }
-                }
+    // LOGIKA NORMAL / MOON PLAY
+    if (isValidMove(card, top)) {
+        if (card.suit === 'moon') {
+            // KELUARKAN MOON CARD
+            executeMove(cardIndex, card, top, false);
+            
+            // Efek Moon untuk Saya
+            spawnExplosion(width/2, height/2, COLORS.moon);
+            playSound('moon');
+            blindMode = true;
+            blindIntensity = 0.1; // Gelap 10%
+            mustPlayBasic = true; // Flag harus jalan lagi
+            
+            // Turn JANGAN diganti, saya jalan lagi
+            turn = 'me'; 
+            showFloatingText("EXTRA TURN (Basic Only)", width/2, height/2 + 100, COLORS.moon);
+
+            conn.send({ type: 'MOON_ATTACK' });
+
+        } else {
+            // KARTU BIASA
+            let isCrit = COUNTER_MAP[card.suit] === top.suit;
+            executeMove(cardIndex, card, top, isCrit);
+
+            if (mustPlayBasic) {
+                // Ini adalah langkah follow-up setelah Moon
+                mustPlayBasic = false;
+                conn.send({ 
+                    type: 'MOON_FOLLOWUP', 
+                    card: { suit: card.suit, value: card.value },
+                    isCrit: isCrit 
+                });
+                turn = 'opponent'; // Sekarang baru giliran lawan (yang sedang buta)
+            } else {
+                // Langkah Normal
+                conn.send({
+                    type: 'OPPONENT_MOVE',
+                    card: { suit: card.suit, value: card.value },
+                    isCrit: isCrit
+                });
+                turn = 'opponent';
             }
         }
-
-        conn.send({
-            type: 'OPPONENT_MOVE',
-            card: { suit: card.suit, value: card.value },
-            isCrit: isCrit
-        });
 
         if(myHand.length === 0) {
             endGame("YOU WIN!", "Victory Achieved");
-            return;
         }
 
-        turn = 'opponent';
     } else {
+        // Invalid Normal Move
         card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
         showFloatingText("Invalid Move", card.x, card.y - 50, "red");
+        playSound('error');
+    }
+}
+
+function executeMove(index, card, top, isCrit) {
+    myHand.splice(index, 1);
+    discardPile.push(card);
+    card.targetX = width/2; card.targetY = height/2;
+    playSound('play');
+
+    if(isCrit) {
+        playSound('crit');
+        showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
+        if(isHost) {
+            for(let i=0; i<2; i++) {
+                let penalty = drawCardFromDeckLogic(); 
+                if(penalty) {
+                    setTimeout(() => {
+                        conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
+                        opponentHand.push(new Card('fire',1)); 
+                    }, i * 200); 
+                }
+            }
+        }
     }
 }
 
 function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value);
+    
     if(opponentHand.length > 0) opponentHand.pop(); 
     
     card.x = width/2; card.y = -100;
@@ -854,6 +781,7 @@ function processOpponentMove(cardData, isCrit) {
     if(isCrit) {
         playSound('crit');
         showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
+        
         if(isHost) {
             for(let i=0; i<2; i++) {
                 let penalty = drawCardFromDeckLogic();
@@ -880,16 +808,20 @@ function processOpponentMove(cardData, isCrit) {
 }
 
 function requestDraw() {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating || moonEffectActive) return;
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating || mustPlayBasic) return;
 
     let newCard;
     if(isHost) {
         newCard = drawCardFromDeckLogic();
     } else {
         let r = Math.random();
-        let s = r > 0.9 ? 'moon' : SUITS[Math.floor(Math.random()*3)]; 
-        let v = s === 'moon' ? 0 : Math.floor(Math.random()*9)+1;
-        newCard = new Card(s, v);
+        // Kecil kemungkinan dapat Moon saat draw manual
+        if(r < 0.05) newCard = new Card('moon', 0);
+        else {
+            let s = BASIC_SUITS[Math.floor(Math.random()*3)];
+            let v = Math.floor(Math.random()*9)+1;
+            newCard = new Card(s, v);
+        }
     }
 
     if(newCard) {
@@ -899,6 +831,8 @@ function requestDraw() {
         
         conn.send({ type: 'OPPONENT_DRAW' });
         
+        // Kalau sedang Blind Mode dan saya draw, turn tetap pindah ke lawan (Pemilik Moon)
+        // Dan saya tetap buta
         turn = 'opponent'; 
         showFloatingText("Turn Ended", width/2, height/2, "#aaa");
     }
@@ -906,9 +840,16 @@ function requestDraw() {
 
 function drawCardFromDeckLogic() {
     let r = Math.random();
-    let s = r > 0.95 ? 'moon' : SUITS[Math.floor(Math.random()*3)];
-    let v = s === 'moon' ? 0 : Math.floor(Math.random()*9)+1;
+    if(r < 0.05) return new Card('moon', 0);
+    let s = BASIC_SUITS[Math.floor(Math.random()*3)];
+    let v = Math.floor(Math.random()*9)+1;
     return new Card(s, v);
+}
+
+function spawnExplosion(x, y, color) {
+    for(let i=0; i<30; i++) {
+        particles.push(new Particle(x, y, color, true));
+    }
 }
 
 function endGame(title, subtitle) {
@@ -916,7 +857,6 @@ function endGame(title, subtitle) {
     document.getElementById('winner-text').innerText = title;
     document.getElementById('sub-winner-text').innerText = subtitle;
     document.getElementById('game-over').style.display = 'block';
-    deactivateMoonEclipse();
     setTimeout(()=> { if(peer) peer.destroy(); }, 2000);
 }
 
@@ -929,22 +869,20 @@ function draw() {
     let cardW = width < 600 ? 65 : 100;
     let cardH = cardW * 1.4;
 
-    // --- LAYER 1: BACKGROUND STUFF (Deck, Opponent, Discard) ---
-    // (Akan tertutup gelap jika Moon Active)
-    
-    // Deck
+    // 1. Deck
     let deckX = 60; let deckY = height / 2;
     for(let i=0; i<3; i++) {
         ctx.fillStyle = '#111'; ctx.strokeStyle = '#333';
         roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
         ctx.fill(); ctx.stroke();
     }
-    // Deck Top
     ctx.fillStyle = COLORS.cardBack; ctx.strokeStyle = COLORS.cardBackOutline; ctx.lineWidth = 2;
     roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - 6, cardW, cardH, 10);
     ctx.fill(); ctx.stroke();
-    
-    // Discard Pile
+    ctx.fillStyle = '#fff'; ctx.font = "12px Orbitron"; ctx.textAlign = "center";
+    ctx.fillText("DECK", deckX, deckY + cardH/2 + 20);
+
+    // 2. Discard Pile (Berada di bawah darkness overlay)
     if (discardPile.length > 0) {
         let startIdx = Math.max(0, discardPile.length - 3);
         for(let i = startIdx; i < discardPile.length; i++) {
@@ -953,9 +891,12 @@ function draw() {
             if(!isAnimating && Math.abs(c.y - height/2) < 2) c.y = height/2;
             c.draw(ctx, true, undefined, undefined, cardW, cardH);
         }
+    } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 2;
+        roundRect(ctx, width/2 - cardW/2, height/2 - cardH/2, cardW, cardH, 10); ctx.stroke();
     }
 
-    // Opponent Hand
+    // 3. Opponent Hand
     let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
     let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
     opponentHand.forEach((c, i) => {
@@ -963,57 +904,42 @@ function draw() {
         c.targetY = -cardH * 0.4;
         c.draw(ctx, false, undefined, undefined, cardW, cardH);
     });
-    
-    // Particles (Draw here so they can be behind darkness or front, let's keep them here)
-    particles.forEach(p => p.draw(ctx));
 
-    // --- LAYER 2: DARKNESS OVERLAY (ECLIPSE) ---
-    // Jika moonEffectActive, gambar layar hitam transparan DI ATAS background & deck/discard
-    // Tapi DI BAWAH tangan kita.
-    if (moonEffectActive) {
-        if(moonDarknessAlpha < 0.95) moonDarknessAlpha += 0.05; // Fade In Animation
-        ctx.fillStyle = `rgba(0, 0, 0, ${moonDarknessAlpha})`;
+    // 4. DARKNESS OVERLAY (LAYER GELAP)
+    if (blindMode) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${blindIntensity})`;
         ctx.fillRect(0, 0, width, height);
-        
-        // Optional: Draw glow in center where moon is
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        let grad = ctx.createRadialGradient(width/2, height/2, 10, width/2, height/2, 300);
-        grad.addColorStop(0, 'rgba(157, 140, 194, 0.4)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0,0,width,height);
-        ctx.restore();
     }
 
-    // --- LAYER 3: MY HAND (RISING LAYER) ---
-    // Digambar SETELAH Darkness Overlay agar terlihat "Naik" dan jelas
+    // 5. My Hand (Ditaruh DI ATAS layer gelap jika blind mode aktif)
+    // Supaya player tetap bisa lihat kartunya sendiri saat One Shot Chance
     let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
+    
+    // Jika blind mode 100% (posisi lawan), naikkan kartu sedikit biar jelas
+    let handYOffset = (blindMode && blindIntensity === 1.0) ? -50 : 0;
+
     myHand.forEach((c, i) => {
         c.targetX = pStart + i * pSpread;
-        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
-        c.width = cardW; c.height = cardH;
+        // Kalau blind mode, kartu naik (biar ga ketutup UI browser bawah kalau ada)
+        let baseHeight = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
+        c.targetY = baseHeight + handYOffset;
         
-        // Add Glow effect to hand cards during Eclipse to make them pop
-        if(moonEffectActive) {
-            ctx.shadowColor = "#ffffff";
-            ctx.shadowBlur = 30;
-        }
-
+        c.width = cardW; c.height = cardH;
         c.draw(ctx, true);
-        ctx.shadowBlur = 0; // Reset
     });
 
-    // --- UI & TEXTS ---
+    // Particles & Text (Render di atas segalanya)
+    particles.forEach(p => p.draw(ctx));
     floatingTexts.forEach(t => t.draw(ctx));
 
-    if(gameState === 'PLAYING' && !isAnimating && !moonEffectActive) {
+    if(gameState === 'PLAYING' && !isAnimating) {
         ctx.font = "bold 16px Orbitron"; 
         ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888';
         ctx.textAlign = 'center';
         let txt = turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN";
-        if(waitingForCombo) txt = "SELECT ELEMENT TO COMBINE!";
+        if(mustPlayBasic) txt = "COMBO: PLAY BASIC CARD!";
+        if(blindMode && blindIntensity === 1.0 && turn === 'me') txt = "GUESS THE CARD!";
         ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
     }
 }
@@ -1033,9 +959,8 @@ function loop() { update(); draw(); requestAnimationFrame(loop); }
 
 // --- INPUTS ---
 function handleInput(x, y) {
-    if (gameState !== 'PLAYING' || isAnimating) return;
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
 
-    // Check Hand First (Interaction always allowed)
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
         if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
@@ -1044,15 +969,14 @@ function handleInput(x, y) {
         }
     }
 
-    // If Moon Active, BLOCK Deck Click
-    if (moonEffectActive) return;
-    if (turn !== 'me') return;
-
-    let deckX = 60; let deckY = height/2;
-    let w = width < 600 ? 65 : 100; let h = w*1.4;
-    if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
-        y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
-        requestDraw();
+    // Draw card input (Disabled if Blind Mode or Must Play Basic)
+    if (!blindMode && !mustPlayBasic) {
+        let deckX = 60; let deckY = height/2;
+        let w = width < 600 ? 65 : 100; let h = w*1.4;
+        if (x > deckX - w/2 - 20 && x < deckX + w/2 + 20 &&
+            y > deckY - h/2 - 20 && y < deckY + h/2 + 20) {
+            requestDraw();
+        }
     }
 }
 
@@ -1084,8 +1008,9 @@ function drawElementIcon(ctx, type, x, y, s) {
     } else if (type === 'leaf') {
         ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s);
     } else if (type === 'moon') {
+        // Ikon Bulan Sabit
         ctx.arc(0, 0, s, 0.25 * Math.PI, 1.25 * Math.PI, false);
-        ctx.arc(-s * 0.4, -s * 0.4, s * 0.8, 1.25 * Math.PI, 0.25 * Math.PI, true);
+        ctx.arc(-s * 0.3, -s * 0.3, s * 0.8, 1.25 * Math.PI, 0.25 * Math.PI, true);
     }
     ctx.fill(); ctx.restore();
 }
