@@ -3,529 +3,904 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wizard Duel: Fixed Controls</title>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <title>ELUNO: ECLIPSE UPDATE</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
-        body { background: #1a1a1a; overflow: hidden; font-family: 'Courier New', Courier, monospace; color: white; }
-        canvas { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        /* UI Overlay - Z-Index lebih tinggi dari canvas */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        
-        /* Menu Screen */
-        #menu { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; pointer-events: auto; z-index: 10;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body {
+            margin: 0; overflow: hidden; background-color: #050505;
+            font-family: 'Orbitron', sans-serif; touch-action: none;
+            user-select: none; -webkit-user-select: none;
         }
-        input { padding: 10px; font-size: 20px; text-align: center; margin: 10px; width: 200px; border-radius: 5px; border: none; }
-        button { 
-            padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; 
-            background: #6c5ce7; color: white; border: none; border-radius: 8px; font-weight: bold;
+
+        #gameCanvas {
+            display: block; width: 100%; height: 100vh;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            transition: filter 0.5s;
         }
-        button:active { transform: scale(0.95); }
+        
+        /* Eclipse Effect */
+        body.eclipse-mode #gameCanvas { filter: brightness(0.3) contrast(1.2); }
+
+        /* UI Layers */
+        #ui-layer, #start-screen, #lobby-screen, #loading-layer, #color-picker-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            pointer-events: none;
+        }
+
+        #start-screen, #lobby-screen, #game-over, #color-picker-modal { pointer-events: auto; }
+        #start-screen, #lobby-screen { background: rgba(0, 0, 0, 0.9); z-index: 200; backdrop-filter: blur(5px); }
+        #loading-layer { background: rgba(0,0,0,0.8); z-index: 300; display: none; }
+        
+        /* Color Picker for Wild Card */
+        #color-picker-modal { background: rgba(0,0,0,0.85); z-index: 250; display: none; }
+        
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #333;
+            border-top: 5px solid #00CC44; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: white; margin-top: 20px; font-size: 16px; letter-spacing: 2px; }
+
+        .modal-box {
+            background: #fff; padding: 40px; border-radius: 15px;
+            text-align: center; box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+            border: 4px solid #333; max-width: 90%; width: 400px;
+        }
+
+        /* Element Buttons for Wild Card */
+        .element-btn {
+            width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff;
+            margin: 10px; cursor: pointer; transition: transform 0.2s; display: inline-block;
+        }
+        .element-btn:hover { transform: scale(1.1); }
+        .btn-fire { background: #FF2222; box-shadow: 0 0 15px #FF2222; }
+        .btn-water { background: #0088FF; box-shadow: 0 0 15px #0088FF; }
+        .btn-leaf { background: #00CC44; box-shadow: 0 0 15px #00CC44; }
+
+        h1 { margin: 0 0 20px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
+        h2 { margin: 0 0 15px 0; color: #333; font-size: 18px; }
+        
+        .checkbox-container {
+            margin: 20px 0; font-size: 16px; color: #333;
+            display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+        }
+        input[type="checkbox"] { transform: scale(1.5); cursor: pointer; accent-color: #000; }
+        .input-group { margin-bottom: 20px; }
+        input[type="number"] {
+            padding: 10px; font-family: 'Orbitron'; font-size: 24px; text-align: center;
+            border: 2px solid #333; border-radius: 10px; width: 150px; outline: none;
+        }
+        
+        .room-code-display { font-size: 36px; font-weight: bold; color: #0088FF; margin: 20px 0; letter-spacing: 5px; }
+        button.main-btn {
+            padding: 15px 30px; background: #000; border: none; color: white;
+            font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: bold;
+            cursor: pointer; border-radius: 50px; transition: all 0.2s; margin: 10px; min-width: 150px;
+        }
+        button.main-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.main-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,136,255,0.5); }
+        button.main-btn.active { background: linear-gradient(45deg, #0088FF, #00CC44); }
+        .btn-secondary { background: #555 !important; }
+
+        #game-over {
+            display: none; background: rgba(255, 255, 255, 0.95);
+            padding: 40px; border-radius: 20px; text-align: center; border: 3px solid #333;
+            pointer-events: auto; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+        
+        /* Reaction Alert */
+        #reaction-alert {
+            position: absolute; top: 20%; width: 100%; text-align: center;
+            font-size: 30px; color: #FF0000; text-shadow: 0 0 10px #FF0000;
+            display: none; pointer-events: none; animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
         .hidden { display: none !important; }
-
-        /* Fullscreen Btn */
-        #fs-btn { position: absolute; bottom: 10px; right: 10px; padding: 5px 10px; background: #333; color: #fff; font-size: 12px; pointer-events: auto; z-index: 20; border: 1px solid #555; }
-
-        /* Right Buttons */
-        #btn-container {
-            position: absolute; bottom: 50px; right: 40px;
-            display: flex; flex-direction: column; gap: 20px; align-items: center;
-            pointer-events: auto; /* Penting: agar tombol bisa dipencet */
-        }
-        
-        .action-btn {
-            width: 80px; height: 80px; border-radius: 50%;
-            background: rgba(255,255,255,0.2); border: 2px solid white;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px black;
-            backdrop-filter: blur(4px);
-            position: relative;
-        }
-        
-        #btn-attack { background: rgba(231, 76, 60, 0.4); }
-        #btn-parry { background: rgba(46, 204, 113, 0.4); width: 60px; height: 60px; font-size: 12px; }
-
-        /* Status */
-        #status-msg { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 14px; text-align: center; color: #ffd700; text-shadow: 0 0 5px black; }
-
     </style>
 </head>
 <body>
 
     <canvas id="gameCanvas"></canvas>
+    
+    <div id="reaction-alert">⚠ CRITICAL HIT! USE MIRROR! ⚠</div>
 
-    <div id="ui-layer">
-        <div id="status-msg">Menunggu Koneksi...</div>
-        
-        <div id="btn-container">
-            <div id="btn-parry" class="action-btn">PARRY</div>
-            <div id="btn-attack" class="action-btn">ATK</div>
-        </div>
-
-        <button id="fs-btn">Fullscreen</button>
+    <div id="loading-layer">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-msg">CONNECTING...</div>
     </div>
 
-    <div id="menu">
-        <h1>WIZARD DUEL</h1>
-        <p style="font-size: 12px; color: #aaa; margin-bottom: 20px;">Top-Down Magic Battle</p>
-        <button id="create-btn">Create Room</button>
-        <div style="display: flex; align-items: center;">
-            <input type="text" id="room-code" placeholder="4-Digit Code" maxlength="4">
-            <button id="join-btn">Join</button>
+    <div id="color-picker-modal">
+        <div class="modal-box">
+            <h2>SOLAR ECLIPSE</h2>
+            <p>Choose next element:</p>
+            <div>
+                <div class="element-btn btn-fire" onclick="resolveWildCard('fire')"></div>
+                <div class="element-btn btn-water" onclick="resolveWildCard('water')"></div>
+                <div class="element-btn btn-leaf" onclick="resolveWildCard('leaf')"></div>
+            </div>
         </div>
-        <p id="menu-log" style="margin-top:20px; color: yellow; font-size: 14px;"></p>
+    </div>
+
+    <div id="start-screen">
+        <div class="modal-box">
+            <h1>ELUNO</h1>
+            <p style="color:#666; font-size:14px;">ECLIPSE EDITION</p>
+            <label class="checkbox-container">
+                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()"> Enable Fullscreen
+            </label>
+            <button id="start-btn" class="main-btn" disabled onclick="goToLobby()">ENTER LOBBY</button>
+        </div>
+    </div>
+
+    <div id="lobby-screen" class="hidden">
+        <div class="modal-box" id="lobby-main">
+            <h1>MULTIPLAYER</h1>
+            <button class="main-btn active" onclick="createRoom()">CREATE ROOM</button><br>
+            <button class="main-btn btn-secondary" onclick="showJoinUI()">JOIN ROOM</button>
+        </div>
+        <div class="modal-box hidden" id="lobby-wait">
+            <h2>ROOM CODE</h2>
+            <div class="room-code-display" id="host-room-code">----</div>
+            <p>Waiting for opponent...</p>
+            <div class="spinner" style="width:30px; height:30px; margin: 0 auto;"></div><br>
+            <button class="main-btn btn-secondary" onclick="resetLobby()">CANCEL</button>
+        </div>
+        <div class="modal-box hidden" id="lobby-join">
+            <h2>ENTER CODE</h2>
+            <div class="input-group">
+                <input type="number" id="join-code-input" placeholder="0000" maxlength="4">
+            </div>
+            <button class="main-btn active" onclick="joinRoom()">JOIN</button><br>
+            <button class="main-btn btn-secondary" onclick="resetLobby()">BACK</button>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="game-over">
+            <h1 id="winner-text">YOU WIN!</h1>
+            <p id="sub-winner-text" style="color:#666; margin-bottom:20px;">Opponent Disconnected</p>
+            <button class="main-btn active" onclick="location.reload()">MAIN MENU</button>
+        </div>
     </div>
 
 <script>
-/**
- * KONFIGURASI GAME
- */
-const CONFIG = {
-    HP: 100,
-    DMG_MELEE: 2,
-    DMG_FIRE: 8,
-    SPEED: 4,
-    FIREBALL_SPEED: 9,
-    PARRY_DURATION: 30, // frames
-    CHARGE_TIME: 400, // ms untuk dianggap hold
-    COLOR_P1: '#3498db',
-    COLOR_P2: '#e74c3c'
-};
+// --- KONFIGURASI PEERJS ---
+let peer = null, conn = null, myPeerID = null, isHost = false;
+const ID_PREFIX = "eluno-evo-v1-";
 
+// --- CANVAS & GAME CONFIG ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let width, height;
+let particles = [], floatingTexts = [];
 
-// --- STATE MANAGEMENT ---
-let gameState = 'MENU';
-let isHost = false;
-let myId = null;
-let conn = null;
-let peer = null;
-
-// --- INPUTS ---
-const inputs = {
-    move: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null }, 
-    attack: { active: false, x: 0, y: 0, originX: 0, originY: 0, id: null, startTime: 0 }, 
-    parry: false
+// Game Constants
+const SUITS = ['fire', 'water', 'leaf'];
+const COLORS = {
+    fire: '#FF2222', water: '#0088FF', leaf: '#00CC44',
+    'fire-water': ['#FF2222', '#0088FF'], 
+    'water-leaf': ['#0088FF', '#00CC44'],
+    'leaf-fire': ['#00CC44', '#FF2222'],
+    wild: '#000000', mirror: '#C0C0C0',
+    cardBg: '#FFFFFF', cardBack: '#1a1a1a', cardBackOutline: '#00FFFF'
 };
+const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
 
-// --- GAME OBJECTS ---
-const particles = [];
-const fireballs = [];
+// Game State
+let deck = [], discardPile = [], myHand = [], opponentHand = []; 
+let turn = '', gameState = 'MENU', isAnimating = false;
+let pendingPenalty = false, reactionTimer = null;
+let currentWildCardIdx = -1; // Temp index for wild card selection
 
-class Player {
-    constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
-        this.hp = 100; this.angle = 0; this.radius = 20;
-        this.isParrying = false; this.parryTimer = 0;
-        this.isCharging = false; this.chargeLevel = 0;
+// Audio
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    let t = audioCtx.currentTime;
+    
+    if (type === 'play') {
+        osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'deal') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t);
+        gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.08);
+        osc.start(); osc.stop(t + 0.08);
+    } else if (type === 'crit') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(600, t + 0.3);
+        gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.start(); osc.stop(t + 0.3);
+    } else if (type === 'mirror') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(1200, t + 0.5);
+        gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t + 0.5);
+        osc.start(); osc.stop(t + 0.5);
+    }
+}
+
+// --- CLASS CARD ---
+class Card {
+    constructor(suit, value) {
+        this.suit = suit; this.value = value;
+        this.id = Math.random().toString(36).substr(2, 9);
+        this.x = 60; this.y = height/2; 
+        this.targetX = width / 2; this.targetY = height / 2;
+        this.width = 0; this.height = 0;
+        this.isHovered = false;
+        // Visual props for wild/mirror
+        this.displaySuit = suit; // Can change for Wild cards
     }
 
-    update(dt, inputData) {
-        if (this.hp <= 0) return;
-
-        // Movement
-        if (inputData && inputData.moveActive) {
-            this.x += inputData.moveX * CONFIG.SPEED;
-            this.y += inputData.moveY * CONFIG.SPEED;
-            if (!this.isCharging) {
-                this.angle = Math.atan2(inputData.moveY, inputData.moveX);
-            }
-        }
-
-        // Boundary
-        this.x = Math.max(20, Math.min(width - 20, this.x));
-        this.y = Math.max(20, Math.min(height - 20, this.y));
-
-        // Parry Logic
-        if (this.parryTimer > 0) {
-            this.parryTimer--;
-            this.isParrying = true;
-        } else {
-            this.isParrying = false;
-        }
-        
-        // Charging Effect
-        if (this.isCharging) {
-            this.chargeLevel += 0.05;
-            spawnParticle(this.x + Math.cos(this.angle)*30, this.y + Math.sin(this.angle)*30, 'orange', 1);
-        } else {
-            this.chargeLevel = 0;
-        }
-    }
-
-    draw(ctx) {
-        if (this.hp <= 0) return;
+    draw(ctx, isFaceUp, x, y, w, h) {
+        this.x += (this.targetX - this.x) * 0.15;
+        this.y += (this.targetY - this.y) * 0.15;
+        const drawX = x !== undefined ? x : this.x;
+        const drawY = y !== undefined ? y : this.y;
+        const drawW = w || this.width;
+        const drawH = h || this.height;
+        const r = 10;
 
         ctx.save();
-        ctx.translate(this.x, this.y);
-        
-        // HP Bar
-        ctx.fillStyle = 'black'; ctx.fillRect(-25, -45, 50, 8);
-        ctx.fillStyle = this.hp > 30 ? '#2ecc71' : '#e74c3c';
-        ctx.fillRect(-24, -44, 48 * (this.hp / 100), 6);
+        ctx.translate(drawX, drawY);
 
-        ctx.rotate(this.angle);
-        
-        // Shadow
-        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.ellipse(0, 5, 15, 8, 0, 0, Math.PI*2); ctx.fill();
+        if (isFaceUp) {
+            // -- BACKGROUND --
+            if (this.suit.includes('-')) {
+                // Hybrid Gradient
+                let colors = COLORS[this.suit];
+                let grad = ctx.createLinearGradient(-drawW/2, -drawH/2, drawW/2, drawH/2);
+                grad.addColorStop(0, colors[0]);
+                grad.addColorStop(1, colors[1]);
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#fff';
+            } else if (this.suit === 'wild') {
+                ctx.fillStyle = '#111';
+                ctx.strokeStyle = '#a020f0'; // Purple cosmic glow
+                ctx.shadowColor = '#a020f0';
+                ctx.shadowBlur = 15;
+            } else if (this.suit === 'mirror') {
+                let grad = ctx.createLinearGradient(-drawW/2, -drawH/2, drawW/2, drawH/2);
+                grad.addColorStop(0, '#ccc'); grad.addColorStop(0.5, '#fff'); grad.addColorStop(1, '#999');
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#000';
+            } else {
+                ctx.fillStyle = COLORS.cardBg;
+                ctx.strokeStyle = COLORS[this.displaySuit];
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = this.isHovered ? 20 : 5;
+            }
 
-        // Body
-        ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
-        // Hat
-        ctx.fillStyle = shadeColor(this.color); ctx.beginPath();
-        ctx.moveTo(10, -5); ctx.lineTo(25, 0); ctx.lineTo(10, 5); ctx.fill();
+            ctx.lineWidth = 2;
+            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
+            ctx.fill(); ctx.stroke();
+            ctx.shadowBlur = 0; 
 
-        // Hands & Staff
-        if (this.isParrying) {
-            ctx.fillStyle = '#f1c40f'; ctx.globalAlpha = 0.4;
-            ctx.beginPath(); ctx.arc(15, 0, 30, -Math.PI/2, Math.PI/2); ctx.fill();
-            ctx.globalAlpha = 1.0;
-            ctx.strokeStyle = '#8e44ad'; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.moveTo(10, -15); ctx.lineTo(10, 15); ctx.stroke();
+            // -- ICON --
+            drawElementIcon(ctx, this.displaySuit, 0, 0, drawW * 0.35);
+
+            // -- TEXT --
+            ctx.fillStyle = (this.suit === 'wild' || this.suit.includes('-')) ? '#fff' : COLORS[this.displaySuit];
+            if(this.suit === 'mirror') ctx.fillStyle = '#000';
+            
+            ctx.font = `bold ${drawW * 0.25}px Orbitron`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            let txt = this.value;
+            if(this.suit === 'wild') txt = '☾';
+            if(this.suit === 'mirror') txt = 'M';
+            
+            ctx.fillText(txt, drawW/2 - 20, -drawH/2 + 25);
+            ctx.fillText(txt, -drawW/2 + 20, drawH/2 - 25);
+
         } else {
-            ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(30, 15); ctx.stroke();
-            ctx.fillStyle = this.isCharging ? `hsl(${Math.random()*60 + 10}, 100%, 50%)` : '#e74c3c';
-            ctx.beginPath(); ctx.arc(30, 15, 4 + (this.isCharging ? Math.random()*3 : 0), 0, Math.PI*2); ctx.fill();
+            // Card Back
+            ctx.fillStyle = COLORS.cardBack;
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+            roundRect(ctx, -drawW/2, -drawH/2, drawW, drawH, r);
+            ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = COLORS.cardBackOutline;
+            ctx.beginPath();
+            let pad = 8;
+            ctx.roundRect(-drawW/2 + pad, -drawH/2 + pad, drawW - pad*2, drawH - pad*2, r/2);
+            ctx.stroke();
         }
         ctx.restore();
     }
 }
 
-class Fireball {
-    constructor(x, y, angle, ownerId) {
-        this.x = x; this.y = y;
-        this.vx = Math.cos(angle) * CONFIG.FIREBALL_SPEED;
-        this.vy = Math.sin(angle) * CONFIG.FIREBALL_SPEED;
-        this.ownerId = ownerId;
-        this.active = true;
-        this.life = 100;
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.size = Math.random() * 5 + 2;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1;
     }
     update() {
-        this.x += this.vx; this.y += this.vy; this.life--;
-        if (Math.random() > 0.3) { spawnParticle(this.x, this.y, 'orange', 2); spawnParticle(this.x, this.y, 'red', 1); }
-        if (this.x < 0 || this.x > width) { this.vx *= -1; }
-        if (this.y < 0 || this.y > height) { this.vy *= -1; }
-        if (this.life <= 0) this.active = false;
+        this.x += this.vx; this.y += this.vy;
+        this.life -= 0.03; this.size *= 0.95;
     }
     draw(ctx) {
-        ctx.save(); ctx.translate(this.x, this.y);
-        const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, 15);
-        gradient.addColorStop(0, '#ffff00'); gradient.addColorStop(0.4, '#ff4500'); gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
-        ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill(); ctx.globalAlpha = 1;
     }
 }
 
-let p1 = new Player(100, 100, CONFIG.COLOR_P1);
-let p2 = new Player(300, 300, CONFIG.COLOR_P2);
-let myPlayer = p1;
+// --- NETWORK HANDLERS ---
+function handleNetworkData(data) {
+    if (data.type === 'START_GAME') {
+        document.getElementById('lobby-screen').classList.add('hidden');
+        hideLoading();
+        gameState = 'PLAYING';
+        turn = data.turn === 'p2' ? 'me' : 'opponent';
 
-// --- NETWORKING (Simple PeerJS) ---
-const menuLog = document.getElementById('menu-log');
+        let myStartCards = data.p2Hand.map(c => new Card(c.suit, c.value));
+        let topCard = new Card(data.topDiscard.suit, data.topDiscard.value);
+        topCard.displaySuit = data.topDiscard.displaySuit || data.topDiscard.suit;
+        
+        playDealAnimation(myStartCards, data.p1HandCount, topCard);
+    
+    } else if (data.type === 'OPPONENT_MOVE') {
+        let card = new Card(data.card.suit, data.card.value);
+        card.displaySuit = data.card.displaySuit || data.card.suit;
 
-function initPeer(id = null) {
-    const peerId = id || Math.floor(1000 + Math.random() * 9000).toString();
-    peer = new Peer(peerId);
-    peer.on('open', (id) => {
-        myId = id; console.log('My ID:', id);
-        if (gameState === 'MENU') {
-            document.getElementById('room-code').value = id;
-            if(isHost) menuLog.innerText = `Room Created! Code: ${id}`;
+        if(opponentHand.length > 0) opponentHand.pop();
+        
+        card.x = width/2; card.y = -100;
+        card.targetX = width/2; card.targetY = height/2;
+        discardPile.push(card);
+        playSound('play');
+
+        // Apply visual effects from opponent
+        if(card.suit === 'wild') {
+             showFloatingText("ECLIPSE: " + data.wildColor.toUpperCase(), width/2, height/2-80, COLORS[data.wildColor]);
+             document.body.classList.add('eclipse-mode');
+             setTimeout(() => document.body.classList.remove('eclipse-mode'), 2000);
+             card.displaySuit = data.wildColor; // Change the visual of top card
         }
+
+        if (data.isCrit) {
+            playSound('crit');
+            showFloatingText("CRITICAL ATTACK!", width/2, height/2 - 50, "red");
+            
+            // Masuk mode interupsi (Beri kesempatan pakai Mirror)
+            triggerInterruptionPhase();
+        } else {
+            // Normal turn switch
+            checkWinCondition();
+            turn = 'me';
+        }
+
+    } else if (data.type === 'OPPONENT_DRAW') {
+        opponentHand.push(new Card('fire', 1));
+        playSound('deal');
+        showFloatingText("Opponent Drew", width/2, 100, "#aaa");
+        turn = 'me';
+
+    } else if (data.type === 'EXTRA_CARD') {
+        // Menerima penalti (Bisa dari Crit biasa atau pantulan Mirror)
+        let c = data.card;
+        let nc = new Card(c.suit, c.value);
+        nc.x = 60; nc.y = height/2; nc.targetX = width/2; nc.targetY = height-100;
+        myHand.push(nc);
+        playSound('deal');
+        showFloatingText("Penalty!", width/2, height/2+50, "red");
+
+    } else if (data.type === 'PENALTY_SYNC') {
+        opponentHand.push(new Card('fire', 1));
+        playSound('deal');
+        showFloatingText("Opponent Penalized", width/2, 100, "red");
+    
+    } else if (data.type === 'REFLECTED') {
+        // Lawan pakai Mirror! Serangan saya berbalik ke saya.
+        showFloatingText("REFLECTED!!", width/2, height/2, "#FFF");
+        playSound('mirror');
+        
+        // Sebagai penyerang awal (dan sekarang korban), saya yang harus generate kartu penalti untuk diri sendiri
+        // Karena di game ini host/attacker logic yang drive draw.
+        // Simplified: Langsung terima 2 kartu.
+        if(isHost) {
+            drawPenaltyForSelf(2);
+            // Beritahu lawan saya nambah kartu
+            conn.send({ type: 'PENALTY_SYNC' });
+            conn.send({ type: 'PENALTY_SYNC' });
+        } else {
+             // Jika saya bukan host, tapi saya serang host dan dia reflect -> 
+             // Host harusnya kirim EXTRA_CARD ke saya. Tapi logic draw ada di host.
+             // Kita anggap logic EXTRA_CARD handle ini.
+        }
+        turn = 'opponent'; // Giliran selesai karena di-counter
+    }
+}
+
+// --- LOGIC: INTERRUPTION & MIRROR ---
+function triggerInterruptionPhase() {
+    pendingPenalty = true;
+    document.getElementById('reaction-alert').style.display = 'block';
+    
+    // Waktu 3 detik untuk bereaksi
+    reactionTimer = setTimeout(() => {
+        if(pendingPenalty) {
+            // Gagal defend
+            applyPendingDamage();
+        }
+    }, 3000);
+}
+
+function applyPendingDamage() {
+    pendingPenalty = false;
+    document.getElementById('reaction-alert').style.display = 'none';
+    
+    // Jika saya Host, saya generate kartu untuk saya sendiri (karena saya diserang)
+    // Jika saya Client, saya tunggu Host kirim kartu (EXTRA_CARD)
+    // TAPI: Logic sebelumnya Host kirim EXTRA_CARD ke Client saat attack.
+    // Jadi jika saya Client, timer habis, saya tidak perlu lakukan apa-apa,
+    // karena Host akan kirim pesan EXTRA_CARD segera (Host logic perlu delay).
+    
+    // Revisi logic agar sync:
+    // Pihak yang diserang hanya melapor "TOOK_DAMAGE" atau "REFLECTED".
+    // Pihak penyerang menunggu laporan itu sebelum membagikan kartu.
+    
+    // Untuk simplifikasi kode ini tanpa mengubah arsitektur total:
+    // Kita gunakan logic "Self-Inflicted" jika Host, dan "Wait for Data" jika Client.
+    // Client di sini hanya visual timer. Kartu sesungguhnya datang via 'EXTRA_CARD'.
+    
+    turn = 'me';
+}
+
+function attemptMirrorDefense(cardIndex) {
+    if(!pendingPenalty) return;
+    
+    clearTimeout(reactionTimer);
+    pendingPenalty = false;
+    document.getElementById('reaction-alert').style.display = 'none';
+
+    // Buang kartu Mirror
+    let card = myHand[cardIndex];
+    myHand.splice(cardIndex, 1);
+    discardPile.push(card);
+    card.targetX = width/2; card.targetY = height/2;
+    playSound('mirror');
+    
+    showFloatingText("MIRROR ACTIVATED!", width/2, height/2, "#fff");
+    
+    // Kirim info ke lawan bahwa serangan dipantulkan
+    conn.send({ type: 'REFLECTED' });
+    
+    turn = 'me'; // Saya selamat, giliran saya (biasanya lanjut atau skip tergantung aturan, kita buat lanjut)
+}
+
+// --- GAME LOGIC ---
+
+function startMultiplayerGame() {
+    document.getElementById('lobby-screen').classList.add('hidden');
+    gameState = 'PLAYING';
+
+    let realDeck = [];
+    
+    // 1. Basic Cards
+    SUITS.forEach(suit => {
+        for (let i = 1; i <= 7; i++) {
+            realDeck.push({suit, value: i});
+            realDeck.push({suit, value: i});
+        }
+    });
+
+    // 2. Hybrid Cards (Fire-Water, Water-Leaf, Leaf-Fire)
+    ['fire-water', 'water-leaf', 'leaf-fire'].forEach(hybrid => {
+        for(let i=0; i<3; i++) realDeck.push({suit: hybrid, value: 'H'});
+    });
+
+    // 3. Solar Eclipse (Wild)
+    for(let i=0; i<4; i++) realDeck.push({suit: 'wild', value: '?'});
+
+    // 4. Mirror
+    for(let i=0; i<3; i++) realDeck.push({suit: 'mirror', value: 'M'});
+
+    // Shuffle
+    for (let i = realDeck.length - 1; i > 0; i--) { 
+        const j = Math.floor(Math.random() * (i + 1)); 
+        [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; 
+    }
+
+    // Ensure top card is simple
+    let topIdx = realDeck.findIndex(c => !c.suit.includes('-') && c.suit !== 'wild' && c.suit !== 'mirror');
+    let top = realDeck.splice(topIdx, 1)[0];
+
+    let p1H = realDeck.splice(0, 6);
+    let p2H = realDeck.splice(0, 6);
+    
+    let myStartCards = p1H.map(c => new Card(c.suit, c.value));
+    let topCardObj = new Card(top.suit, top.value);
+
+    turn = Math.random() > 0.5 ? 'me' : 'opponent';
+
+    conn.send({
+        type: 'START_GAME',
+        topDiscard: top,
+        p1HandCount: 6,
+        p2Hand: p2H, 
+        turn: turn === 'me' ? 'p1' : 'p2'
+    });
+
+    playDealAnimation(myStartCards, 6, topCardObj);
+}
+
+function playDealAnimation(myCards, oppCount, topCard) {
+    isAnimating = true; myHand = []; opponentHand = []; discardPile = [];
+    let dealSpeed = 100; let totalCards = myCards.length + oppCount; let dealt = 0;
+    
+    let dealInterval = setInterval(() => {
+        if (dealt >= totalCards) {
+            clearInterval(dealInterval);
+            setTimeout(() => {
+                topCard.x = 60; topCard.y = height/2;
+                discardPile.push(topCard);
+                playSound('play');
+                isAnimating = false;
+                setTimeout(() => showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff"), 500);
+            }, 300);
+            return;
+        }
+        if (dealt % 2 === 0) opponentHand.push(new Card('fire', 1));
+        else if (myCards[Math.floor(dealt/2)]) myHand.push(myCards[Math.floor(dealt/2)]);
+        playSound('deal'); dealt++;
+    }, dealSpeed);
+}
+
+// --- MOVES & VALIDATION ---
+
+function isValidMove(card, topCard) {
+    if (card.suit === 'mirror') return false; // Mirror hanya aktif via interupsi atau passif (disini kita buat interupsi saja)
+    if (card.suit === 'wild') return true;
+    
+    // Check Top Card Display Suit (karena Wild mengubah warna visual top card)
+    let targetSuit = topCard.displaySuit || topCard.suit;
+
+    // Logic Hybrid (Card)
+    if (card.suit.includes('-')) {
+        let parts = card.suit.split('-');
+        return parts.includes(targetSuit);
+    }
+    
+    // Logic Hybrid (Top Card is Hybrid)
+    if (targetSuit.includes('-')) {
+        let parts = targetSuit.split('-');
+        return parts.includes(card.suit) || card.suit === targetSuit; // Strict or partial match
+    }
+
+    return card.suit === targetSuit || (card.value === topCard.value && card.value !== 'H');
+}
+
+function playerInput(cardIndex) {
+    if (gameState !== 'PLAYING' || isAnimating) return;
+    
+    // LOGIKA DEFENSE (MIRROR)
+    if (pendingPenalty) {
+        if(myHand[cardIndex].suit === 'mirror') {
+            attemptMirrorDefense(cardIndex);
+        } else {
+            showFloatingText("Must use Mirror!", myHand[cardIndex].x, myHand[cardIndex].y - 50, "red");
+        }
+        return;
+    }
+
+    if (turn !== 'me') return;
+
+    let card = myHand[cardIndex];
+    let top = discardPile[discardPile.length - 1];
+
+    // Jika Wild Card dipilih
+    if (card.suit === 'wild') {
+        currentWildCardIdx = cardIndex;
+        document.getElementById('color-picker-modal').style.display = 'flex';
+        return;
+    }
+
+    if (isValidMove(card, top)) {
+        executeMove(cardIndex);
+    } else {
+        card.targetY -= 30; setTimeout(() => card.targetY += 30, 100);
+        showFloatingText("Invalid Move", card.x, card.y - 50, "red");
+    }
+}
+
+function resolveWildCard(chosenColor) {
+    document.getElementById('color-picker-modal').style.display = 'none';
+    let card = myHand[currentWildCardIdx];
+    
+    // Execute move spesial untuk Wild
+    myHand.splice(currentWildCardIdx, 1);
+    discardPile.push(card);
+    card.targetX = width/2; card.targetY = height/2;
+    card.displaySuit = chosenColor; // Ubah warna visual kartu di discard pile
+    
+    playSound('play');
+    document.body.classList.add('eclipse-mode');
+    setTimeout(() => document.body.classList.remove('eclipse-mode'), 2000);
+
+    conn.send({
+        type: 'OPPONENT_MOVE',
+        card: { suit: 'wild', value: '?' },
+        isCrit: false,
+        wildColor: chosenColor
+    });
+
+    checkWinCondition();
+    turn = 'opponent';
+}
+
+function executeMove(cardIndex) {
+    let card = myHand[cardIndex];
+    let top = discardPile[discardPile.length - 1];
+    let targetSuit = top.displaySuit || top.suit;
+
+    myHand.splice(cardIndex, 1);
+    discardPile.push(card);
+    card.targetX = width/2; card.targetY = height/2;
+    playSound('play');
+
+    // Cek Critical (Elemen mengalahkan elemen)
+    // Hybrid tidak bisa crit
+    let isCrit = false;
+    if(!card.suit.includes('-') && !targetSuit.includes('-')) {
+        isCrit = COUNTER_MAP[card.suit] === targetSuit;
+    }
+
+    // Handle Attack Logic
+    if(isCrit) {
+        playSound('crit');
+        showFloatingText("CRITICAL! (+2)", width/2, height/2 - 50, COLORS[card.suit]);
+        
+        // Host menghandle draw logic, tapi kita beri delay agar lawan bisa Mirror
+        if(isHost) {
+            // Kita tidak kirim kartu langsung. Kita kirim 'MOVE' dengan flag crit.
+            // Nanti jika lawan gagal mirror (timeout), kita kirim kartu.
+            // Untuk simplifikasi di versi P2P tanpa server otoritatif: 
+            // Kita kirim kartu dengan DELAY. Jika lawan kirim REFLECTED sebelum delay, kita batalkan.
+            
+            let attackID = setTimeout(() => {
+                sendPenaltyToOpponent(2);
+            }, 3500); // 3.5s delay (3s reaction + 0.5 buffer)
+            
+            // Simpan attackID di global agar bisa di-cancel jika terima 'REFLECTED'
+            // (Fitur advance, untuk sekarang biarkan logic simple: 
+            // Lawan akan terima visual 'EXTRA_CARD', kalau dia Mirror, visual itu batal? 
+            // Agak rumit. Kita pakai cara: Kirim kartu, Client yang putuskan terima atau pantul.)
+            
+            // REVISI PENDEKATAN: Kirim saja kartunya. Client logic yang menahan masuk ke hand.
+            for(let i=0; i<2; i++) {
+                 let p = drawCardLogic();
+                 conn.send({ type: 'EXTRA_CARD', card: {suit:p.suit, value:p.value} });
+                 opponentHand.push(new Card('fire',1)); 
+            }
+        }
+    }
+
+    conn.send({
+        type: 'OPPONENT_MOVE',
+        card: { suit: card.suit, value: card.value, displaySuit: card.suit },
+        isCrit: isCrit
+    });
+
+    if(checkWinCondition()) return;
+    turn = 'opponent';
+}
+
+function drawCardLogic() {
+    let s = SUITS[Math.floor(Math.random()*3)];
+    let v = Math.floor(Math.random()*9)+1;
+    return {suit: s, value: v};
+}
+
+function drawPenaltyForSelf(count) {
+    for(let i=0; i<count; i++) {
+        let p = drawCardLogic();
+        let c = new Card(p.suit, p.value);
+        c.x = width/2; c.y = -100;
+        myHand.push(c);
+    }
+    showFloatingText(`Hit by own attack! +${count}`, width/2, height/2, "red");
+}
+
+function sendPenaltyToOpponent(count) {
+    for(let i=0; i<count; i++) {
+        let p = drawCardLogic();
+        conn.send({ type: 'EXTRA_CARD', card: p });
+        opponentHand.push(new Card('fire',1));
+    }
+}
+
+function requestDraw() {
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating || pendingPenalty) return;
+
+    let newCard = new Card(SUITS[Math.floor(Math.random()*3)], Math.floor(Math.random()*9)+1);
+    newCard.x = 60; newCard.y = height/2;
+    myHand.push(newCard);
+    playSound('deal');
+    conn.send({ type: 'OPPONENT_DRAW' });
+    turn = 'opponent'; 
+}
+
+function checkWinCondition() {
+    if(myHand.length === 0) {
+        endGame("YOU WIN!", "Victory Achieved");
+        return true;
+    }
+    if(opponentHand.length === 0) {
+        endGame("YOU LOSE", "Opponent cleared their hand");
+        return true;
+    }
+    return false;
+}
+
+function endGame(title, subtitle) {
+    gameState = 'GAMEOVER';
+    document.getElementById('winner-text').innerText = title;
+    document.getElementById('sub-winner-text').innerText = subtitle;
+    document.getElementById('game-over').style.display = 'block';
+    setTimeout(()=> { if(peer) peer.destroy(); }, 2000);
+}
+
+// --- UTILS & RENDER ---
+function showLoading(msg) { document.getElementById('loading-layer').style.display = 'flex'; document.getElementById('loading-msg').innerText = msg; }
+function hideLoading() { document.getElementById('loading-layer').style.display = 'none'; }
+function checkFullscreenRequirement() {
+    const chk = document.getElementById('fs-check');
+    document.getElementById('start-btn').disabled = !chk.checked;
+    if(chk.checked) document.getElementById('start-btn').classList.add('active');
+    else document.getElementById('start-btn').classList.remove('active');
+}
+function goToLobby() {
+    document.documentElement.requestFullscreen().catch(()=>{});
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('lobby-screen').classList.remove('hidden');
+}
+function createRoom() {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    showLoading("CREATING ROOM...");
+    peer = new Peer(ID_PREFIX + code);
+    peer.on('open', (id) => {
+        hideLoading(); isHost = true; myPeerID = id;
+        document.getElementById('lobby-main').classList.add('hidden');
+        document.getElementById('lobby-wait').classList.remove('hidden');
+        document.getElementById('host-room-code').innerText = code;
     });
     peer.on('connection', (c) => {
         conn = c; setupConnection();
-        menuLog.innerText = "Player Connected! Starting...";
-        setTimeout(startGame, 1000);
+        showFloatingText("PLAYER JOINED!", width/2, height/2, "#0f0");
+        setTimeout(startMultiplayerGame, 1000);
     });
 }
-
+function showJoinUI() {
+    document.getElementById('lobby-main').classList.add('hidden');
+    document.getElementById('lobby-join').classList.remove('hidden');
+}
 function joinRoom() {
-    const code = document.getElementById('room-code').value;
-    if (code.length !== 4) return alert("Enter 4-digit code");
-    isHost = false;
+    const input = document.getElementById('join-code-input').value;
+    if (input.length !== 4) return;
+    showLoading("JOINING...");
     peer = new Peer();
-    peer.on('open', () => { conn = peer.connect(code); setupConnection(); });
+    peer.on('open', () => { conn = peer.connect(ID_PREFIX + input); setupConnection(); });
 }
-
+function resetLobby() {
+    if(peer) peer.destroy();
+    document.getElementById('lobby-main').classList.remove('hidden');
+    document.getElementById('lobby-wait').classList.add('hidden');
+    document.getElementById('lobby-join').classList.add('hidden');
+    hideLoading();
+}
 function setupConnection() {
-    conn.on('open', () => {
-        gameState = 'PLAY';
-        document.getElementById('menu').classList.add('hidden');
-        document.getElementById('status-msg').innerText = "FIGHT!";
-        if (isHost) {
-            myPlayer = p1; p1.x = width * 0.2; p1.y = height/2; p2.x = width * 0.8; p2.y = height/2;
-        } else { myPlayer = p2; }
+    conn.on('data', handleNetworkData);
+    conn.on('close', () => endGame("DISCONNECTED", "Opponent left"));
+}
+
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    let cardW = width < 600 ? 65 : 100; let cardH = cardW * 1.4;
+
+    // Deck
+    let deckX = 60; let deckY = height / 2;
+    for(let i=0; i<3; i++) {
+        ctx.fillStyle = '#111'; ctx.strokeStyle = '#333';
+        roundRect(ctx, deckX - cardW/2, (deckY - cardH/2) - i*2, cardW, cardH, 10);
+        ctx.fill(); ctx.stroke();
+    }
+    
+    // Discard Pile
+    if (discardPile.length > 0) {
+        let startIdx = Math.max(0, discardPile.length - 3);
+        for(let i = startIdx; i < discardPile.length; i++) {
+            let c = discardPile[i];
+            if(!isAnimating && Math.abs(c.x - width/2) < 2) { c.x = width/2; c.y = height/2; }
+            c.draw(ctx, true, undefined, undefined, cardW, cardH);
+        }
+    }
+
+    // Hands
+    let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
+    let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
+    opponentHand.forEach((c, i) => { c.targetX = oppStart + i * oppSpread; c.targetY = -cardH * 0.4; c.draw(ctx, false, undefined, undefined, cardW, cardH); });
+
+    let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
+    let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
+    myHand.forEach((c, i) => { 
+        c.targetX = pStart + i * pSpread; 
+        c.targetY = height - (c.isHovered ? cardH * 0.9 : cardH * 0.7);
+        c.width = cardW; c.height = cardH;
+        c.draw(ctx, true); 
     });
-    conn.on('data', (data) => handleNetworkData(data));
-}
 
-function sendData(data) { if (conn && conn.open) conn.send(data); }
+    particles.forEach(p => p.draw(ctx));
+    floatingTexts.forEach(t => t.draw(ctx));
 
-function handleNetworkData(data) {
-    const enemy = isHost ? p2 : p1;
-    if (data.type === 'sync') {
-        enemy.x = data.x; enemy.y = data.y; enemy.angle = data.a;
-        enemy.hp = data.hp; enemy.isParrying = data.parry; enemy.isCharging = data.charge;
-    } else if (data.type === 'fireball') {
-        fireballs.push(new Fireball(data.x, data.y, data.angle, isHost ? 'p2' : 'p1'));
-    } else if (data.type === 'slash') {
-        createSlashEffect(enemy.x, enemy.y, enemy.angle);
-        if (checkMeleeHit(enemy, myPlayer) && !myPlayer.isParrying) {
-            myPlayer.hp -= CONFIG.DMG_MELEE; spawnParticle(myPlayer.x, myPlayer.y, 'red', 5); shakeScreen(5);
-        }
+    if(gameState === 'PLAYING' && !isAnimating) {
+        ctx.font = "bold 16px Orbitron"; ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888'; ctx.textAlign = 'center';
+        ctx.fillText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + cardH/2 + 40);
     }
 }
 
-// --- PERBAIKAN KONTROL SENTUH ---
-// Kita attach listener ke 'window' atau 'canvas' agar bisa mendeteksi sentuhan menembus overlay
-const touchTarget = document.getElementById('gameCanvas'); // Canvas adalah layer terbawah yang menerima input
-const btnAttack = document.getElementById('btn-attack');
-const btnParry = document.getElementById('btn-parry');
+function update() {
+    for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1); }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) { floatingTexts[i].update(); if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1); }
+}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-// Mencegah scroll/zoom default
-document.body.addEventListener('touchstart', (e) => { if(e.target == canvas) e.preventDefault(); }, {passive: false});
-document.body.addEventListener('touchmove', (e) => { if(e.target == canvas) e.preventDefault(); }, {passive: false});
-
-// Handler untuk Canvas (Joystick Kiri)
-touchTarget.addEventListener('touchstart', (e) => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        const x = t.clientX;
-        const y = t.clientY;
-        
-        // Hanya aktifkan joystick jika sentuhan di sisi kiri layar
-        if (x < width / 2 && !inputs.move.active) {
-            inputs.move.active = true;
-            inputs.move.id = t.identifier;
-            inputs.move.originX = x;
-            inputs.move.originY = y;
-            inputs.move.x = 0;
-            inputs.move.y = 0;
+// --- INPUTS ---
+function handleInput(x, y) {
+    if (gameState !== 'PLAYING' || isAnimating) return;
+    for (let i = myHand.length - 1; i >= 0; i--) {
+        let c = myHand[i];
+        if (x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) {
+            playerInput(i); return;
         }
     }
-}, {passive: false});
-
-touchTarget.addEventListener('touchmove', (e) => {
-    e.preventDefault(); // Stop scrolling
-    for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        
-        // Logic Joystick Kiri
-        if (t.identifier === inputs.move.id) {
-            const dx = t.clientX - inputs.move.originX;
-            const dy = t.clientY - inputs.move.originY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const maxDist = 50;
-            const angle = Math.atan2(dy, dx);
-            const cappedDist = Math.min(dist, maxDist);
-            
-            inputs.move.x = Math.cos(angle) * (cappedDist / maxDist);
-            inputs.move.y = Math.sin(angle) * (cappedDist / maxDist);
-        }
-        
-        // Logic Tombol Attack (Drag Aiming)
-        if (t.identifier === inputs.attack.id) {
-            const rect = btnAttack.getBoundingClientRect();
-            const centerX = rect.left + rect.width/2;
-            const centerY = rect.top + rect.height/2;
-            
-            const dx = t.clientX - centerX;
-            const dy = t.clientY - centerY;
-            
-            inputs.attack.x = dx;
-            inputs.attack.y = dy;
-            
-            // Update arah karakter saat aiming
-            if (Math.sqrt(dx*dx + dy*dy) > 20) {
-                 myPlayer.angle = Math.atan2(dy, dx);
-                 myPlayer.isCharging = true;
-            }
-        }
-    }
-}, {passive: false});
-
-touchTarget.addEventListener('touchend', (e) => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.identifier === inputs.move.id) {
-            inputs.move.active = false;
-            inputs.move.id = null;
-            inputs.move.x = 0; inputs.move.y = 0;
-        }
-        // Jika jari aiming dilepas (tapi aslinya trigger dari btnAttack, ini safety net)
-        if (t.identifier === inputs.attack.id) {
-            handleAttackRelease();
-        }
-    }
-});
-
-// Handler Tombol Attack
-btnAttack.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    inputs.attack.active = true;
-    inputs.attack.id = t.identifier;
-    inputs.attack.startTime = Date.now();
-    inputs.attack.originX = t.clientX;
-    inputs.attack.originY = t.clientY;
-});
-btnAttack.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    handleAttackRelease();
-});
-
-function handleAttackRelease() {
-    if (!inputs.attack.active) return;
-    
-    const duration = Date.now() - inputs.attack.startTime;
-    const dist = Math.sqrt(inputs.attack.x*inputs.attack.x + inputs.attack.y*inputs.attack.y);
-    
-    if (duration < CONFIG.CHARGE_TIME && dist < 30) {
-        performMelee();
-    } else {
-        performFireball();
-    }
-    
-    inputs.attack.active = false;
-    inputs.attack.id = null;
-    inputs.attack.x = 0; inputs.attack.y = 0;
-    myPlayer.isCharging = false;
+    // Draw Deck Click
+    let deckX = 60; let w = width < 600 ? 65 : 100;
+    if (turn === 'me' && x > deckX - w/2 - 20 && x < deckX + w/2 + 20 && y > height/2 - w*1.4/2 - 20 && y < height/2 + w*1.4/2 + 20) requestDraw();
 }
-
-btnParry.addEventListener('touchstart', (e) => { e.preventDefault(); performParry(); });
-
-// --- ACTIONS & EFFECTS ---
-
-function performMelee() {
-    createSlashEffect(myPlayer.x, myPlayer.y, myPlayer.angle);
-    sendData({ type: 'slash' });
-}
-
-function performFireball() {
-    const angle = myPlayer.angle;
-    const offset = 30;
-    const fx = myPlayer.x + Math.cos(angle) * offset;
-    const fy = myPlayer.y + Math.sin(angle) * offset;
-    const fb = new Fireball(fx, fy, angle, isHost ? 'p1' : 'p2');
-    fireballs.push(fb);
-    sendData({ type: 'fireball', x: fx, y: fy, angle: angle });
-}
-
-function performParry() { myPlayer.parryTimer = CONFIG.PARRY_DURATION; }
-
-function checkMeleeHit(attacker, victim) {
-    const dx = victim.x - attacker.x; const dy = victim.y - attacker.y;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const ax = Math.cos(attacker.angle); const ay = Math.sin(attacker.angle);
-    return (dist < 60 && ((dx * ax) + (dy * ay)) > 0);
-}
-
-function createSlashEffect(x, y, angle) {
-    particles.push({ x: x + Math.cos(angle)*30, y: y + Math.sin(angle)*30, angle: angle, life: 10, type: 'slash' });
-}
-
-function spawnParticle(x, y, color, count) {
-    for(let i=0; i<count; i++) {
-        particles.push({ x: x, y: y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 20+Math.random()*10, color: color, type: 'dot' });
+function handleHover(x, y) {
+    let hovered = false;
+    for (let i = myHand.length - 1; i >= 0; i--) {
+        let c = myHand[i];
+        if (!hovered && x > c.x - c.width/2 && x < c.x + c.width/2 && y > c.y - c.height/2 && y < c.y + c.height/2) { c.isHovered = true; hovered = true; } else c.isHovered = false;
     }
 }
 
-let shake = 0; function shakeScreen(n) { shake = n; }
-function shadeColor(c){return c;}
-
-// --- LOOP ---
-function startGame() { gameState = 'PLAY'; resize(); loop(); }
-
-function loop() {
-    requestAnimationFrame(loop);
-    
-    ctx.fillStyle = '#222'; ctx.fillRect(0, 0, width, height);
-    if (shake > 0) { ctx.save(); ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake); shake *= 0.9; if(shake<0.5)shake=0; }
-
-    // Grid
-    ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.beginPath();
-    for(let x=0; x<width; x+=50) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
-    for(let y=0; y<height; y+=50) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
-    ctx.stroke();
-
-    if (gameState === 'PLAY') {
-        p1.update(16, isHost ? {moveActive:inputs.move.active, moveX:inputs.move.x, moveY:inputs.move.y} : null);
-        p2.update(16, !isHost ? {moveActive:inputs.move.active, moveX:inputs.move.x, moveY:inputs.move.y} : null);
-        
-        if(conn && conn.open) {
-            sendData({ type: 'sync', x: myPlayer.x, y: myPlayer.y, a: myPlayer.angle, hp: myPlayer.hp, parry: myPlayer.isParrying, charge: myPlayer.isCharging });
-        }
-
-        for (let i = fireballs.length - 1; i >= 0; i--) {
-            let f = fireballs[i]; f.update(); f.draw(ctx);
-            [p1, p2].forEach(p => {
-                const dx = p.x - f.x; const dy = p.y - f.y;
-                if (Math.sqrt(dx*dx + dy*dy) < p.radius + 15) {
-                    if (p.isParrying) {
-                         f.vx = -f.vx * 1.5; f.vy = -f.vy * 1.5; f.ownerId = (p === p1) ? 'p1' : 'p2';
-                         spawnParticle(f.x, f.y, 'cyan', 5); f.x += f.vx*2; f.y += f.vy*2;
-                    } else if (f.ownerId !== (p === p1 ? 'p1' : 'p2')) {
-                        p.hp -= CONFIG.DMG_FIRE; spawnParticle(p.x, p.y, 'orange', 10); shakeScreen(8); f.active = false;
-                    }
-                }
-            });
-            if (!f.active) fireballs.splice(i, 1);
-        }
-
-        p1.draw(ctx); p2.draw(ctx);
-        
-        // Particles
-        for(let i=particles.length-1; i>=0; i--) {
-            let p = particles[i]; p.life--;
-            if (p.type === 'slash') {
-                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
-                ctx.beginPath(); ctx.strokeStyle = `rgba(200, 200, 255, ${p.life/10})`; ctx.lineWidth = 3; ctx.arc(-20, 0, 40, -Math.PI/3, Math.PI/3); ctx.stroke(); ctx.restore();
-            } else {
-                p.x += p.vx; p.y += p.vy; ctx.fillStyle = p.color; ctx.globalAlpha = p.life/20; ctx.fillRect(p.x, p.y, 3, 3);
-            }
-            if(p.life<=0) particles.splice(i, 1);
-        }
-        ctx.globalAlpha = 1;
-
-        // Draw Joystick
-        if (inputs.move.active) {
-            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
-            ctx.arc(inputs.move.originX, inputs.move.originY, 50, 0, Math.PI*2); ctx.stroke();
-            ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.arc(inputs.move.originX + inputs.move.x*50, inputs.move.originY + inputs.move.y*50, 20, 0, Math.PI*2); ctx.fill();
-        }
-        
-        // Aim Line
-        if (myPlayer.isCharging) {
-             ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
-             ctx.moveTo(myPlayer.x, myPlayer.y);
-             ctx.lineTo(myPlayer.x + Math.cos(myPlayer.angle)*200, myPlayer.y + Math.sin(myPlayer.angle)*200);
-             ctx.stroke(); ctx.setLineDash([]);
-        }
-    }
-    if (shake > 0) ctx.restore();
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
+function showFloatingText(txt, x, y, c) { 
+    floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
+        ctx.globalAlpha=Math.max(0,this.life); ctx.fillStyle=this.color; ctx.strokeStyle='#000'; ctx.lineWidth=3;
+        ctx.font="bold 24px Orbitron"; ctx.strokeText(this.text,this.x,this.y); ctx.fillText(this.text,this.x,this.y); ctx.globalAlpha=1;
+    }});
+}
+function drawElementIcon(ctx, type, x, y, s) {
+    ctx.save(); ctx.translate(x, y); ctx.beginPath();
+    if (type === 'fire' || type.includes('fire')) { ctx.moveTo(0, -s); ctx.quadraticCurveTo(s, -s/4, 0, s); ctx.quadraticCurveTo(-s, -s/4, 0, -s); }
+    else if (type === 'water' || type.includes('water')) { ctx.arc(0, 0, s*0.8, 0, Math.PI*2); }
+    else if (type === 'leaf' || type.includes('leaf')) { ctx.moveTo(0, -s); ctx.bezierCurveTo(s, -s/2, s, s/2, 0, s); ctx.bezierCurveTo(-s, s/2, -s, -s/2, 0, -s); }
+    else if (type === 'wild') { ctx.arc(0,0,s*0.7, 0, Math.PI*2); ctx.stroke(); }
+    else if (type === 'mirror') { ctx.rect(-s/2,-s/2,s,s); }
+    ctx.fill(); ctx.restore();
 }
 
-function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
+function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize);
-resize();
+canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
+canvas.addEventListener('mousemove', e => handleHover(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
 
-// Menu Listeners
-document.getElementById('create-btn').addEventListener('click', () => { isHost = true; initPeer(); });
-document.getElementById('join-btn').addEventListener('click', () => { isHost = false; joinRoom(); });
-document.getElementById('fs-btn').addEventListener('click', () => {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen();
-});
-loop();
+resize(); loop();
 </script>
 </body>
 </html>
