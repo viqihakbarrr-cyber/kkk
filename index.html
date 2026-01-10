@@ -6,14 +6,14 @@
     <title>ELUNO - DRAG UPDATE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
         body {
             margin: 0;
             overflow: hidden;
             background-color: #050505;
             font-family: 'Orbitron', sans-serif;
-            touch-action: none; /* Mencegah scroll saat drag kartu di HP */
+            touch-action: none; /* Mencegah zoom/scroll browser saat drag */
             user-select: none;
             -webkit-user-select: none;
         }
@@ -23,7 +23,6 @@
             width: 100%;
             height: 100vh;
             background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
-            cursor: default;
         }
 
         /* UI Layers */
@@ -157,12 +156,10 @@
         <div class="modal-box">
             <h1>ELUNO</h1>
             <p style="color:#666; font-size:14px;">DRAG & DROP EDITION</p>
-            
             <label class="checkbox-container">
                 <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
                 Enable Fullscreen
             </label>
-
             <button id="start-btn" class="main-btn" disabled onclick="goToLobby()">ENTER LOBBY</button>
         </div>
     </div>
@@ -174,7 +171,6 @@
             <br>
             <button class="main-btn btn-secondary" onclick="showJoinUI()">JOIN ROOM</button>
         </div>
-
         <div class="modal-box hidden" id="lobby-wait">
             <h2>ROOM CODE</h2>
             <div class="room-code-display" id="host-room-code">----</div>
@@ -183,7 +179,6 @@
             <br>
             <button class="main-btn btn-secondary" onclick="resetLobby()">CANCEL</button>
         </div>
-
         <div class="modal-box hidden" id="lobby-join">
             <h2>ENTER CODE</h2>
             <div class="input-group">
@@ -230,7 +225,6 @@ function loadAssets() {
             loadedCount++;
             const percent = Math.round((loadedCount / total) * 100);
             msg.innerText = `LOADING ${percent}%`;
-
             if(loadedCount >= total) {
                 assetsLoaded = true;
                 setTimeout(() => {
@@ -239,15 +233,13 @@ function loadAssets() {
                 }, 800);
             }
         };
-        img.onerror = () => {
-            alert("Failed to load asset: " + key);
-        };
+        img.onerror = () => { alert("Failed to load asset: " + key); };
         IMAGES[key] = img;
     });
 }
 loadAssets();
 
-// --- KONFIGURASI PEERJS ---
+// --- KONFIGURASI NETWORK ---
 let peer = null;
 let conn = null;
 let myPeerID = null;
@@ -257,27 +249,22 @@ const ID_PREFIX = "eluno-moon-v1-";
 // --- KONFIGURASI CANVAS & GAME ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
 let width, height;
 let particles = [];
 let floatingTexts = [];
 
-// Game Constants
+// REKONSTRUKSI 1: RASIO KARTU & SKALA
+const CARD_RATIO = 2.5 / 3.5; // Standard Poker Ratio (~0.714)
+let cardScale = 1;
+let cardW = 100;
+let cardH = 140;
+
 const SUITS = ['fire', 'water', 'leaf', 'moon'];
 const BASIC_SUITS = ['fire', 'water', 'leaf'];
-const COLORS = {
-    fire: '#FF2222',
-    water: '#0088FF',
-    leaf: '#00CC44',
-    moon: '#9933FF'
-};
+const COLORS = { fire: '#FF2222', water: '#0088FF', leaf: '#00CC44', moon: '#9933FF' };
 const COUNTER_MAP = { fire: 'leaf', leaf: 'water', water: 'fire' };
 
-// Drag & Drop State
-let draggedCardIndex = -1;
-let isDragging = false;
-let dragOffset = { x: 0, y: 0 };
-
-// Game State
 let deck = [];
 let discardPile = [];
 let myHand = [];
@@ -286,7 +273,14 @@ let turn = '';
 let gameState = 'MENU'; 
 let isAnimating = false; 
 
-// Moon & Blind Mode
+// Interaksi State (Drag & Highlight)
+let selectedIdx = -1; // Index kartu yang di-tap (highlight)
+let dragIdx = -1;     // Index kartu yang sedang di-drag
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let pointerX = 0;
+let pointerY = 0;
+
 let blindMode = false;
 let blindIntensity = 0; 
 let mustPlayBasic = false; 
@@ -304,9 +298,13 @@ function playSound(type) {
         osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'pop') {
+        // Suara saat highlight/tap
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, t);
+        gain.gain.setValueAtTime(0.05, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
     } else if (type === 'moon') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 1);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 1);
         gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t + 1);
         osc.start(); osc.stop(t + 1);
     } else if (type === 'deal') {
@@ -321,63 +319,66 @@ function playSound(type) {
         osc.type = 'square'; osc.frequency.setValueAtTime(150, t); 
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
         osc.start(); osc.stop(t + 0.2);
-    } else if (type === 'pickup') {
-        // Suara saat kartu di-tap/diangkat
-        osc.frequency.setValueAtTime(300, t); osc.frequency.linearRampToValueAtTime(400, t + 0.1);
-        gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.1);
-        osc.start(); osc.stop(t + 0.1);
     }
 }
 
-// --- CLASS DEFINITIONS ---
 class Card {
     constructor(suit, value) {
         this.suit = suit; this.value = value;
         this.id = Math.random().toString(36).substr(2, 9);
         this.x = 60; this.y = height/2; 
         this.targetX = width / 2; this.targetY = height / 2;
-        this.width = 0; this.height = 0;
-        this.isHovered = false; // Digunakan untuk visual "selected"
         this.shake = 0;
-        this.isDragging = false; // Flag khusus drag
+        
+        // State visual
+        this.isHovered = false;
+        this.isSelected = false; // Untuk state highlight (naik ke atas)
+        this.isDragging = false; // Sedang di drag
     }
 
     draw(ctx, isFaceUp, x, y, w, h) {
-        // [MODIFIKASI 4: Drag Logic] 
-        // Hanya update posisi jika TIDAK sedang didrag manual
-        if (!this.isDragging) {
+        let drawW = w || cardW;
+        let drawH = h || cardH;
+
+        // Logic Gerakan
+        if (this.isDragging) {
+            // Jika dragging, ikuti posisi mouse langsung (tanpa interpolasi)
+            this.x = x; 
+            this.y = y;
+        } else {
+            // Normal interpolation ke target
             this.x += (this.targetX - this.x) * 0.15;
             this.y += (this.targetY - this.y) * 0.15;
         }
 
+        // Shake logic
         let offsetX = 0;
         if (this.shake > 0) {
             offsetX = Math.sin(Date.now() * 0.5) * 5;
             this.shake -= 1;
         }
 
-        const drawX = (x !== undefined ? x : this.x) + offsetX;
-        const drawY = y !== undefined ? y : this.y;
-        const drawW = w || this.width;
-        const drawH = h || this.height;
-        
+        // Tentukan posisi gambar akhir
+        const finalX = this.x + offsetX;
+        const finalY = this.y;
+
         ctx.save();
-        ctx.translate(drawX, drawY);
+        ctx.translate(finalX, finalY);
+
+        // Scale efek saat highlight/drag
+        let s = 1.0;
+        if(this.isSelected) s = 1.1;
+        if(this.isDragging) s = 1.15;
+        ctx.scale(s, s);
 
         if (isFaceUp) {
-            // Shadow Logic
-            let shadowBlur = 5;
-            if (this.suit === 'moon') shadowBlur = 20;
-            if (this.isHovered || this.isDragging) shadowBlur = 25; // Highlight lebih kuat saat drag/tap
-
+            // Shadow
             ctx.shadowColor = this.suit === 'moon' ? COLORS.moon : 'rgba(0,0,0,0.5)';
-            ctx.shadowBlur = shadowBlur;
-            ctx.shadowOffsetY = (this.isDragging || this.isHovered) ? 15 : 5; // Efek melayang
+            ctx.shadowBlur = this.suit === 'moon' ? 20 : (this.isSelected || this.isDragging ? 25 : 5);
+            ctx.shadowOffsetY = (this.isSelected || this.isDragging) ? 15 : 5;
 
             // Draw Image
             if (IMAGES[this.suit]) {
-                // [MODIFIKASI 1]: Rendering gambar agar tidak gepeng
-                // Kita menggambar image memenuhi area kartu
                 ctx.drawImage(IMAGES[this.suit], -drawW/2, -drawH/2, drawW, drawH);
             } else {
                 ctx.fillStyle = '#fff';
@@ -386,38 +387,35 @@ class Card {
 
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            // [MODIFIKASI 2: Tipografi Angka]
-            // Membuat angka lebih kecil, posisi presisi, dan style lebih elegan
+            // REKONSTRUKSI 2: Typography Angka
             if (this.suit !== 'moon') {
                 ctx.fillStyle = "#FFFFFF";
                 ctx.strokeStyle = "#000000";
                 ctx.lineWidth = 3; 
                 
-                // Ukuran font dikecilkan dari 0.35 ke 0.22
-                let fontSize = drawW * 0.22;
-                ctx.font = `800 ${fontSize}px Orbitron`; 
+                // Ukuran font disesuaikan lebih kecil (18% dari lebar kartu)
+                let fontSize = drawW * 0.22; 
+                ctx.font = `900 ${fontSize}px Orbitron`;
                 
-                // Padding diatur agar pas di pojok
-                let padX = drawW * 0.18; 
-                let padY = drawH * 0.12;
+                // Padding disesuaikan agar lebih mojok
+                let padX = drawW * 0.08; 
+                let padY = drawH * 0.08;
 
                 // 1. POJOK KIRI ATAS
-                ctx.textAlign = 'center'; 
-                ctx.textBaseline = 'middle';
-                let tx1 = -drawW/2 + padX;
-                let ty1 = -drawH/2 + padY;
-                ctx.strokeText(this.value, tx1, ty1);
-                ctx.fillText(this.value, tx1, ty1);
+                ctx.textAlign = 'left'; 
+                ctx.textBaseline = 'top';
+                ctx.strokeText(this.value, -drawW/2 + padX, -drawH/2 + padY);
+                ctx.fillText(this.value, -drawW/2 + padX, -drawH/2 + padY);
 
-                // 2. POJOK KANAN BAWAH (Diputar 180 derajat gaya kartu remi opsional, tapi disini standar saja)
-                let tx2 = drawW/2 - padX;
-                let ty2 = drawH/2 - padY;
-                ctx.strokeText(this.value, tx2, ty2);
-                ctx.fillText(this.value, tx2, ty2);
+                // 2. POJOK KANAN BAWAH
+                ctx.textAlign = 'right'; 
+                ctx.textBaseline = 'bottom';
+                ctx.strokeText(this.value, drawW/2 - padX, drawH/2 - padY);
+                ctx.fillText(this.value, drawW/2 - padX, drawH/2 - padY);
             }
 
         } else {
-            // Back of Card
+            // Kartu tertutup
             ctx.shadowColor = 'rgba(0,0,0,0.5)';
             ctx.shadowBlur = 5;
             if(IMAGES.back) {
@@ -459,9 +457,7 @@ function showLoading(msg) {
     layer.style.background = 'rgba(0,0,0,0.8)';
     document.getElementById('loading-msg').innerText = msg;
 }
-function hideLoading() {
-    document.getElementById('loading-layer').style.display = 'none';
-}
+function hideLoading() { document.getElementById('loading-layer').style.display = 'none'; }
 function checkFullscreenRequirement() {
     const chk = document.getElementById('fs-check');
     const btn = document.getElementById('start-btn');
@@ -481,9 +477,7 @@ function createRoom() {
     showLoading("CREATING ROOM...");
     peer = new Peer(fullID);
     peer.on('open', (id) => {
-        hideLoading();
-        isHost = true;
-        myPeerID = id;
+        hideLoading(); isHost = true; myPeerID = id;
         document.getElementById('lobby-main').classList.add('hidden');
         document.getElementById('lobby-wait').classList.remove('hidden');
         document.getElementById('host-room-code').innerText = code;
@@ -506,7 +500,7 @@ function joinRoom() {
     const targetID = ID_PREFIX + input;
     peer = new Peer(); 
     peer.on('open', () => { conn = peer.connect(targetID); setupConnection(); });
-    peer.on('error', (err) => { hideLoading(); alert("Room not found!"); resetLobby(); });
+    peer.on('error', () => { hideLoading(); alert("Room not found!"); resetLobby(); });
 }
 function resetLobby() {
     if(peer) peer.destroy(); peer = null; conn = null;
@@ -521,30 +515,25 @@ function setupConnection() {
     conn.on('close', () => { endGame("DISCONNECTED", "Opponent left the game"); });
 }
 
+// --- DATA HANDLING ---
 function handleNetworkData(data) {
     if (data.type === 'START_GAME') {
         document.getElementById('lobby-screen').classList.add('hidden');
-        hideLoading();
-        gameState = 'PLAYING';
+        hideLoading(); gameState = 'PLAYING';
         turn = data.turn === 'p2' ? 'me' : 'opponent';
         let myStartCards = data.p2Hand.map(c => new Card(c.suit, c.value));
         let topCard = new Card(data.topDiscard.suit, data.topDiscard.value);
         playDealAnimation(myStartCards, data.p1HandCount, topCard);
-    
     } else if (data.type === 'OPPONENT_MOVE') {
         processOpponentMove(data.card, data.isCrit);
-    
     } else if (data.type === 'OPPONENT_DRAW') {
         let c = new Card('fire', 1); c.x = 60; c.y = height/2;
-        opponentHand.push(c);
-        playSound('deal');
+        opponentHand.push(c); playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         turn = 'me';
-    
     } else if (data.type === 'MOON_ATTACK') {
         if(opponentHand.length > 0) opponentHand.pop();
-        let moonC = new Card('moon', 0);
-        moonC.x = width/2; moonC.y = -100;
+        let moonC = new Card('moon', 0); moonC.x = width/2; moonC.y = -100;
         moonC.targetX = width/2; moonC.targetY = height/2;
         discardPile.push(moonC);
         setTimeout(() => {
@@ -552,25 +541,20 @@ function handleNetworkData(data) {
             blindMode = true; blindIntensity = 1.0; 
             showFloatingText("BLINDED!", width/2, height/2, "#FFF");
         }, 300);
-
     } else if (data.type === 'MOON_FOLLOWUP') {
         processOpponentMove(data.card, data.isCrit);
         showFloatingText("ONE SHOT CHANCE", width/2, height/2 + 50, "red");
-        
     } else if (data.type === 'BLIND_CLEARED') {
         blindMode = false; blindIntensity = 0;
         showFloatingText("DARKNESS FADED", width/2, height/2, "#FFF");
         processOpponentMove(data.card, data.isCrit);
-
     } else if (data.type === 'BLIND_FAIL') {
-        showFloatingText("MISSED!", width/2, 150, "red");
-        turn = 'me'; 
+        showFloatingText("MISSED!", width/2, 150, "red"); turn = 'me'; 
     } else if (data.type === 'EXTRA_CARD') {
-        let nc = new Card(data.card.suit, data.card.value);
+        let c = data.card; let nc = new Card(c.suit, c.value);
         nc.x = 60; nc.y = height/2; nc.targetX = width/2; nc.targetY = -200;
         myHand.push(nc); playSound('deal');
         showFloatingText("Penalty!", width/2, height/2+50, "red");
-
     } else if (data.type === 'PENALTY_SYNC') {
         let c = new Card('fire', 1); c.x = 60; c.y = height/2; 
         opponentHand.push(c); playSound('deal');
@@ -579,19 +563,16 @@ function handleNetworkData(data) {
 }
 
 // --- GAME LOGIC ---
-
 function startMultiplayerGame() {
     document.getElementById('lobby-screen').classList.add('hidden');
     gameState = 'PLAYING';
     let realDeck = [];
     BASIC_SUITS.forEach(suit => {
-        for (let i = 1; i <= 9; i++) {
-            realDeck.push({suit, value: i});
-            if(i <= 5) realDeck.push({suit, value: i});
-        }
+        for (let i = 1; i <= 9; i++) { realDeck.push({suit, value: i}); if(i <= 5) realDeck.push({suit, value: i}); }
     });
     realDeck.push({suit: 'moon', value: 0}); realDeck.push({suit: 'moon', value: 0});
     for (let i = realDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [realDeck[i], realDeck[j]] = [realDeck[j], realDeck[i]]; }
+    
     let p1H = realDeck.splice(0, 6);
     let p2H = realDeck.splice(0, 6);
     let top;
@@ -609,22 +590,16 @@ function startMultiplayerGame() {
 }
 
 function playDealAnimation(myCards, oppCount, topCard) {
-    isAnimating = true;
-    myHand = []; opponentHand = []; discardPile = [];
-    let dealSpeed = 100; 
-    let totalCards = myCards.length + oppCount;
-    let dealt = 0;
+    isAnimating = true; myHand = []; opponentHand = []; discardPile = [];
+    let dealSpeed = 150; let totalCards = myCards.length + oppCount; let dealt = 0;
+    
     let dealInterval = setInterval(() => {
         if (dealt >= totalCards) {
             clearInterval(dealInterval);
             setTimeout(() => {
-                topCard.x = 60; topCard.y = height/2;
-                discardPile.push(topCard);
-                playSound('play');
-                isAnimating = false;
-                setTimeout(() => {
-                    showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff");
-                }, 500);
+                topCard.x = 60; topCard.y = height/2; discardPile.push(topCard);
+                playSound('play'); isAnimating = false;
+                setTimeout(() => { showFloatingText(turn === 'me' ? "YOUR TURN" : "OPPONENT'S TURN", width/2, height/2 + 100, turn==='me'?"#0f0":"#fff"); }, 500);
             }, 300);
             return;
         }
@@ -636,39 +611,50 @@ function playDealAnimation(myCards, oppCount, topCard) {
                 let c = myCards[cardIndex]; c.x = 60; c.y = height/2; myHand.push(c);
             }
         }
-        playSound('deal');
-        dealt++;
+        playSound('deal'); dealt++;
     }, dealSpeed);
 }
 
-// --- MOVE EXECUTION (Called after Drag & Drop) ---
-function attemptPlayCard(cardIndex) {
+// --- LOGIC VALIDASI & EKSEKUSI ---
+function isValidMove(card, topCard) {
+    if (card.suit === 'moon') return true; 
+    if (topCard.suit === 'moon') return true; 
+    return card.suit === topCard.suit || card.value === topCard.value;
+}
+
+function playerInput(cardIndex) {
+    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return false;
+    
     let card = myHand[cardIndex];
     let top = discardPile[discardPile.length - 1];
+
+    // Reset posisi drag
+    card.isDragging = false; 
 
     if (blindMode && blindIntensity === 1.0) {
         if (isValidMove(card, top)) {
             executeMove(cardIndex, card, top, false);
             blindMode = false; blindIntensity = 0;
-            conn.send({ type: 'BLIND_CLEARED', card: { suit: card.suit, value: card.value }, isCrit: (COUNTER_MAP[card.suit] === top.suit) });
+            conn.send({ 
+                type: 'BLIND_CLEARED', card: { suit: card.suit, value: card.value },
+                isCrit: (COUNTER_MAP[card.suit] === top.suit)
+            });
+            return true;
         } else {
-            returnToHand(card);
-            playSound('error');
+            card.shake = 30; playSound('error');
             showFloatingText("WRONG CARD!", card.x, card.y - 70, "red");
-            turn = 'opponent'; conn.send({ type: 'BLIND_FAIL' });
+            turn = 'opponent'; 
+            conn.send({ type: 'BLIND_FAIL' });
+            return false;
         }
-        return;
     }
 
     if (mustPlayBasic) {
         if (card.suit === 'moon') {
-            returnToHand(card);
-            showFloatingText("Basic Card Only!", card.x, card.y - 70, "red");
-            return;
+            card.shake = 20; showFloatingText("Basic Card Only!", card.x, card.y - 70, "red");
+            return false;
         }
-        if (!BASIC_SUITS.includes(card.suit)) {
-            returnToHand(card); return;
-        }
+        if (!BASIC_SUITS.includes(card.suit)) return false;
     }
 
     if (isValidMove(card, top)) {
@@ -676,8 +662,8 @@ function attemptPlayCard(cardIndex) {
             executeMove(cardIndex, card, top, false);
             spawnExplosion(width/2, height/2, COLORS.moon);
             playSound('moon');
-            blindMode = true; blindIntensity = 0.1;
-            mustPlayBasic = true; turn = 'me'; 
+            blindMode = true; blindIntensity = 0.1; mustPlayBasic = true; 
+            turn = 'me'; 
             showFloatingText("EXTRA TURN (Basic Only)", width/2, height/2 + 100, COLORS.moon);
             conn.send({ type: 'MOON_ATTACK' });
         } else {
@@ -693,27 +679,23 @@ function attemptPlayCard(cardIndex) {
             }
         }
         if(myHand.length === 0) endGame("YOU WIN!", "Victory Achieved");
+        return true;
     } else {
-        returnToHand(card);
-        showFloatingText("Invalid Move", width/2, height/2 + 80, "red");
+        card.shake = 20;
+        showFloatingText("Invalid Move", card.x, card.y - 50, "red");
         playSound('error');
+        return false;
     }
 }
 
-function isValidMove(card, topCard) {
-    if (card.suit === 'moon') return true; 
-    if (topCard.suit === 'moon') return true; 
-    return card.suit === topCard.suit || card.value === topCard.value;
-}
-
 function executeMove(index, card, top, isCrit) {
+    // Reset state seleksi
+    card.isSelected = false;
+    selectedIdx = -1;
+
     myHand.splice(index, 1);
     discardPile.push(card);
-    card.isDragging = false;
-    card.isHovered = false;
     card.targetX = width/2; card.targetY = height/2;
-    // Snap visual immediately since we dragged it there
-    card.x = width/2; card.y = height/2;
     playSound('play');
 
     if(isCrit) {
@@ -733,11 +715,6 @@ function executeMove(index, card, top, isCrit) {
     }
 }
 
-function returnToHand(card) {
-    card.isDragging = false;
-    // Target akan diupdate di render loop agar kembali ke posisi formasi
-}
-
 function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value);
     if(opponentHand.length > 0) opponentHand.pop(); 
@@ -745,18 +722,15 @@ function processOpponentMove(cardData, isCrit) {
     card.targetX = width/2; card.targetY = height/2;
     discardPile.push(card);
     playSound('play');
-
     if(isCrit) {
-        playSound('crit');
-        showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
+        playSound('crit'); showFloatingText("CRITICAL HIT!", width/2, height/2 - 50, COLORS[cardData.suit]);
         if(isHost) {
             for(let i=0; i<2; i++) {
                 let penalty = drawCardFromDeckLogic();
                 if(penalty) {
                     setTimeout(() => {
-                        penalty.x = 60; penalty.y = height/2; 
-                        myHand.push(penalty); playSound('deal');
-                        showFloatingText("+1 Card", width/2, height/2+50, "red");
+                        penalty.x = 60; penalty.y = height/2; myHand.push(penalty);
+                        playSound('deal'); showFloatingText("+1 Card", width/2, height/2+50, "red");
                         conn.send({ type: 'PENALTY_SYNC' });
                     }, i * 200);
                 }
@@ -775,37 +749,28 @@ function requestDraw() {
         let r = Math.random();
         if(r < 0.05) newCard = new Card('moon', 0);
         else {
-            let s = BASIC_SUITS[Math.floor(Math.random()*3)];
-            let v = Math.floor(Math.random()*9)+1;
+            let s = BASIC_SUITS[Math.floor(Math.random()*3)]; let v = Math.floor(Math.random()*9)+1;
             newCard = new Card(s, v);
         }
     }
     if(newCard) {
-        newCard.x = 60; newCard.y = height/2;
-        myHand.push(newCard); playSound('deal');
-        
+        newCard.x = 60; newCard.y = height/2; myHand.push(newCard); playSound('deal');
         if (mustPlayBasic) {
-            mustPlayBasic = false; conn.send({ type: 'OPPONENT_DRAW' });
-            turn = 'opponent'; showFloatingText("Combo Skipped", width/2, height/2, "#aaa");
+            mustPlayBasic = false; conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent';
+            showFloatingText("Combo Skipped", width/2, height/2, "#aaa");
         } else {
-            conn.send({ type: 'OPPONENT_DRAW' });
-            turn = 'opponent'; showFloatingText("Turn Ended", width/2, height/2, "#aaa");
+            conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent'; showFloatingText("Turn Ended", width/2, height/2, "#aaa");
         }
     }
 }
 
 function drawCardFromDeckLogic() {
-    let r = Math.random();
-    if(r < 0.05) return new Card('moon', 0);
-    let s = BASIC_SUITS[Math.floor(Math.random()*3)];
-    let v = Math.floor(Math.random()*9)+1;
+    let r = Math.random(); if(r < 0.05) return new Card('moon', 0);
+    let s = BASIC_SUITS[Math.floor(Math.random()*3)]; let v = Math.floor(Math.random()*9)+1;
     return new Card(s, v);
 }
 
-function spawnExplosion(x, y, color) {
-    for(let i=0; i<30; i++) particles.push(new Particle(x, y, color, true));
-}
-
+function spawnExplosion(x, y, color) { for(let i=0; i<30; i++) particles.push(new Particle(x, y, color, true)); }
 function endGame(title, subtitle) {
     gameState = 'GAMEOVER';
     document.getElementById('winner-text').innerText = title;
@@ -814,145 +779,20 @@ function endGame(title, subtitle) {
     setTimeout(()=> { if(peer) peer.destroy(); }, 2000);
 }
 
-// --- INPUT HANDLING (DRAG & DROP) ---
-
-function getCardAt(x, y) {
-    // Hit test dari kartu paling atas (kanan) ke bawah
-    for (let i = myHand.length - 1; i >= 0; i--) {
-        let c = myHand[i];
-        if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
-            y > c.y - c.height/2 && y < c.y + c.height/2) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-// [MODIFIKASI 4]: Event Handlers untuk Drag & Drop
-function handleStart(x, y) {
-    if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
-
-    // Cek Deck (Draw Card) - Tetap Tap
-    let deckX = 60; let deckY = height/2;
-    let cardW = width < 600 ? 65 : 100; 
-    let cardH = cardW * 1.53;
-    if (!blindMode || blindIntensity < 0.5) {
-        if (x > deckX - cardW/2 - 20 && x < deckX + cardW/2 + 20 &&
-            y > deckY - cardH/2 - 20 && y < deckY + cardH/2 + 20) {
-            requestDraw();
-            return;
-        }
-    }
-
-    // Cek Hand
-    let idx = getCardAt(x, y);
-    if (idx !== -1) {
-        draggedCardIndex = idx;
-        let c = myHand[idx];
-        isDragging = true;
-        c.isDragging = true;
-        
-        // Highlight logic (Tap only lifts visually via render loop checking isDragging)
-        dragOffset.x = x - c.x;
-        dragOffset.y = y - c.y;
-        playSound('pickup');
-    }
-}
-
-function handleMove(x, y) {
-    if (isDragging && draggedCardIndex !== -1) {
-        let c = myHand[draggedCardIndex];
-        if(c) {
-            c.x = x - dragOffset.x;
-            c.y = y - dragOffset.y;
-        }
-    } else {
-        // Hover logic (Desktop Mouse)
-        let idx = getCardAt(x, y);
-        myHand.forEach((c, i) => {
-            c.isHovered = (i === idx);
-        });
-    }
-}
-
-function handleEnd(x, y) {
-    if (isDragging && draggedCardIndex !== -1) {
-        let c = myHand[draggedCardIndex];
-        
-        // Cek Jarak ke Drop Zone (Tengah Layar)
-        let dist = Math.hypot(c.x - width/2, c.y - height/2);
-        let dropZoneRadius = 150; // Area toleransi drop
-
-        if (dist < dropZoneRadius) {
-            // Player mencoba membuang kartu
-            attemptPlayCard(draggedCardIndex);
-        } else {
-            // Lepas sembarangan, kembalikan ke tangan
-            returnToHand(c);
-        }
-    }
-    
-    isDragging = false;
-    draggedCardIndex = -1;
-}
-
-// Listeners
-window.addEventListener('resize', resize);
-// Mouse
-canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-canvas.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
-canvas.addEventListener('mouseup', e => handleEnd(e.clientX, e.clientY));
-// Touch
-canvas.addEventListener('touchstart', e => { 
-    e.preventDefault(); 
-    handleStart(e.touches[0].clientX, e.touches[0].clientY); 
-}, {passive:false});
-canvas.addEventListener('touchmove', e => { 
-    e.preventDefault(); 
-    handleMove(e.touches[0].clientX, e.touches[0].clientY); 
-}, {passive:false});
-canvas.addEventListener('touchend', e => { 
-    e.preventDefault(); 
-    // Touch end tidak punya coordinates, pakai last known position logic internal atau asumsikan drop di pointer up
-    // Karena kita tracking via object card.x/y, kita bisa cek posisi kartu terakhir
-    if(draggedCardIndex !== -1) {
-        let c = myHand[draggedCardIndex];
-        // Pass koordinat kartu saat ini agar handleEnd bisa validasi
-        handleEnd(c.x, c.y);
-    }
-}, {passive:false});
-
-
 // --- RENDER LOOP ---
 function draw() {
     ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio||1), canvas.height / (window.devicePixelRatio||1));
     
-    // [MODIFIKASI 1]: Aspect Ratio
-    let cardW = width < 600 ? 65 : 100;
-    // Ubah multiplier height ke 1.53 (Standar kartu) agar lebih tinggi/langsing
-    let cardH = cardW * 1.53; 
-
-    // 1. Deck
+    // REKONSTRUKSI 1: Gunakan cardScale
+    // Render Deck
     let deckX = 60; let deckY = height / 2;
-    ctx.save();
-    ctx.translate(deckX, deckY);
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 5;
-    
-    // [MODIFIKASI 3]: Deck Horizontal Stretch
-    // Kita buat lebar deck sedikit lebih lebar dari cardW biasa (opsional) atau sama persis
-    // Agar "Deck.png" (yang biasanya landscape jika numpuk) tidak gepeng, kita pakai rasio sama dengan kartu
-    // Tapi user minta "kurang regang horizontal", jadi kita pastikan drawW nya pas.
-    if(IMAGES.deck) {
-        ctx.drawImage(IMAGES.deck, -cardW/2, -cardH/2, cardW, cardH);
-    } else {
-        ctx.fillStyle = '#111'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH);
-        ctx.strokeStyle = '#555'; ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH);
-    }
+    ctx.save(); ctx.translate(deckX, deckY);
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
+    if(IMAGES.deck) ctx.drawImage(IMAGES.deck, -cardW/2, -cardH/2, cardW, cardH);
+    else { ctx.fillStyle = '#111'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH); ctx.strokeStyle = '#555'; ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH); }
     ctx.restore();
 
-    // 2. Discard Pile
+    // Render Discard Pile (Top 3)
     if (discardPile.length > 0) {
         let startIdx = Math.max(0, discardPile.length - 3);
         for(let i = startIdx; i < discardPile.length; i++) {
@@ -966,81 +806,67 @@ function draw() {
         roundRect(ctx, width/2 - cardW/2, height/2 - cardH/2, cardW, cardH, 10); ctx.stroke();
     }
 
-    // 3. Opponent Hand
+    // Render Opponent Hand
     let oppSpread = Math.min(width / (opponentHand.length + 2), cardW * 0.7);
     let oppStart = width/2 - ((opponentHand.length - 1) * oppSpread) / 2;
     opponentHand.forEach((c, i) => {
-        c.targetX = oppStart + i * oppSpread;
-        c.targetY = -cardH * 0.4; // Sembunyi sedikit di atas
+        c.targetX = oppStart + i * oppSpread; c.targetY = -cardH * 0.4;
         c.draw(ctx, false, undefined, undefined, cardW, cardH);
     });
 
-    // 4. DARKNESS OVERLAY
-    if (blindMode) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${blindIntensity})`;
-        ctx.fillRect(0, 0, width, height);
-    }
+    // Darkness Overlay
+    if (blindMode) { ctx.fillStyle = `rgba(0, 0, 0, ${blindIntensity})`; ctx.fillRect(0, 0, width, height); }
 
-    // 5. My Hand
+    // Render My Hand
     let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
     let handYOffset = (blindMode && blindIntensity === 1.0) ? -50 : 0;
-
+    
+    // REKONSTRUKSI 3: Logic Highlight Position
     myHand.forEach((c, i) => {
-        // Logika formasi hand otomatis
+        // Abaikan target calculation jika sedang di-drag
         if (!c.isDragging) {
             c.targetX = pStart + i * pSpread;
-            // Posisi Y normal di bawah layar
-            let baseY = height - cardH * 0.6; 
+            let baseHeight = height - (cardH * 0.6); // Posisi default agak turun
             
-            // Highlight/Selected (Tap) logic: Naik sedikit
-            if (c.isHovered) baseY -= 40; 
-            
-            c.targetY = baseY + handYOffset;
-        }
+            // Jika dipilih (Highlight), kartu naik drastis
+            if (c.isSelected) baseHeight = height - (cardH * 1.2);
+            else if (c.isHovered) baseHeight = height - (cardH * 0.75);
 
-        c.width = cardW; c.height = cardH;
-        c.draw(ctx, true);
+            c.targetY = baseHeight + handYOffset;
+        }
+        
+        // Render semua KECUALI yang sedang di drag (render drag paling terakhir agar on-top)
+        if (i !== dragIdx) {
+            c.draw(ctx, true, undefined, undefined, cardW, cardH);
+        }
     });
 
-    // 6. Drop Zone Indicator (Only when dragging)
-    if (isDragging) {
-        ctx.save();
-        ctx.strokeStyle = "rgba(153, 51, 255, 0.5)";
-        ctx.lineWidth = 4;
-        ctx.setLineDash([10, 10]);
-        ctx.beginPath();
-        ctx.arc(width/2, height/2, 100, 0, Math.PI*2);
-        ctx.stroke();
-        ctx.restore();
+    // Render Dragged Card (Always on Top)
+    if (dragIdx !== -1 && myHand[dragIdx]) {
+        let c = myHand[dragIdx];
+        c.draw(ctx, true, c.x, c.y, cardW, cardH);
     }
 
     particles.forEach(p => p.draw(ctx));
     floatingTexts.forEach(t => t.draw(ctx));
 
     if(gameState === 'PLAYING' && !isAnimating) {
-        ctx.font = "bold 16px Orbitron"; 
-        ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888';
-        ctx.textAlign = 'center';
-        let txt = turn === 'me' ? "YOUR TURN - DRAG TO PLAY" : "OPPONENT'S TURN";
+        ctx.font = "bold 16px Orbitron"; ctx.fillStyle = turn === 'me' ? '#00FF00' : '#888'; ctx.textAlign = 'center';
+        let txt = turn === 'me' ? "YOUR TURN (DRAG TO PLAY)" : "OPPONENT'S TURN";
         if(mustPlayBasic) txt = "COMBO: PLAY BASIC CARD!";
         if(blindMode && blindIntensity === 1.0 && turn === 'me') txt = "GUESS THE CARD!";
-        ctx.fillText(txt, width/2, height/2 + cardH/2 + 40);
+        ctx.fillText(txt, width/2, height/2 + cardH/2 + 50);
     }
 }
 
 function update() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        if (particles[i].life <= 0) particles.splice(i, 1);
-    }
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        floatingTexts[i].update();
-        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
-    }
+    for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1); }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) { floatingTexts[i].update(); if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1); }
 }
-
 function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+// --- RESIZE & INPUT HANDLING UPDATE ---
 
 function resize() { 
     const dpr = window.devicePixelRatio || 1;
@@ -1049,9 +875,141 @@ function resize() {
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
     ctx.scale(dpr, dpr);
-    width = window.innerWidth; 
-    height = window.innerHeight; 
+    width = window.innerWidth; height = window.innerHeight;
+
+    // REKONSTRUKSI 1: Scale kartu responsive
+    // Base width reference: 500px. Jika layar lebih kecil, scale down.
+    // Jika layar besar, batasi max size agar tidak raksasa.
+    let refWidth = Math.min(width, 500);
+    cardScale = refWidth / 500; 
+    
+    // Set dimensi berdasarkan Ratio
+    // Base size 100px width (pada layar mobile)
+    cardW = Math.max(60, 100 * cardScale); 
+    cardH = cardW / CARD_RATIO;
 }
+
+// REKONSTRUKSI 3: POINTER EVENTS (TOUCH & MOUSE UNIFIED)
+// Menggantikan logic click lama dengan logic Drag & Highlight
+
+function getCardAt(x, y) {
+    // Cek urutan terbalik (kartu paling atas/kanan dulu)
+    for (let i = myHand.length - 1; i >= 0; i--) {
+        let c = myHand[i];
+        // Area hit box agak diperbesar sedikit
+        if (x > c.x - cardW/2 && x < c.x + cardW/2 && 
+            y > c.y - cardH/2 && y < c.y + cardH/2) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function onPointerDown(e) {
+    if (gameState !== 'PLAYING' || isAnimating || turn !== 'me') return;
+    
+    // Get correct coordinates
+    let rect = canvas.getBoundingClientRect();
+    let x = (e.clientX || e.touches[0].clientX) - rect.left;
+    let y = (e.clientY || e.touches[0].clientY) - rect.top;
+    
+    pointerX = x; pointerY = y;
+
+    // Cek apakah menyentuh deck (Draw Card)
+    let deckX = 60; let deckY = height/2;
+    if (x > deckX - cardW/2 - 20 && x < deckX + cardW/2 + 20 &&
+        y > deckY - cardH/2 - 20 && y < deckY + cardH/2 + 20) {
+        if (!blindMode || blindIntensity < 0.5) requestDraw();
+        return;
+    }
+
+    let idx = getCardAt(x, y);
+
+    if (idx !== -1) {
+        // Jika kartu ini SUDAH di-select (highlight), maka mulai DRAGGING
+        if (selectedIdx === idx) {
+            dragIdx = idx;
+            myHand[idx].isDragging = true;
+            dragOffsetX = x - myHand[idx].x;
+            dragOffsetY = y - myHand[idx].y;
+        } 
+        // Jika kartu belum di-select, lakukan SELECT (Highlight/Pop-up)
+        else {
+            // Reset seleksi kartu lain
+            if(selectedIdx !== -1 && myHand[selectedIdx]) myHand[selectedIdx].isSelected = false;
+            
+            selectedIdx = idx;
+            myHand[idx].isSelected = true;
+            playSound('pop');
+        }
+    } else {
+        // Tap di area kosong -> Deselect semua
+        if(selectedIdx !== -1 && myHand[selectedIdx]) {
+            myHand[selectedIdx].isSelected = false;
+            selectedIdx = -1;
+        }
+    }
+}
+
+function onPointerMove(e) {
+    // Update hover effect untuk desktop
+    let rect = canvas.getBoundingClientRect();
+    let x = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - rect.left;
+    let y = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - rect.top;
+
+    if (dragIdx !== -1) {
+        // Logic Dragging
+        e.preventDefault(); // Mencegah scroll
+        myHand[dragIdx].x = x - dragOffsetX;
+        myHand[dragIdx].y = y - dragOffsetY;
+    } else {
+        // Logic Hover (Visual Only)
+        let hovered = false;
+        for (let i = myHand.length - 1; i >= 0; i--) {
+            let c = myHand[i];
+            if (!hovered && x > c.x - cardW/2 && x < c.x + cardW/2 && 
+                y > c.y - cardH/2 && y < c.y + cardH/2) {
+                c.isHovered = true; hovered = true;
+            } else c.isHovered = false;
+        }
+    }
+}
+
+function onPointerUp(e) {
+    if (dragIdx !== -1) {
+        let c = myHand[dragIdx];
+        c.isDragging = false;
+        
+        // Cek jarak ke discard pile (tengah layar)
+        let dist = Math.hypot(c.x - width/2, c.y - height/2);
+        
+        // Jika cukup dekat (< 150px), coba mainkan kartu
+        if (dist < 150) {
+            let success = playerInput(dragIdx);
+            if (!success) {
+                // Jika gagal (aturan salah), balik ke tangan
+                c.targetX = c.x; // Set dummy target agar animasi smooth balik
+                // Animasi akan dihandle oleh loop draw
+            }
+        } else {
+            // Jika dilepas jauh dari tengah, batalkan drag, tetap selected
+        }
+        
+        dragIdx = -1;
+    }
+}
+
+// Event Listeners Unified
+window.addEventListener('resize', resize);
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+window.addEventListener('mouseup', onPointerUp);
+
+canvas.addEventListener('touchstart', onPointerDown, {passive: false});
+canvas.addEventListener('touchmove', onPointerMove, {passive: false});
+window.addEventListener('touchend', onPointerUp);
+
+// Utility
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
 function showFloatingText(txt, x, y, c) { 
     floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
