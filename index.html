@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO - DRAG UPDATE</title>
+    <title>ELUNO - REALISTIC UPDATE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
@@ -13,20 +13,26 @@
             overflow: hidden;
             background-color: #050505;
             font-family: 'Orbitron', sans-serif;
-            touch-action: none; /* Mencegah zoom/scroll browser saat drag */
+            touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            /* REKONSTRUKSI 2: BACKGROUND BARU */
+            background-image: url('https://github.com/viqihakbarrr-cyber/kkk/blob/main/BG.png?raw=true');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         #gameCanvas {
             display: block;
             width: 100%;
             height: 100vh;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            /* Canvas transparan agar background body terlihat */
+            background: transparent; 
         }
 
         /* UI Layers */
-        #ui-layer, #start-screen, #lobby-screen, #loading-layer {
+        #ui-layer, #lobby-screen, #loading-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column;
@@ -35,14 +41,14 @@
         }
 
         /* Interactive Layers */
-        #start-screen, #lobby-screen, #game-over {
+        #lobby-screen, #game-over, #fs-toggle {
             pointer-events: auto;
         }
 
-        #start-screen, #lobby-screen {
-            background: rgba(0, 0, 0, 0.9);
+        #lobby-screen {
+            background: rgba(0, 0, 0, 0.85); /* Sedikit transparan agar BG terlihat samar */
             z-index: 200;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
         }
 
         /* Loading Layer */
@@ -71,7 +77,7 @@
         }
 
         .modal-box {
-            background: #fff;
+            background: rgba(255, 255, 255, 0.95);
             padding: 40px;
             border-radius: 15px;
             text-align: center;
@@ -84,20 +90,6 @@
         h1 { margin: 0 0 20px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
         h2 { margin: 0 0 15px 0; color: #333; font-size: 18px; }
         
-        .checkbox-container {
-            margin: 20px 0;
-            font-size: 16px;
-            color: #333;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            cursor: pointer;
-        }
-
-        input[type="checkbox"] {
-            transform: scale(1.5);
-            cursor: pointer;
-            accent-color: #000;
-        }
-
         .input-group { margin-bottom: 20px; }
         input[type="number"] {
             padding: 10px; font-family: 'Orbitron'; font-size: 24px; text-align: center;
@@ -139,6 +131,32 @@
             transform: translate(-50%, -50%);
         }
 
+        /* REKONSTRUKSI 3: TOMBOL FULLSCREEN MINIMALIS */
+        #fs-toggle {
+            position: absolute;
+            top: 15px; right: 15px;
+            width: 40px; height: 40px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+            transition: all 0.2s;
+        }
+        #fs-toggle:hover { background: #9933FF; border-color: #fff; }
+        #fs-icon {
+            width: 20px; height: 20px;
+            border: 2px solid white;
+            border-top: none; border-left: none; /* Icon panah simple */
+            transform: rotate(45deg) translate(-2px, -2px);
+        }
+        #fs-icon::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border: 2px solid white; border-bottom: none; border-right: none;
+            transform: translate(-10px, -10px);
+        }
+
         .hidden { display: none !important; }
 
     </style>
@@ -147,26 +165,19 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <div id="fs-toggle" onclick="toggleFullscreen()">
+        <div style="color:white; font-size:24px; font-weight:bold;">&#x26F6;</div>
+    </div>
+
     <div id="loading-layer">
         <div class="spinner"></div>
         <div class="loading-text" id="loading-msg">LOADING 0%</div>
     </div>
 
-    <div id="start-screen" class="hidden">
-        <div class="modal-box">
-            <h1>ELUNO</h1>
-            <p style="color:#666; font-size:14px;">DRAG & DROP EDITION</p>
-            <label class="checkbox-container">
-                <input type="checkbox" id="fs-check" onchange="checkFullscreenRequirement()">
-                Enable Fullscreen
-            </label>
-            <button id="start-btn" class="main-btn" disabled onclick="goToLobby()">ENTER LOBBY</button>
-        </div>
-    </div>
-
     <div id="lobby-screen" class="hidden">
         <div class="modal-box" id="lobby-main">
             <h1>MULTIPLAYER</h1>
+            <p style="color:#666; margin-bottom:20px;">DRAG & DROP EDITION</p>
             <button class="main-btn active" onclick="createRoom()">CREATE ROOM</button>
             <br>
             <button class="main-btn btn-secondary" onclick="showJoinUI()">JOIN ROOM</button>
@@ -205,8 +216,8 @@ const ASSETS_URL = {
     water: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/BCwater.png?raw=true',
     leaf: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/BCleaf.png?raw=true',
     moon: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/SCpurple.png?raw=true',
-    back: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/Back.png?raw=true',
-    deck: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/Deck.png?raw=true'
+    back: 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/Back.png?raw=true'
+    // REKONSTRUKSI 1: Deck.png dihapus
 };
 
 const IMAGES = {};
@@ -229,7 +240,8 @@ function loadAssets() {
                 assetsLoaded = true;
                 setTimeout(() => {
                     document.getElementById('loading-layer').classList.add('hidden');
-                    document.getElementById('start-screen').classList.remove('hidden');
+                    // REKONSTRUKSI 3: Langsung ke Lobby, tidak ada start screen
+                    document.getElementById('lobby-screen').classList.remove('hidden');
                 }, 800);
             }
         };
@@ -254,11 +266,11 @@ let width, height;
 let particles = [];
 let floatingTexts = [];
 
-// REKONSTRUKSI 1: RASIO KARTU & SKALA
-const CARD_RATIO = 2.5 / 3.5; // Standard Poker Ratio (~0.714)
+// RASIO KARTU & SKALA
+const CARD_RATIO = 2.5 / 3.6; 
 let cardScale = 1;
 let cardW = 100;
-let cardH = 150;
+let cardH = 165;
 
 const SUITS = ['fire', 'water', 'leaf', 'moon'];
 const BASIC_SUITS = ['fire', 'water', 'leaf'];
@@ -273,13 +285,11 @@ let turn = '';
 let gameState = 'MENU'; 
 let isAnimating = false; 
 
-// Interaksi State (Drag & Highlight)
-let selectedIdx = -1; // Index kartu yang di-tap (highlight)
-let dragIdx = -1;     // Index kartu yang sedang di-drag
+// Interaksi State
+let selectedIdx = -1;
+let dragIdx = -1;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
-let pointerX = 0;
-let pointerY = 0;
 
 let blindMode = false;
 let blindIntensity = 0; 
@@ -298,8 +308,12 @@ function playSound(type) {
         osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
         gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'flip') {
+        // Suara saat kartu berbalik
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(300, t); osc.frequency.linearRampToValueAtTime(500, t + 0.1);
+        gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
     } else if (type === 'pop') {
-        // Suara saat highlight/tap
         osc.type = 'sine'; osc.frequency.setValueAtTime(600, t);
         gain.gain.setValueAtTime(0.05, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
         osc.start(); osc.stop(t + 0.1);
@@ -332,23 +346,52 @@ class Card {
         
         // State visual
         this.isHovered = false;
-        this.isSelected = false; // Untuk state highlight (naik ke atas)
-        this.isDragging = false; // Sedang di drag
+        this.isSelected = false; 
+        this.isDragging = false; 
+
+        // REKONSTRUKSI 1: Animasi Flip & FaceUp Logic
+        this.isFaceUp = true; // Default true, diubah false jika baru draw
+        this.scaleX = 1;      // Untuk efek flip (1 -> 0 -> 1)
+        this.flipping = false;
     }
 
-    draw(ctx, isFaceUp, x, y, w, h) {
+    draw(ctx, forceFaceUp, x, y, w, h) {
         let drawW = w || cardW;
         let drawH = h || cardH;
 
         // Logic Gerakan
         if (this.isDragging) {
-            // Jika dragging, ikuti posisi mouse langsung (tanpa interpolasi)
-            this.x = x; 
-            this.y = y;
+            this.x = x; this.y = y;
         } else {
-            // Normal interpolation ke target
+            // Smooth Interpolation
             this.x += (this.targetX - this.x) * 0.15;
             this.y += (this.targetY - this.y) * 0.15;
+
+            // REKONSTRUKSI 1: Cek Flip Trigger saat hampir sampai
+            // Jika kartu sedang tertutup, tidak sedang flipping, dan sudah dekat target
+            if (!this.isFaceUp && !this.flipping && Math.abs(this.x - this.targetX) < 10 && Math.abs(this.y - this.targetY) < 10) {
+                this.startFlip();
+            }
+        }
+
+        // Logic Flip Animation
+        if (this.flipping) {
+            if (!this.isFaceUp) {
+                // Tahap 1: Mengecil (1 -> 0)
+                this.scaleX -= 0.15;
+                if (this.scaleX <= 0) {
+                    this.scaleX = 0;
+                    this.isFaceUp = true; // Ganti gambar saat tipis
+                    playSound('flip');
+                }
+            } else {
+                // Tahap 2: Membesar (0 -> 1)
+                this.scaleX += 0.15;
+                if (this.scaleX >= 1) {
+                    this.scaleX = 1;
+                    this.flipping = false; // Selesai
+                }
+            }
         }
 
         // Shake logic
@@ -358,20 +401,26 @@ class Card {
             this.shake -= 1;
         }
 
-        // Tentukan posisi gambar akhir
         const finalX = this.x + offsetX;
         const finalY = this.y;
 
         ctx.save();
         ctx.translate(finalX, finalY);
 
-        // Scale efek saat highlight/drag
+        // Scale efek saat highlight/drag + efek FLIP
         let s = 1.0;
         if(this.isSelected) s = 1.1;
         if(this.isDragging) s = 1.15;
-        ctx.scale(s, s);
+        
+        // Gabungkan scale flip dan scale interaksi
+        ctx.scale(s * this.scaleX, s);
 
-        if (isFaceUp) {
+        // Tentukan apa yang digambar (Face Up atau Back)
+        // Gunakan parameter forceFaceUp jika ada (misal di discard pile selalu terbuka)
+        // Jika tidak, gunakan state this.isFaceUp
+        let showFace = (forceFaceUp !== undefined) ? forceFaceUp : this.isFaceUp;
+
+        if (showFace) {
             // Shadow
             ctx.shadowColor = this.suit === 'moon' ? COLORS.moon : 'rgba(0,0,0,0.5)';
             ctx.shadowBlur = this.suit === 'moon' ? 20 : (this.isSelected || this.isDragging ? 25 : 5);
@@ -384,48 +433,36 @@ class Card {
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
             }
-
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            // REKONSTRUKSI 2: Typography Angka
+            // Typography Angka
             if (this.suit !== 'moon') {
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 3; 
-                
-                // Ukuran font disesuaikan lebih kecil (18% dari lebar kartu)
-                let fontSize = drawW * 0.22; 
-                ctx.font = `900 ${fontSize}px Orbitron`;
-                
-                // Padding disesuaikan agar lebih mojok
-                let padX = drawW * 0.08; 
-                let padY = drawH * 0.08;
+                ctx.fillStyle = "#FFFFFF"; ctx.strokeStyle = "#000000"; ctx.lineWidth = 3; 
+                let fontSize = drawW * 0.22; ctx.font = `900 ${fontSize}px Orbitron`;
+                let padX = drawW * 0.08; let padY = drawH * 0.08;
 
-                // 1. POJOK KIRI ATAS
-                ctx.textAlign = 'left'; 
-                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left'; ctx.textBaseline = 'top';
                 ctx.strokeText(this.value, -drawW/2 + padX, -drawH/2 + padY);
                 ctx.fillText(this.value, -drawW/2 + padX, -drawH/2 + padY);
 
-                // 2. POJOK KANAN BAWAH
-                ctx.textAlign = 'right'; 
-                ctx.textBaseline = 'bottom';
+                ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
                 ctx.strokeText(this.value, drawW/2 - padX, drawH/2 - padY);
                 ctx.fillText(this.value, drawW/2 - padX, drawH/2 - padY);
             }
-
         } else {
-            // Kartu tertutup
-            ctx.shadowColor = 'rgba(0,0,0,0.5)';
-            ctx.shadowBlur = 5;
+            // Kartu tertutup (Back)
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5;
             if(IMAGES.back) {
                 ctx.drawImage(IMAGES.back, -drawW/2, -drawH/2, drawW, drawH);
             } else {
-                ctx.fillStyle = '#333';
-                ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
+                ctx.fillStyle = '#333'; ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
             }
         }
         ctx.restore();
+    }
+
+    startFlip() {
+        this.flipping = true;
     }
 }
 
@@ -450,27 +487,26 @@ class Particle {
     }
 }
 
-// --- FUNGSI LOBBY & NETWORK (Tidak Berubah Signifikan) ---
+// --- FUNGSI LOBBY & NETWORK ---
 function showLoading(msg) {
     const layer = document.getElementById('loading-layer');
-    layer.style.display = 'flex';
+    layer.classList.remove('hidden');
     layer.style.background = 'rgba(0,0,0,0.8)';
     document.getElementById('loading-msg').innerText = msg;
 }
-function hideLoading() { document.getElementById('loading-layer').style.display = 'none'; }
-function checkFullscreenRequirement() {
-    const chk = document.getElementById('fs-check');
-    const btn = document.getElementById('start-btn');
-    if(chk.checked) { btn.classList.add('active'); btn.disabled = false; } 
-    else { btn.classList.remove('active'); btn.disabled = true; }
+function hideLoading() { document.getElementById('loading-layer').classList.add('hidden'); }
+
+// REKONSTRUKSI 3: Fungsi Toggle Fullscreen
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+    }
 }
-function goToLobby() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => {});
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('lobby-screen').classList.remove('hidden');
-}
+
 function createRoom() {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const fullID = ID_PREFIX + code;
@@ -527,8 +563,13 @@ function handleNetworkData(data) {
     } else if (data.type === 'OPPONENT_MOVE') {
         processOpponentMove(data.card, data.isCrit);
     } else if (data.type === 'OPPONENT_DRAW') {
-        let c = new Card('fire', 1); c.x = 60; c.y = height/2;
-        opponentHand.push(c); playSound('deal');
+        // REKONSTRUKSI 1: Animasi Draw Opponent
+        // Kartu spawn dari Deck (bukan langsung di tangan)
+        let c = new Card('fire', 1); 
+        c.x = 60; c.y = height/2; // Mulai dari deck
+        c.isFaceUp = false; // Tertutup
+        opponentHand.push(c); 
+        playSound('deal');
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         turn = 'me';
     } else if (data.type === 'MOON_ATTACK') {
@@ -551,12 +592,15 @@ function handleNetworkData(data) {
     } else if (data.type === 'BLIND_FAIL') {
         showFloatingText("MISSED!", width/2, 150, "red"); turn = 'me'; 
     } else if (data.type === 'EXTRA_CARD') {
+        // Penalty Draw
         let c = data.card; let nc = new Card(c.suit, c.value);
-        nc.x = 60; nc.y = height/2; nc.targetX = width/2; nc.targetY = -200;
+        nc.x = 60; nc.y = height/2; // Dari Deck
+        nc.isFaceUp = false; // Tertutup dulu
+        nc.targetX = width/2; nc.targetY = -200; // Sementara ke atas lalu nanti diatur loop
         myHand.push(nc); playSound('deal');
         showFloatingText("Penalty!", width/2, height/2+50, "red");
     } else if (data.type === 'PENALTY_SYNC') {
-        let c = new Card('fire', 1); c.x = 60; c.y = height/2; 
+        let c = new Card('fire', 1); c.x = 60; c.y = height/2; c.isFaceUp = false;
         opponentHand.push(c); playSound('deal');
         showFloatingText("Opponent Penalized!", width/2, 100, "red");
     }
@@ -603,19 +647,28 @@ function playDealAnimation(myCards, oppCount, topCard) {
             }, 300);
             return;
         }
+        
+        let c;
         if (dealt % 2 === 0) {
-            let c = new Card('fire', 1); c.x = 60; c.y = height/2; opponentHand.push(c);
+            // Opponent card (always face down)
+            c = new Card('fire', 1); 
+            c.x = 60; c.y = height/2; 
+            c.isFaceUp = false;
+            opponentHand.push(c);
         } else {
+            // My card (Starts face down, flips later)
             let cardIndex = Math.floor(dealt / 2);
             if (myCards[cardIndex]) {
-                let c = myCards[cardIndex]; c.x = 60; c.y = height/2; myHand.push(c);
+                c = myCards[cardIndex]; 
+                c.x = 60; c.y = height/2;
+                c.isFaceUp = false; // Penting: Mulai tertutup
+                myHand.push(c);
             }
         }
         playSound('deal'); dealt++;
     }, dealSpeed);
 }
 
-// --- LOGIC VALIDASI & EKSEKUSI ---
 function isValidMove(card, topCard) {
     if (card.suit === 'moon') return true; 
     if (topCard.suit === 'moon') return true; 
@@ -628,7 +681,6 @@ function playerInput(cardIndex) {
     let card = myHand[cardIndex];
     let top = discardPile[discardPile.length - 1];
 
-    // Reset posisi drag
     card.isDragging = false; 
 
     if (blindMode && blindIntensity === 1.0) {
@@ -689,7 +741,6 @@ function playerInput(cardIndex) {
 }
 
 function executeMove(index, card, top, isCrit) {
-    // Reset state seleksi
     card.isSelected = false;
     selectedIdx = -1;
 
@@ -707,7 +758,8 @@ function executeMove(index, card, top, isCrit) {
                 if(penalty) {
                     setTimeout(() => {
                         conn.send({ type: 'EXTRA_CARD', card: {suit:penalty.suit, value:penalty.value} });
-                        opponentHand.push(new Card('fire',1)); 
+                        let c = new Card('fire', 1); c.x=60; c.y=height/2; c.isFaceUp=false;
+                        opponentHand.push(c); 
                     }, i * 200); 
                 }
             }
@@ -718,7 +770,7 @@ function executeMove(index, card, top, isCrit) {
 function processOpponentMove(cardData, isCrit) {
     let card = new Card(cardData.suit, cardData.value);
     if(opponentHand.length > 0) opponentHand.pop(); 
-    card.x = width/2; card.y = -100;
+    card.x = width/2; card.y = -100; // Datang dari atas
     card.targetX = width/2; card.targetY = height/2;
     discardPile.push(card);
     playSound('play');
@@ -729,7 +781,9 @@ function processOpponentMove(cardData, isCrit) {
                 let penalty = drawCardFromDeckLogic();
                 if(penalty) {
                     setTimeout(() => {
-                        penalty.x = 60; penalty.y = height/2; myHand.push(penalty);
+                        penalty.x = 60; penalty.y = height/2; 
+                        penalty.isFaceUp = false; // Draw tertutup dulu
+                        myHand.push(penalty);
                         playSound('deal'); showFloatingText("+1 Card", width/2, height/2+50, "red");
                         conn.send({ type: 'PENALTY_SYNC' });
                     }, i * 200);
@@ -743,6 +797,8 @@ function processOpponentMove(cardData, isCrit) {
 
 function requestDraw() {
     if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
+    
+    // REKONSTRUKSI 1: Draw Logic
     let newCard;
     if(isHost) newCard = drawCardFromDeckLogic();
     else {
@@ -753,8 +809,16 @@ function requestDraw() {
             newCard = new Card(s, v);
         }
     }
+
     if(newCard) {
-        newCard.x = 60; newCard.y = height/2; myHand.push(newCard); playSound('deal');
+        // Penting: Set posisi awal di Deck & Tertutup
+        newCard.x = 60; 
+        newCard.y = height/2; 
+        newCard.isFaceUp = false; 
+        
+        myHand.push(newCard); 
+        playSound('deal');
+        
         if (mustPlayBasic) {
             mustPlayBasic = false; conn.send({ type: 'OPPONENT_DRAW' }); turn = 'opponent';
             showFloatingText("Combo Skipped", width/2, height/2, "#aaa");
@@ -783,14 +847,25 @@ function endGame(title, subtitle) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio||1), canvas.height / (window.devicePixelRatio||1));
     
-    // REKONSTRUKSI 1: Gunakan cardScale
-    // Render Deck
+    // REKONSTRUKSI 1: Render Visual Deck Stack (Tanpa Deck.png)
+    // Tumpuk Back.png sebanyak 15 kali dengan offset kecil
     let deckX = 60; let deckY = height / 2;
-    ctx.save(); ctx.translate(deckX, deckY);
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
-    if(IMAGES.deck) ctx.drawImage(IMAGES.deck, -cardW/2, -cardH/2, cardW, cardH);
-    else { ctx.fillStyle = '#111'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH); ctx.strokeStyle = '#555'; ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH); }
-    ctx.restore();
+    if (IMAGES.back) {
+        let stackHeight = 15; // Jumlah kartu visual
+        for (let i = 0; i < stackHeight; i++) {
+            // Offset kartu sedikit ke atas-kiri setiap iterasi
+            let off = i * 0.5; 
+            ctx.save();
+            ctx.translate(deckX - off, deckY - off);
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = i === stackHeight - 1 ? 5 : 0; // Bayangan cuma di paling atas
+            ctx.drawImage(IMAGES.back, -cardW/2, -cardH/2, cardW, cardH);
+            ctx.restore();
+        }
+    } else {
+        // Fallback jika gambar belum load
+        ctx.fillStyle = '#333'; ctx.fillRect(deckX - cardW/2, deckY - cardH/2, cardW, cardH);
+    }
 
     // Render Discard Pile (Top 3)
     if (discardPile.length > 0) {
@@ -822,30 +897,25 @@ function draw() {
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
     let handYOffset = (blindMode && blindIntensity === 1.0) ? -50 : 0;
     
-    // REKONSTRUKSI 3: Logic Highlight Position
     myHand.forEach((c, i) => {
-        // Abaikan target calculation jika sedang di-drag
         if (!c.isDragging) {
             c.targetX = pStart + i * pSpread;
-            let baseHeight = height - (cardH * 0.6); // Posisi default agak turun
-            
-            // Jika dipilih (Highlight), kartu naik drastis
+            let baseHeight = height - (cardH * 0.6); 
             if (c.isSelected) baseHeight = height - (cardH * 1.2);
             else if (c.isHovered) baseHeight = height - (cardH * 0.75);
-
             c.targetY = baseHeight + handYOffset;
         }
         
-        // Render semua KECUALI yang sedang di drag (render drag paling terakhir agar on-top)
         if (i !== dragIdx) {
-            c.draw(ctx, true, undefined, undefined, cardW, cardH);
+            // Parameter ke-2 (undefined) membiarkan kartu menentukan FaceUp/Down sendiri
+            c.draw(ctx, undefined, undefined, undefined, cardW, cardH);
         }
     });
 
     // Render Dragged Card (Always on Top)
     if (dragIdx !== -1 && myHand[dragIdx]) {
         let c = myHand[dragIdx];
-        c.draw(ctx, true, c.x, c.y, cardW, cardH);
+        c.draw(ctx, undefined, c.x, c.y, cardW, cardH);
     }
 
     particles.forEach(p => p.draw(ctx));
@@ -866,8 +936,6 @@ function update() {
 }
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-// --- RESIZE & INPUT HANDLING UPDATE ---
-
 function resize() { 
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
@@ -877,26 +945,15 @@ function resize() {
     ctx.scale(dpr, dpr);
     width = window.innerWidth; height = window.innerHeight;
 
-    // REKONSTRUKSI 1: Scale kartu responsive
-    // Base width reference: 500px. Jika layar lebih kecil, scale down.
-    // Jika layar besar, batasi max size agar tidak raksasa.
     let refWidth = Math.min(width, 500);
     cardScale = refWidth / 500; 
-    
-    // Set dimensi berdasarkan Ratio
-    // Base size 100px width (pada layar mobile)
     cardW = Math.max(60, 100 * cardScale); 
     cardH = cardW / CARD_RATIO;
 }
 
-// REKONSTRUKSI 3: POINTER EVENTS (TOUCH & MOUSE UNIFIED)
-// Menggantikan logic click lama dengan logic Drag & Highlight
-
 function getCardAt(x, y) {
-    // Cek urutan terbalik (kartu paling atas/kanan dulu)
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
-        // Area hit box agak diperbesar sedikit
         if (x > c.x - cardW/2 && x < c.x + cardW/2 && 
             y > c.y - cardH/2 && y < c.y + cardH/2) {
             return i;
@@ -908,14 +965,11 @@ function getCardAt(x, y) {
 function onPointerDown(e) {
     if (gameState !== 'PLAYING' || isAnimating || turn !== 'me') return;
     
-    // Get correct coordinates
     let rect = canvas.getBoundingClientRect();
     let x = (e.clientX || e.touches[0].clientX) - rect.left;
     let y = (e.clientY || e.touches[0].clientY) - rect.top;
     
-    pointerX = x; pointerY = y;
-
-    // Cek apakah menyentuh deck (Draw Card)
+    // Cek Tap di Deck (Area Tumpukan)
     let deckX = 60; let deckY = height/2;
     if (x > deckX - cardW/2 - 20 && x < deckX + cardW/2 + 20 &&
         y > deckY - cardH/2 - 20 && y < deckY + cardH/2 + 20) {
@@ -926,24 +980,18 @@ function onPointerDown(e) {
     let idx = getCardAt(x, y);
 
     if (idx !== -1) {
-        // Jika kartu ini SUDAH di-select (highlight), maka mulai DRAGGING
         if (selectedIdx === idx) {
             dragIdx = idx;
             myHand[idx].isDragging = true;
             dragOffsetX = x - myHand[idx].x;
             dragOffsetY = y - myHand[idx].y;
-        } 
-        // Jika kartu belum di-select, lakukan SELECT (Highlight/Pop-up)
-        else {
-            // Reset seleksi kartu lain
+        } else {
             if(selectedIdx !== -1 && myHand[selectedIdx]) myHand[selectedIdx].isSelected = false;
-            
             selectedIdx = idx;
             myHand[idx].isSelected = true;
             playSound('pop');
         }
     } else {
-        // Tap di area kosong -> Deselect semua
         if(selectedIdx !== -1 && myHand[selectedIdx]) {
             myHand[selectedIdx].isSelected = false;
             selectedIdx = -1;
@@ -952,18 +1000,15 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
-    // Update hover effect untuk desktop
     let rect = canvas.getBoundingClientRect();
     let x = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) - rect.left;
     let y = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) - rect.top;
 
     if (dragIdx !== -1) {
-        // Logic Dragging
-        e.preventDefault(); // Mencegah scroll
+        e.preventDefault(); 
         myHand[dragIdx].x = x - dragOffsetX;
         myHand[dragIdx].y = y - dragOffsetY;
     } else {
-        // Logic Hover (Visual Only)
         let hovered = false;
         for (let i = myHand.length - 1; i >= 0; i--) {
             let c = myHand[i];
@@ -979,27 +1024,18 @@ function onPointerUp(e) {
     if (dragIdx !== -1) {
         let c = myHand[dragIdx];
         c.isDragging = false;
-        
-        // Cek jarak ke discard pile (tengah layar)
         let dist = Math.hypot(c.x - width/2, c.y - height/2);
         
-        // Jika cukup dekat (< 150px), coba mainkan kartu
         if (dist < 150) {
             let success = playerInput(dragIdx);
             if (!success) {
-                // Jika gagal (aturan salah), balik ke tangan
-                c.targetX = c.x; // Set dummy target agar animasi smooth balik
-                // Animasi akan dihandle oleh loop draw
+                c.targetX = c.x; 
             }
-        } else {
-            // Jika dilepas jauh dari tengah, batalkan drag, tetap selected
         }
-        
         dragIdx = -1;
     }
 }
 
-// Event Listeners Unified
 window.addEventListener('resize', resize);
 canvas.addEventListener('mousedown', onPointerDown);
 canvas.addEventListener('mousemove', onPointerMove);
@@ -1009,7 +1045,6 @@ canvas.addEventListener('touchstart', onPointerDown, {passive: false});
 canvas.addEventListener('touchmove', onPointerMove, {passive: false});
 window.addEventListener('touchend', onPointerUp);
 
-// Utility
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath(); }
 function showFloatingText(txt, x, y, c) { 
     floatingTexts.push({ text: txt, x: x, y: y, color: c, life: 1, update: function(){this.y-=1.5; this.life-=0.02;}, draw: function(ctx){
