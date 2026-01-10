@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO - MOON UPDATE (ASSETS)</title>
+    <title>ELUNO - MOON UPDATE (FINAL)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -47,20 +47,28 @@
 
         /* Loading Layer */
         #loading-layer {
-            background: rgba(0,0,0,1);
+            background: #000;
             z-index: 300;
             display: flex;
         }
         
         .spinner {
-            width: 50px; height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid #9933FF;
+            width: 60px; height: 60px;
+            border: 6px solid #333;
+            border-top: 6px solid #9933FF;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-text { color: white; margin-top: 20px; font-size: 16px; letter-spacing: 2px; }
+        
+        .loading-text { 
+            color: #9933FF; 
+            font-size: 24px; 
+            letter-spacing: 3px; 
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(153, 51, 255, 0.5);
+        }
 
         .modal-box {
             background: #fff;
@@ -141,7 +149,7 @@
 
     <div id="loading-layer">
         <div class="spinner"></div>
-        <div class="loading-text" id="loading-msg">LOADING ASSETS...</div>
+        <div class="loading-text" id="loading-msg">LOADING 0%</div>
     </div>
 
     <div id="start-screen" class="hidden">
@@ -170,7 +178,7 @@
             <h2>ROOM CODE</h2>
             <div class="room-code-display" id="host-room-code">----</div>
             <p>Waiting for opponent...</p>
-            <div class="spinner" style="width:30px; height:30px; margin: 0 auto;"></div>
+            <div class="spinner" style="width:30px; height:30px; margin: 0 auto; border-width: 4px;"></div>
             <br>
             <button class="main-btn btn-secondary" onclick="resetLobby()">CANCEL</button>
         </div>
@@ -212,18 +220,23 @@ function loadAssets() {
     let loadedCount = 0;
     const keys = Object.keys(ASSETS_URL);
     const total = keys.length;
+    const msg = document.getElementById('loading-msg');
 
     keys.forEach(key => {
         const img = new Image();
         img.src = ASSETS_URL[key];
         img.onload = () => {
             loadedCount++;
+            // Update Loading Percentage
+            const percent = Math.round((loadedCount / total) * 100);
+            msg.innerText = `LOADING ${percent}%`;
+
             if(loadedCount >= total) {
                 assetsLoaded = true;
                 setTimeout(() => {
                     document.getElementById('loading-layer').classList.add('hidden');
                     document.getElementById('start-screen').classList.remove('hidden');
-                }, 500);
+                }, 800);
             }
         };
         img.onerror = () => {
@@ -233,7 +246,6 @@ function loadAssets() {
     });
 }
 
-// Start loading immediately
 loadAssets();
 
 
@@ -274,7 +286,7 @@ let isAnimating = false;
 // Moon & Blind Mode State
 let blindMode = false;
 let blindIntensity = 0; // 0.0 to 1.0
-let mustPlayBasic = false; // Flag untuk pemilik Moon saat extra turn
+let mustPlayBasic = false; 
 
 // Audio Context
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -351,25 +363,34 @@ class Card {
             if (IMAGES[this.suit]) {
                 ctx.drawImage(IMAGES[this.suit], -drawW/2, -drawH/2, drawW, drawH);
             } else {
-                // Fallback if image fails
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
             }
 
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-            // Draw Number (Only for Basic Suits)
+            // Draw Number (Di Ujung Kiri Atas & Kanan Bawah)
             if (this.suit !== 'moon') {
                 ctx.fillStyle = "#FFFFFF";
                 ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 3;
-                ctx.font = `bold ${drawW * 0.4}px Orbitron`;
-                ctx.textAlign = 'center'; 
-                ctx.textBaseline = 'middle';
+                ctx.lineWidth = 4; // Tebalkan outline agar jelas
+                // Font agak lebih kecil agar pas di pojok
+                ctx.font = `bold ${drawW * 0.35}px Orbitron`;
                 
-                // Stroke text agar terbaca jelas di atas gambar
-                ctx.strokeText(this.value, 0, 0);
-                ctx.fillText(this.value, 0, 0);
+                let padX = drawW * 0.12;
+                let padY = drawH * 0.12;
+
+                // 1. POJOK KIRI ATAS
+                ctx.textAlign = 'left'; 
+                ctx.textBaseline = 'top';
+                ctx.strokeText(this.value, -drawW/2 + padX, -drawH/2 + padY);
+                ctx.fillText(this.value, -drawW/2 + padX, -drawH/2 + padY);
+
+                // 2. POJOK KANAN BAWAH
+                ctx.textAlign = 'right'; 
+                ctx.textBaseline = 'bottom';
+                ctx.strokeText(this.value, drawW/2 - padX, drawH/2 - padY);
+                ctx.fillText(this.value, drawW/2 - padX, drawH/2 - padY);
             }
 
         } else {
@@ -411,7 +432,10 @@ class Particle {
 // --- FUNGSI LOBBY & NETWORK ---
 
 function showLoading(msg) {
-    document.getElementById('loading-layer').style.display = 'flex';
+    // Fungsi ini untuk status koneksi, bukan loading aset awal
+    const layer = document.getElementById('loading-layer');
+    layer.style.display = 'flex';
+    layer.style.background = 'rgba(0,0,0,0.8)'; // Transparan untuk koneksi
     document.getElementById('loading-msg').innerText = msg;
 }
 function hideLoading() {
@@ -531,8 +555,6 @@ function handleNetworkData(data) {
         showFloatingText("Opponent Drew", width/2, 100, "#aaa");
         
         turn = 'me';
-        // Note: Jika lawan draw saat saya buta (blindMode=true), 
-        // giliran kembali ke saya dan saya harus menebak.
     
     } else if (data.type === 'MOON_ATTACK') {
         if(opponentHand.length > 0) opponentHand.pop();
@@ -546,30 +568,23 @@ function handleNetworkData(data) {
             spawnExplosion(width/2, height/2, COLORS.moon);
             playSound('moon');
             blindMode = true;
-            blindIntensity = 1.0; // TOTAL DARKNESS (VICTIM)
+            blindIntensity = 1.0; 
             showFloatingText("BLINDED!", width/2, height/2, "#FFF");
         }, 300);
 
-        // Turn masih di lawan (Extra Turn)
-    
     } else if (data.type === 'MOON_FOLLOWUP') {
-        // Lawan jalan kartu basic setelah Moon
         processOpponentMove(data.card, data.isCrit);
         showFloatingText("ONE SHOT CHANCE", width/2, height/2 + 50, "red");
-        // Giliran saya (turn='me') tapi buta
         
     } else if (data.type === 'BLIND_CLEARED') {
-        // Lawan (tadinya buta) berhasil tebak
         blindMode = false;
         blindIntensity = 0;
         showFloatingText("DARKNESS FADED", width/2, height/2, "#FFF");
         processOpponentMove(data.card, data.isCrit);
 
     } else if (data.type === 'BLIND_FAIL') {
-        // Lawan gagal tebak
         showFloatingText("MISSED!", width/2, 150, "red");
         turn = 'me'; 
-        // Saya (Pemilik Moon) dapat giliran lagi, tapi layar saya redup (blindMode=true, intensity=0.1)
     }
     
     else if (data.type === 'EXTRA_CARD') {
@@ -693,7 +708,6 @@ function playerInput(cardIndex) {
     let card = myHand[cardIndex];
     let top = discardPile[discardPile.length - 1];
 
-    // LOGIKA BLIND MODE (Korban Tebak-tebakan)
     if (blindMode && blindIntensity === 1.0) {
         if (isValidMove(card, top)) {
             executeMove(cardIndex, card, top, false);
@@ -714,7 +728,6 @@ function playerInput(cardIndex) {
         return;
     }
 
-    // LOGIKA EXTRA TURN PEMILIK MOON (Wajib Basic)
     if (mustPlayBasic) {
         if (card.suit === 'moon') {
             card.shake = 20;
@@ -724,7 +737,6 @@ function playerInput(cardIndex) {
         if (!BASIC_SUITS.includes(card.suit)) return;
     }
 
-    // LOGIKA NORMAL / MOON PLAY
     if (isValidMove(card, top)) {
         if (card.suit === 'moon') {
             executeMove(cardIndex, card, top, false);
@@ -732,7 +744,7 @@ function playerInput(cardIndex) {
             spawnExplosion(width/2, height/2, COLORS.moon);
             playSound('moon');
             blindMode = true;
-            blindIntensity = 0.1; // Gelap 10% (Pemilik Moon)
+            blindIntensity = 0.1;
             mustPlayBasic = true; 
             
             turn = 'me'; 
@@ -745,7 +757,6 @@ function playerInput(cardIndex) {
             executeMove(cardIndex, card, top, isCrit);
 
             if (mustPlayBasic) {
-                // Sukses Combo Moon -> Basic
                 mustPlayBasic = false;
                 conn.send({ 
                     type: 'MOON_FOLLOWUP', 
@@ -838,7 +849,6 @@ function processOpponentMove(cardData, isCrit) {
 }
 
 function requestDraw() {
-    // FIX: Hapus pengecekan 'mustPlayBasic' agar pemilik Moon bisa draw jika tidak punya kartu
     if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
 
     let newCard;
@@ -859,12 +869,8 @@ function requestDraw() {
         myHand.push(newCard);
         playSound('deal');
         
-        // FIX LOGIC: Jika sedang combo (mustPlayBasic) tapi draw, combo hangus & giliran pindah
         if (mustPlayBasic) {
             mustPlayBasic = false;
-            // Kita mengirim 'OPPONENT_DRAW'. Karena kita draw, giliran habis.
-            // Lawan saat ini sedang Blind (karena efek Moon sebelumnya).
-            // Jadi giliran pindah ke lawan, dan lawan harus menebak.
             conn.send({ type: 'OPPONENT_DRAW' });
             turn = 'opponent';
             showFloatingText("Combo Skipped", width/2, height/2, "#aaa");
@@ -902,32 +908,31 @@ function endGame(title, subtitle) {
 // --- RENDER LOOP ---
 
 function draw() {
-    ctx.clearRect(0, 0, width, height);
+    // Gunakan width/height dari state global yang sudah disesuaikan resize
+    // Tapi clearRect menggunakan canvas.width/height (real pixel) untuk membersihkan seluruh area
+    ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio||1), canvas.height / (window.devicePixelRatio||1));
     
     let cardW = width < 600 ? 65 : 100;
     let cardH = cardW * 1.4;
 
-    // 1. Deck
+    // 1. Deck (HANYA 1 GAMBAR, TIDAK LOOPING)
     let deckX = 60; let deckY = height / 2;
-    // Gambar tumpukan kartu bawah
-    for(let i=0; i<3; i++) {
-        ctx.save();
-        ctx.translate(deckX, (deckY) - i*2);
-        if(IMAGES.back) {
-            ctx.drawImage(IMAGES.back, -cardW/2, -cardH/2, cardW, cardH);
-        } else {
-            ctx.fillStyle = '#222'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH);
-        }
-        ctx.restore();
-    }
-    // Gambar Deck Utama (Top)
+    
     ctx.save();
-    ctx.translate(deckX, deckY - 6);
+    ctx.translate(deckX, deckY);
+    // Shadow agar deck terlihat "pop" sedikit walau 1 gambar
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 5;
+
     if(IMAGES.deck) {
+        // Render 1 kali saja
         ctx.drawImage(IMAGES.deck, -cardW/2, -cardH/2, cardW, cardH);
     } else {
-        ctx.fillStyle = '#000'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH);
-        ctx.strokeStyle = '#fff'; ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH);
+        ctx.fillStyle = '#111'; 
+        ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH);
+        ctx.strokeStyle = '#555';
+        ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH);
     }
     ctx.restore();
 
@@ -964,7 +969,6 @@ function draw() {
     let pSpread = Math.min(width / (myHand.length + 1), cardW + 10);
     let pStart = width/2 - ((myHand.length - 1) * pSpread) / 2;
     
-    // Jika blind mode 1.0 (victim), naikkan kartu. Jika 0.1 (attacker), normal.
     let handYOffset = (blindMode && blindIntensity === 1.0) ? -50 : 0;
 
     myHand.forEach((c, i) => {
@@ -1004,11 +1008,31 @@ function update() {
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-// --- INPUTS ---
+// --- INPUTS & RESIZE (High DPI Support) ---
+
+function resize() { 
+    // Mendukung layar DPI tinggi (Retina) agar aset tajam
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set ukuran buffer canvas sesuai pixel asli layar
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    
+    // Set ukuran tampilan CSS (ukuran logis)
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    
+    // Scale context drawing
+    ctx.scale(dpr, dpr);
+
+    // Variable logika game tetap menggunakan ukuran logis window
+    width = window.innerWidth; 
+    height = window.innerHeight; 
+}
+
 function handleInput(x, y) {
     if (gameState !== 'PLAYING' || turn !== 'me' || isAnimating) return;
 
-    // Cek Input Kartu di Tangan
     for (let i = myHand.length - 1; i >= 0; i--) {
         let c = myHand[i];
         if (x > c.x - c.width/2 && x < c.x + c.width/2 && 
@@ -1017,10 +1041,6 @@ function handleInput(x, y) {
         }
     }
 
-    // Cek Input Deck (Draw Card)
-    // FIX: Hanya block draw jika blindIntensity == 1.0 (Victim). 
-    // Pemilik Moon (blindIntensity == 0.1) boleh draw.
-    // Hapus juga '!mustPlayBasic' supaya pemilik Moon bisa draw kalau mau.
     if (!blindMode || blindIntensity < 0.5) {
         let deckX = 60; let deckY = height/2;
         let w = width < 600 ? 65 : 100; let h = w*1.4;
@@ -1051,7 +1071,6 @@ function showFloatingText(txt, x, y, c) {
     }});
 }
 
-function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize);
 canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
 canvas.addEventListener('mousemove', e => handleHover(e.clientX, e.clientY));
