@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO - MIRROR UPDATE</title>
+    <title>ELUNO - MIRROR FIXED</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
@@ -199,7 +199,7 @@ const SFX_SPRITES = {
     error:  { start: 6,  dur: 1 },
     crit:   { start: 8,  dur: 2 },
     moon:   { start: 15, dur: 7 },
-    parry:  { start: 3, dur: 1 } // Menggunakan suara play tapi nanti kita pitch shift kalo bisa, atau pakai default
+    parry:  { start: 11, dur: 3 }
 };
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -225,7 +225,7 @@ function playSound(type) {
     if (sprite) {
         const source = audioCtx.createBufferSource();
         source.buffer = sfxBuffer;
-        if(type === 'parry') source.playbackRate.value = 1.5; // Pitch up untuk parry
+        if(type === 'parry') source.playbackRate.value = 1.5; 
         source.connect(audioCtx.destination);
         source.start(0, sprite.start, sprite.dur);
     }
@@ -280,7 +280,7 @@ let peer = null;
 let conn = null;
 let myPeerID = null;
 let isHost = false;
-const ID_PREFIX = "eluno-mirror-v2-";
+const ID_PREFIX = "eluno-mirror-fixed-";
 let rematchMe = false;
 let rematchOpp = false;
 
@@ -291,7 +291,7 @@ const ctx = canvas.getContext('2d');
 let width, height;
 let particles = [];
 let floatingTexts = [];
-let projectiles = []; // Untuk kartu penalti yang terbang
+let projectiles = [];
 
 const CARD_RATIO = 2.5 / 4.0;
 let cardScale = 1;
@@ -311,7 +311,6 @@ let turn = '';
 let gameState = 'MENU'; 
 let isAnimating = false; 
 
-// Interaksi State
 let selectedIdx = -1;
 let dragIdx = -1;
 let dragOffsetX = 0;
@@ -320,7 +319,7 @@ let dragOffsetY = 0;
 let blindMode = false;
 let blindIntensity = 0; 
 let mustPlayBasic = false; 
-let canParry = false; // Jika true, player bisa mengeluarkan Mirror untuk menangkis
+let canParry = false; 
 
 // Fullscreen Logic
 document.addEventListener('fullscreenchange', () => {
@@ -416,7 +415,6 @@ class Card {
         let showFace = (forceFaceUp !== undefined) ? forceFaceUp : this.isFaceUp;
 
         if (showFace) {
-            // Shadow Logic
             if(this.suit === 'moon') {
                 ctx.shadowColor = COLORS.moon; ctx.shadowBlur = 20;
             } else if (this.suit === 'mirror') {
@@ -459,19 +457,29 @@ class Card {
     startFlip() { this.flipping = true; }
 }
 
-// Class untuk Kartu Penalti yang terbang
 class ProjectileCard {
     constructor(targetIsMe, slowMotion) {
         this.x = width / 2;
         this.y = height / 2;
-        this.targetY = targetIsMe ? height + 100 : -100;
         this.targetIsMe = targetIsMe;
-        this.speed = slowMotion ? 0.8 : 12; // 90% slower (approx 1 vs 12)
+        this.creationTime = Date.now();
+        this.isSlow = slowMotion;
+        this.speed = slowMotion ? 1.0 : 15; // Start slow or fast
         this.isDead = false;
         this.angle = 0;
     }
 
     update() {
+        // --- TIMEOUT LOGIC (2 DETIK) ---
+        if (this.isSlow) {
+            if (Date.now() - this.creationTime > 2000) {
+                this.isSlow = false;
+                this.speed = 15; // Kembali cepat
+                canParry = false; // Hilangkan kesempatan parry
+                showFloatingText("TOO LATE!", width/2, height/2, "#666");
+            }
+        }
+
         if (this.targetIsMe) {
             this.y += this.speed;
             if (this.y > height - 100) this.isDead = true; 
@@ -492,8 +500,7 @@ class ProjectileCard {
             ctx.fillStyle = '#333'; ctx.fillRect(-cardW/2, -cardH/2, cardW, cardH);
         }
         
-        // Aura Effect if slow (Mirror opportunity)
-        if(this.speed < 2) {
+        if(this.isSlow) {
             ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 4;
             ctx.strokeRect(-cardW/2, -cardH/2, cardW, cardH);
         }
@@ -644,12 +651,10 @@ function handleNetworkData(data) {
     } else if (data.type === 'BLIND_FAIL') {
         showFloatingText("MISSED!", width/2, 150, "red"); turn = 'me'; 
     } else if (data.type === 'PARRY_SUCCESS') {
-        // Lawan berhasil parry, proyektil kembali ke saya
-        projectiles = []; // Hapus visual lama
+        projectiles = []; 
         showFloatingText("PARRIED!", width/2, height/2, COLORS.mirror);
         playSound('parry');
-        // Spawn proyektil cepat ke arah saya
-        spawnProjectiles(true, false); // Target me, Fast
+        spawnProjectiles(true, false); // Target me, Fast (Return to sender logic reversed for viewer)
     } else if (data.type === 'REQUEST_REMATCH') {
         rematchOpp = true;
         showFloatingText("Opponent wants rematch!", width/2, height/2, "#fff");
@@ -662,8 +667,6 @@ function startMultiplayerGame() {
     document.getElementById('lobby-screen').classList.add('hidden');
     gameState = 'PLAYING';
     
-    // GENERATE HANDS WITH GUARANTEE
-    // 1 Fire, 1 Water, 1 Leaf, 1 Moon, 1 Mirror, 1 Random
     function generateHand() {
         let h = [];
         h.push({suit: 'fire', value: Math.ceil(Math.random()*9)});
@@ -672,7 +675,6 @@ function startMultiplayerGame() {
         h.push({suit: 'moon', value: 0});
         h.push({suit: 'mirror', value: 0});
         
-        // Random card for the 6th
         let r = Math.random();
         if(r < 0.1) h.push({suit: 'moon', value:0});
         else if(r < 0.2) h.push({suit: 'mirror', value:0});
@@ -681,7 +683,6 @@ function startMultiplayerGame() {
             h.push({suit: s, value: Math.ceil(Math.random()*9)});
         }
         
-        // Shuffle
         for (let i = h.length - 1; i > 0; i--) { 
             const j = Math.floor(Math.random() * (i + 1)); 
             [h[i], h[j]] = [h[j], h[i]]; 
@@ -691,11 +692,7 @@ function startMultiplayerGame() {
 
     let p1H = generateHand();
     let p2H = generateHand();
-
-    // Sisa Deck (Visual saja karena draw logic random)
     let deckCount = 30; 
-    
-    // Top Card (Basic only)
     let top = {suit: BASIC_SUITS[Math.floor(Math.random()*3)], value: Math.ceil(Math.random()*9)};
     
     let myStartCards = p1H.map(c => new Card(c.suit, c.value, true));
@@ -743,7 +740,7 @@ function playDealAnimation(myCards, oppCount, topCard) {
 }
 
 function isValidMove(card, topCard) {
-    if (card.suit === 'mirror') return true; // Universal
+    if (card.suit === 'mirror') return true; 
     if (card.suit === 'moon') return true; 
     if (topCard.suit === 'moon' || topCard.suit === 'mirror') return true; 
     return card.suit === topCard.suit || card.value === topCard.value;
@@ -756,12 +753,11 @@ function playerInput(cardIndex) {
     let top = discardPile[discardPile.length - 1];
     card.isDragging = false; 
 
-    // --- LOGIKA PARRY MIRROR ---
+    // --- LOGIKA PARRY ---
     if (canParry) {
         if (card.suit === 'mirror') {
             executeMove(cardIndex, card, top, false);
-            // Reverse projectiles
-            projectiles.forEach(p => { p.speed = 15; p.targetIsMe = false; }); // Send back fast!
+            projectiles.forEach(p => { p.speed = 15; p.targetIsMe = false; p.isSlow = false; }); 
             showFloatingText("MIRROR PARRY!", width/2, height/2, COLORS.mirror);
             playSound('parry');
             canParry = false;
@@ -774,7 +770,6 @@ function playerInput(cardIndex) {
         }
     }
 
-    // --- LOGIKA NORMAL ---
     if (turn !== 'me') return false;
 
     if (blindMode && blindIntensity === 1.0) {
@@ -805,26 +800,24 @@ function playerInput(cardIndex) {
 
     if (isValidMove(card, top)) {
         if (card.suit === 'moon') {
+            // FIX: Moon logic cleanup
             executeMove(cardIndex, card, top, false);
             spawnExplosion(width/2, height/2, COLORS.moon);
             playSound('moon');
-            blindMode = true; blindIntensity = 0.1; mustPlayBasic = true; 
+            // Pastikan state di reset
+            canParry = false; 
+            blindMode = true; 
+            blindIntensity = 0.1; 
+            mustPlayBasic = true; 
             turn = 'me'; 
             showFloatingText("EXTRA TURN (Basic Only)", width/2, height/2 + 100, COLORS.moon);
             conn.send({ type: 'MOON_ATTACK' });
         } else if (card.suit === 'mirror') {
             executeMove(cardIndex, card, top, false);
             playSound('play');
-            // Mirror acts as extra turn basically, or generic pass
-            showFloatingText("MIRROR PLAYED", width/2, height/2 + 100, COLORS.mirror);
-            // Mirror doesn't trigger blind or crit chain usually, just universal pass + extra turn
-            // Let's make it grant extra turn too for fun, or just pass turn. Prompt says "Extra turn" chance
-            turn = 'me';
+            turn = 'me'; // Mirror grants extra turn
             showFloatingText("EXTRA TURN", width/2, height/2 + 100, COLORS.mirror);
             conn.send({ type: 'OPPONENT_MOVE', card: {suit: card.suit, value: card.value}, isCrit: false }); 
-            // Note: Sending move but keeping turn 'me' logically requires opp to know I kept turn.
-            // Simplified: Mirror just passes turn to Opponent unless specific rule.
-            // Prompt: "Memberikan kesempatan kedua". Let's treat as Extra Turn.
         } else {
             let isCrit = COUNTER_MAP[card.suit] === top.suit;
             executeMove(cardIndex, card, top, isCrit);
@@ -853,7 +846,9 @@ function executeMove(index, card, top, isCrit) {
 
     myHand.splice(index, 1);
     discardPile.push(card);
-    card.targetX = width/2; card.targetY = height/2;
+    // Explicitly target center
+    card.targetX = width/2; 
+    card.targetY = height/2;
     card.isAnimatingPos = false; 
     playSound('play');
 
@@ -878,22 +873,21 @@ function processOpponentMove(cardData, isCrit) {
     
     if(cardData.suit === 'mirror') {
         showFloatingText("OPPONENT MIRROR!", width/2, height/2, COLORS.mirror);
-        turn = 'opponent'; // They get extra turn
+        turn = 'opponent'; 
         return;
     }
 
     if(isCrit) {
         playSound('crit'); showFloatingText("CRITICAL INCOMING!", width/2, height/2 - 50, COLORS[cardData.suit]);
         
-        // Cek apakah punya Mirror
         let hasMirror = myHand.some(c => c.suit === 'mirror');
         
         if (hasMirror) {
-            spawnProjectiles(true, true); // Target Me, Slow Motion
+            spawnProjectiles(true, true); 
             canParry = true;
             showFloatingText("USE MIRROR TO PARRY!", width/2, height/2 + 50, "#00FFFF");
         } else {
-            spawnProjectiles(true, false); // Target Me, Fast
+            spawnProjectiles(true, false); 
         }
     }
     
@@ -941,7 +935,7 @@ function drawCardFromDeckLogic() {
     return new Card(s, v, true);
 }
 
-function spawnExplosion(x, y, color) { for(let i=0; i=30; i++) particles.push(new Particle(x, y, color, true)); }
+function spawnExplosion(x, y, color) { for(let i=0; i<30; i++) particles.push(new Particle(x, y, color, true)); }
 
 function endGame(title, subtitle) {
     gameState = 'GAMEOVER';
@@ -950,23 +944,10 @@ function endGame(title, subtitle) {
     document.getElementById('game-over').style.display = 'block';
 }
 
-function addPenaltyToHand(count) {
-    for(let i=0; i<count; i++) {
-        let c = drawCardFromDeckLogic();
-        c.x = width/2; c.y = -50; 
-        c.isFaceUp = false;
-        myHand.push(c);
-        playSound('deal');
-    }
-    showFloatingText(`+${count} Cards`, width/2, height/2 + 50, "red");
-    canParry = false;
-}
-
 // --- RENDER LOOP ---
 function draw() {
     ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio||1), canvas.height / (window.devicePixelRatio||1));
     
-    // Draw Projectiles
     projectiles.forEach(p => p.draw(ctx));
 
     let deckX = 60; let deckY = height / 2 + 30;
@@ -985,12 +966,20 @@ function draw() {
         ctx.fillStyle = '#333'; ctx.fillRect(deckX - cardW/2, deckY - cardH/2, cardW, cardH);
     }
 
+    // --- FIX CENTER CARD POSITION ---
     if (discardPile.length > 0) {
         let startIdx = Math.max(0, discardPile.length - 3);
         for(let i = startIdx; i < discardPile.length; i++) {
             let c = discardPile[i];
-            if(!isAnimating && Math.abs(c.x - width/2) < 2) c.x = width/2;
-            if(!isAnimating && Math.abs(c.y - height/2) < 2) c.y = height/2;
+            
+            // FORCE TARGET TO CENTER
+            c.targetX = width/2;
+            c.targetY = height/2;
+
+            // SNAP IF CLOSE
+            if(!isAnimating && Math.abs(c.x - width/2) < 5) c.x = width/2;
+            if(!isAnimating && Math.abs(c.y - height/2) < 5) c.y = height/2;
+            
             c.draw(ctx, true, undefined, undefined, cardW, cardH);
         }
     } else {
@@ -1057,16 +1046,13 @@ function update() {
         let p = projectiles[i];
         p.update();
         if (p.isDead) {
-            // Hit logic
             if (p.targetIsMe) {
-                // Add card to my hand
                 let c = drawCardFromDeckLogic();
                 c.x = width/2; c.y = height; c.isFaceUp = false;
                 myHand.push(c); playSound('deal');
-                conn.send({ type: 'PENALTY_SYNC' }); // Tell opp I got card
-                canParry = false; // Opportunity gone
+                conn.send({ type: 'PENALTY_SYNC' }); 
+                canParry = false; 
             } else {
-                // Hit opponent (visual only for me, actual logic synced via penalty)
                 let c = new Card('fire', 1, false); c.x = width/2; c.y = 0;
                 opponentHand.push(c); playSound('deal');
             }
@@ -1121,8 +1107,6 @@ function onPointerDown(e) {
     let idx = getCardAt(x, y);
 
     if (idx !== -1) {
-        // --- TAP TO PLAY FEATURE ---
-        // Jika kartu ini sudah terseleksi sebelumnya (naik), dan diklik lagi -> Play
         if (selectedIdx === idx) {
              let success = playerInput(idx);
              if (success) {
