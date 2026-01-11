@@ -75,7 +75,7 @@
             background: rgba(255, 255, 255, 0.95);
             padding: 40px; border-radius: 15px; text-align: center;
             box-shadow: 0 0 40px rgba(153, 51, 255, 0.3);
-            border: 4px solid #333; max-width: 75%; width: 400px;
+            border: 4px solid #333; max-width: 60%; width: 400px;
         }
 
         h1 { margin: 0 0 20px 0; color: #000; font-size: 28px; letter-spacing: 2px; }
@@ -187,7 +187,7 @@
 
 <script>
 // --- AUDIO MANAGEMENT (BARU) ---
-const SFX_URL = 'https://github.com/viqihakbarrr-cyber/kkk/blob/main/sfxfull.mp3?raw=true';
+const SFX_URL = 'https://cdn.jsdelivr.net/gh/viqihakbarrr-cyber/kkk@main/sfxfull.mp3';
 
 // Definisi Sprite (Start Time & Duration dalam detik)
 const SFX_SPRITES = {
@@ -205,12 +205,20 @@ let sfxBuffer = null;
 async function loadAudioBuffer() {
     try {
         const response = await fetch(SFX_URL);
+        
+        // Cek apakah download berhasil (HTTP 200 OK)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const arrayBuffer = await response.arrayBuffer();
         sfxBuffer = await audioCtx.decodeAudioData(arrayBuffer);
         return true;
     } catch (e) {
         console.error("Gagal memuat audio:", e);
-        return false;
+        // Fallback: Jangan hentikan game, tapi audio tidak akan bunyi
+        document.getElementById('loading-msg').innerText = "AUDIO FAILED (CONTINUING...)";
+        return false; 
     }
 }
 
