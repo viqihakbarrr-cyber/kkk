@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ELUNO - MIRROR FIXED</title>
+    <title>ELUNO</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
@@ -541,20 +541,61 @@ function createRoom() {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const fullID = ID_PREFIX + code;
     showLoading("CREATING ROOM...");
+    
+    // Pastikan peer lama hancur jika ada
+    if(peer) peer.destroy();
+
     peer = new Peer(fullID);
+    
     peer.on('open', (id) => {
         hideLoading(); isHost = true; myPeerID = id;
         document.getElementById('lobby-main').classList.add('hidden');
         document.getElementById('lobby-wait').classList.remove('hidden');
         document.getElementById('host-room-code').innerText = code;
     });
+
     peer.on('connection', (c) => {
-        conn = c; setupConnection();
-        showFloatingText("PLAYER JOINED!", width/2, height/2, "#0f0");
-        setTimeout(startMultiplayerGame, 1000);
+        conn = c;
+        setupConnection();
+        
+        // --- PERBAIKAN DI SINI ---
+        // Jangan pakai timer buta, tapi tunggu event 'open'
+        if (conn.open) {
+            initiateGameStart();
+        } else {
+            conn.on('open', () => {
+                initiateGameStart();
+            });
+        }
     });
+
     peer.on('error', (err) => { hideLoading(); alert("Error: " + err); resetLobby(); });
 }
+
+function joinRoom() {
+    const input = document.getElementById('join-code-input').value;
+    if (input.length !== 4) { alert("Enter 4 digits code!"); return; }
+    showLoading("JOINING ROOM...");
+    
+    const targetID = ID_PREFIX + input;
+    
+    if(peer) peer.destroy(); // Bersihkan peer lama
+    peer = new Peer(); 
+    
+    peer.on('open', () => { 
+        // Tambahkan opsi reliable: true
+        conn = peer.connect(targetID, { reliable: true }); 
+        setupConnection(); 
+    });
+    
+    peer.on('error', (err) => { 
+        hideLoading(); 
+        alert("Room not found or Connection Error!"); 
+        resetLobby(); 
+    });
+}
+
+
 function showJoinUI() {
     document.getElementById('lobby-main').classList.add('hidden');
     document.getElementById('lobby-join').classList.remove('hidden');
@@ -576,12 +617,30 @@ function resetLobby() {
     hideLoading();
 }
 function setupConnection() {
-    conn.on('open', () => { console.log("Connected"); });
-    conn.on('data', (data) => { handleNetworkData(data); });
+    if (!conn) return;
+
+    conn.on('open', () => { 
+        console.log("Connected to opponent"); 
+    });
+    
+    conn.on('data', (data) => { 
+        console.log("Received data:", data.type); // Debugging log
+        handleNetworkData(data); 
+    });
+    
     conn.on('close', () => { 
-        if(gameState !== 'GAMEOVER') endGame("DISCONNECTED", "Opponent left the game"); 
+        console.log("Connection closed");
+        if(gameState !== 'GAMEOVER' && gameState !== 'MENU') {
+            endGame("DISCONNECTED", "Opponent left the game"); 
+        }
+    });
+    
+    // Handle error koneksi spesifik
+    conn.on('error', (err) => {
+        console.error("Connection Error:", err);
     });
 }
+
 
 function requestRematch() {
     if(!rematchMe) {
